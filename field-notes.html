@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Field Notes</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .note-row {
+    display: grid; grid-template-columns: 120px 90px 1fr 120px 80px;
+    gap: var(--sp-3); align-items: start;
+    padding: 12px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .note-row:hover { background: var(--surface-2); }
+  .note-row.change  { border-left: 3px solid var(--pcg-spotlight-purple); }
+  .note-row.damage  { border-left: 3px solid var(--status-red); }
+  .note-row.operational { border-left: 3px solid var(--status-amber); }
+  .note-row.note    { border-left: 3px solid var(--pcg-bright-blue); }
+
+  .compose {
+    background: var(--surface-1); border: 1px solid var(--border-accent);
+    border-radius: var(--r-md); padding: var(--sp-5);
+    margin-bottom: var(--sp-4);
+  }
+  .compose textarea {
+    width: 100%; min-height: 90px; background: var(--surface-2);
+    color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 10px; font-size: var(--fs-sm);
+    font-family: inherit; resize: vertical;
+  }
+  .chip-select {
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .chip-select button {
+    padding: 4px 12px; border-radius: var(--r-pill);
+    background: var(--surface-2); color: var(--text-secondary);
+    border: 1px solid var(--border);
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+  .chip-select button.on { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); background: rgba(1,153,253,0.1); }
+
+  .cat-pill {
+    padding: 2px 8px; border-radius: var(--r-pill);
+    font-size: 10px; font-family: var(--font-display);
+    letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid;
+  }
+  .cat-change       { color: var(--pcg-spotlight-purple-l1); border-color: rgba(122,65,229,0.5); background: rgba(122,65,229,0.1); }
+  .cat-damage       { color: var(--status-red); border-color: rgba(240,78,85,0.5); background: rgba(240,78,85,0.1); }
+  .cat-operational  { color: var(--status-amber); border-color: rgba(245,183,60,0.5); background: rgba(245,183,60,0.1); }
+  .cat-note         { color: var(--pcg-bright-blue); border-color: rgba(1,153,253,0.5); background: rgba(1,153,253,0.1); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Field Notes · Issue Log</div>
+          <h1>Show Field Log</h1>
+          <div class="muted">PM / TD / TSM capture during show — operational changes, damage, issues, tribal knowledge. §G.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 12px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="compose">
+            <div class="eyebrow" style="margin-bottom:8px;">Capture a Field Note</div>
+            <textarea id="noteText" placeholder="What happened? Be specific — future PM reads this cold. e.g. 'Client added 2 mics for breakout panel — went out through Add Order. Billable to client.' or 'Freight elevator #2 stalled load-in — use #3 going forward.'"></textarea>
+
+            <div style="display:flex; gap:var(--sp-4); margin-top:var(--sp-3); align-items:center; flex-wrap:wrap;">
+              <span class="eyebrow" style="font-size:10px;">CATEGORY</span>
+              <div class="chip-select" id="catSel">
+                <button class="on" data-cat="operational">Operational</button>
+                <button data-cat="change">Change / Scope</button>
+                <button data-cat="damage">Damage</button>
+                <button data-cat="note">Knowledge Note</button>
+              </div>
+              <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+                <button class="btn ghost" onclick="document.getElementById('noteText').value=''">Clear</button>
+                <button class="btn primary" id="saveBtn">Save Note</button>
+              </div>
+            </div>
+
+            <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3);">
+              <strong>Damage</strong> auto-suggests opening a ServiceTicket. <strong>Change / Scope</strong> prompts to file as CO or Add Order. All notes timestamped + signed to author — visible on Playbook activity.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Field Log</div>
+              <div style="margin-left:auto; display:flex; gap:6px;">
+                <button class="chip on" data-f="all">All</button>
+                <button class="chip" data-f="change">Changes</button>
+                <button class="chip" data-f="damage">Damage</button>
+                <button class="chip" data-f="operational">Ops</button>
+                <button class="chip" data-f="note">Notes</button>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:120px 90px 1fr 120px 80px; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+              <div>When</div>
+              <div>Category</div>
+              <div>Note</div>
+              <div>Author</div>
+              <div>Actions</div>
+            </div>
+            <div id="notes"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Linked Items</div></div>
+            <div class="card-body" id="linkedItems"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.7;">
+              Field notes are captured <strong>as-they-happen</strong> on-site. They flow to the Playbook's activity feed automatically and are crew-safe where flagged. Damage notes trigger ServiceTicket workflow; change notes prompt CO / Add Order filing.
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Closeout Tie-In</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              At closeout, the Lessons Learned capture pulls the current show's field notes for PM reference. Don't skip these — that's how tribal knowledge becomes institutional.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Field Notes'}]});
+
+  const canWrite = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.AE, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.PRODUCER, PCG.GROUPS.SCHEDULING, PCG.GROUPS.WH_SUPERVISORS);
+
+  const shows = PCG.api.getProjects().filter(p=>p.show);
+  const sel = document.getElementById('showSel');
+  sel.innerHTML = shows.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('');
+  const q = PCG.qs('project');
+  if(q) sel.value = q;
+
+  let category = 'operational';
+  let filter = 'all';
+
+  function render(){
+    const code = sel.value;
+    let notes = PCG.api.getFieldNotes(code);
+    if(filter !== 'all') notes = notes.filter(n => n.category === filter);
+    notes.sort((a,b)=>new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Render
+    document.getElementById('notes').innerHTML = notes.length ? notes.map(n=>{
+      const author = PCG.findPerson(n.authorId);
+      const initials = author ? author.name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase() : '?';
+      return `<div class="note-row ${n.category||'note'}">
+        <div>
+          <div class="mono" style="font-size:11px;">${PCG.fmtShort(n.timestamp)}</div>
+          <div class="muted mono" style="font-size:10px;">${PCG.fmtTime(n.timestamp)}</div>
+        </div>
+        <div><span class="cat-pill cat-${n.category||'note'}">${(n.category||'note').toUpperCase()}</span></div>
+        <div>
+          <div>${PCG.escapeHtml(n.text)}</div>
+          ${(n.attachments||[]).length ? `<div class="muted" style="font-size:11px; margin-top:4px;">📎 ${n.attachments.length} attachment(s)</div>` : ''}
+        </div>
+        <div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="av" style="width:22px; height:22px; font-size:9px; display:inline-flex; align-items:center; justify-content:center; background:var(--grad-show-light-blue); color:white; border-radius:50%; font-family:var(--font-display); font-weight:600;">${initials}</span>
+            <span style="font-size:11px;">${author?PCG.escapeHtml(author.name.split(' ')[0]):'—'}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:4px; justify-content:flex-end;">
+          ${n.category==='damage' ? '<button class="btn sm ghost" style="font-size:10px;">Svc Ticket</button>' : ''}
+          ${n.category==='change' ? '<button class="btn sm ghost" style="font-size:10px;">File CO</button>' : ''}
+        </div>
+      </div>`;
+    }).join('') : PCG.states.empty('No notes in this filter. Capture one above.');
+
+    // KPIs
+    const all = PCG.api.getFieldNotes(code);
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi"><div class="label">Total Notes</div><div class="value">${all.length}</div><div class="sub">on this show</div></div>
+      <div class="kpi purple"><div class="label">Changes</div><div class="value">${all.filter(n=>n.category==='change').length}</div><div class="sub">scope drift</div></div>
+      <div class="kpi red"><div class="label">Damage</div><div class="value">${all.filter(n=>n.category==='damage').length}</div><div class="sub">service tix</div></div>
+      <div class="kpi amber"><div class="label">Operational</div><div class="value">${all.filter(n=>n.category==='operational').length}</div><div class="sub">during-show</div></div>
+      <div class="kpi blue"><div class="label">Knowledge</div><div class="value">${all.filter(n=>n.category==='note').length}</div><div class="sub">for future PM</div></div>
+      <div class="kpi"><div class="label">Today</div><div class="value">${all.filter(n=>new Date(n.timestamp).toDateString()===new Date().toDateString()).length}</div><div class="sub">captured today</div></div>
+    `;
+
+    // Linked items sidebar — service tickets + COs for this show
+    const tix = PCG.api.getServiceTickets({showId:code});
+    const cos = PCG.api.getChangeOrders({projectCode:code});
+    const aos = PCG.api.getAddOrders(code);
+    document.getElementById('linkedItems').innerHTML = `
+      <div style="font-size:var(--fs-sm);">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;"><strong>${tix.length}</strong> service ticket(s) · <a href="service.html" style="font-size:11px;">open</a></div>
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;"><strong>${cos.length}</strong> change order(s) · <a href="project.html?project=${code}&tab=changes" style="font-size:11px;">open</a></div>
+        <div style="display:flex; align-items:center; gap:6px;"><strong>${aos.length}</strong> add order(s) · <a href="add-order.html" style="font-size:11px;">open</a></div>
+      </div>
+    `;
+  }
+
+  document.getElementById('catSel').addEventListener('click', e=>{
+    if(e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('#catSel button').forEach(x=>x.classList.toggle('on', x===e.target));
+    category = e.target.dataset.cat;
+  });
+
+  document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+    document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+    filter = e.target.dataset.f; render();
+  }));
+
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    if(!canWrite){ alert('You don\'t have permission to add field notes.'); return; }
+    const text = document.getElementById('noteText').value.trim();
+    if(!text){ alert('Note text required.'); return; }
+    const note = PCG.api.addFieldNote(sel.value, text, category);
+    document.getElementById('noteText').value = '';
+
+    // Auto-suggest follow-up based on category
+    if(category === 'damage'){
+      if(confirm('This damage note can open a Service Ticket now. Open it?')){
+        location.href = 'service.html';
+        return;
+      }
+    } else if(category === 'change'){
+      if(confirm('This looks like a scope change. File it as a Change Order now?')){
+        location.href = 'project.html?project=' + sel.value + '&tab=changes';
+        return;
+      }
+    }
+    render();
+  });
+
+  sel.addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

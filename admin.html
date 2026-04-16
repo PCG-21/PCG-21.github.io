@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Admin</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .admin-tabs {
+    display: flex; gap: 2px; border-bottom: 1px solid var(--border);
+    margin-bottom: var(--sp-4); overflow-x: auto;
+  }
+  .admin-tabs a {
+    padding: 10px 16px; font-family: var(--font-display);
+    font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-secondary); border-bottom: 2px solid transparent;
+    text-decoration: none; white-space: nowrap; cursor: pointer;
+  }
+  .admin-tabs a:hover { color: var(--text-primary); }
+  .admin-tabs a.on { color: var(--text-primary); border-bottom-color: var(--pcg-bright-blue); }
+
+  .own-row {
+    display: grid; grid-template-columns: 1fr 1fr 2fr;
+    gap: var(--sp-3); align-items: start;
+    padding: 12px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .own-row:hover { background: var(--surface-2); }
+
+  .user-row {
+    display: grid; grid-template-columns: 32px 1fr 1fr 220px auto;
+    gap: var(--sp-3); align-items: center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .group-chip {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-family: var(--font-mono); font-size: 10px;
+    background: rgba(1,153,253,0.15); color: var(--pcg-bright-blue);
+    margin-right: 4px;
+  }
+  .group-chip.admin { background: rgba(122,65,229,0.2); color: var(--pcg-spotlight-purple-l1); }
+  .group-chip.directors { background: rgba(47,191,113,0.15); color: var(--status-green); }
+  .group-chip.warehouse { background: rgba(245,183,60,0.15); color: var(--status-amber); }
+  .group-chip.crew { background: rgba(217,47,180,0.15); color: var(--pcg-energetic-magenta-l1); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Administration · §38</div>
+          <h1>System Administration</h1>
+          <div class="muted">Master data governance · User management · Rate cards · Security groups · Naming conventions.</div>
+        </div>
+      </div>
+
+      <nav class="admin-tabs">
+        <a data-t="governance" class="on">Master Data Governance</a>
+        <a data-t="users">Users</a>
+        <a data-t="groups">Security Groups</a>
+        <a data-t="rates">Rate Cards</a>
+        <a data-t="positions">Position Standards</a>
+        <a data-t="categories">Inventory Categories</a>
+        <a data-t="naming">Naming Conventions</a>
+      </nav>
+
+      <div id="pane"></div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Admin'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    let tab = 'governance';
+
+    const ownership = [
+      { domain:'Inventory categories / subcategories', owner:'Director of Operations', rule:'Changes require Director approval. Deprecated categories cannot be deleted — mark Discontinued.' },
+      { domain:'Rate cards',                           owner:'Finance + Director of Ops', rule:'Effective-dated. New version on every rate change. Existing quotes unaffected.' },
+      { domain:'Kit / SystemDefinition BOMs',          owner:'Department Leads (per dept)', rule:'Version-controlled. BOM change does not affect existing QuoteRevisions.' },
+      { domain:'Venue library',                        owner:'Operations (anyone adds; Director approves changes to existing)', rule:'No venue deletion. Mark Inactive if no longer used.' },
+      { domain:'Client master',                        owner:'AE (creates/owns); Admin approves merges', rule:'Duplicate detection on name + email. Merge workflow logs all merged records.' },
+      { domain:'Crew position standards',              owner:'Labor Coordinator + Director of Ops', rule:'Position name changes are versioned. Old positions remain for historical records.' },
+      { domain:'ROS templates',                        owner:'Show Leads / Producers (per type)', rule:'Templates reviewed annually. Retired templates archived, not deleted.' },
+      { domain:'Global ROS elements',                  owner:'Operations (any Producer can add; Director approves standards)', rule:'Standard global elements (emergency, evacuation) owned by Dir. Operations.' },
+      { domain:'Pay rules / PayRule config',           owner:'Labor Coordinator + CFO', rule:'Effective-dated. Never overwrite. New records per contract cycle.' },
+      { domain:'Naming conventions',                   owner:'Director of Operations', rule:'Documented in SharePoint SOP library. STAGE enforces format on projectCode and serialNumber.' }
+    ];
+
+    const views = {
+      governance: () => `
+        <div class="card">
+          <div class="card-header"><div class="title">Master Data Ownership Table (§38.1)</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${ownership.length} domains</span></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 2fr; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+            <div>Domain</div><div>Owner</div><div>Governance Rule</div>
+          </div>
+          ${ownership.map(o=>`
+            <div class="own-row">
+              <div><strong>${PCG.escapeHtml(o.domain)}</strong></div>
+              <div>${PCG.escapeHtml(o.owner)}</div>
+              <div style="color:var(--text-secondary); font-size:var(--fs-xs); line-height:1.5;">${PCG.escapeHtml(o.rule)}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="card" style="margin-top: var(--sp-4); padding: var(--sp-4); border-left: 3px solid var(--pcg-bright-blue);">
+          <div style="font-family:var(--font-display); font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px;">Admin UI Scope</div>
+          <div style="font-size:var(--fs-sm); color: var(--text-secondary);">
+            In Phase 1-4, master data is edited via the tabs on this page. Phase 5+ adds a configurable no-code rules engine for admins to define approval thresholds, auto-include rules, and state guards without developer involvement. Until then, rules are hardcoded and listed in spec §5.1.
+          </div>
+        </div>
+      `,
+
+      users: () => {
+        const personas = PCG.PERSONAS || [];
+        return `
+          <div class="card">
+            <div class="card-header"><div class="title">User Accounts</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${personas.length} users</span></div>
+            <div style="display:grid; grid-template-columns:32px 1fr 1fr 220px auto; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+              <div></div><div>Name</div><div>Role</div><div>Security Groups</div><div></div>
+            </div>
+            ${personas.map(p=>{
+              const init = p.name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
+              return `<div class="user-row">
+                <span class="av" style="width:28px; height:28px; border-radius:50%; background:var(--grad-show-light-blue); display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:white; font-family:var(--font-display); font-weight:600;">${init}</span>
+                <div>
+                  <div style="font-weight:600;">${PCG.escapeHtml(p.name)}</div>
+                  <div class="muted mono" style="font-size:11px;">${PCG.escapeHtml(p.id)}</div>
+                </div>
+                <div>${PCG.escapeHtml(p.role)}</div>
+                <div>${(p.groups||[]).filter(g=>g!=='STAGE-Everyone').map(g=>{
+                  let cls = 'group-chip';
+                  if(g.includes('Admin')) cls += ' admin';
+                  else if(g.includes('Director') || g.includes('Leadership')) cls += ' directors';
+                  else if(g.includes('WH') || g.includes('Warehouse')) cls += ' warehouse';
+                  else if(g.includes('Crew')) cls += ' crew';
+                  return `<span class="${cls}">${PCG.escapeHtml(g.replace('STAGE-',''))}</span>`;
+                }).join('')}</div>
+                <div><button class="btn sm ghost">Edit</button></div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div class="card" style="margin-top: var(--sp-4); padding: var(--sp-4); font-size:var(--fs-xs); color:var(--text-secondary);">
+            Users resolved via Microsoft Entra ID. Group membership read from token claims at sign-in. Phase 5 adds provisioned B2B accounts for persistent freelancer access; Phase 1-4 uses magic-link for crew.
+          </div>
+        `;
+      },
+
+      groups: () => {
+        const groups = Object.entries(PCG.GROUPS || {}).filter(([k])=>k!=='EVERYONE');
+        const descMap = {
+          ADMIN:           'Full access, all data tiers, all configuration.',
+          AE:              'Quotes, client data, revenue, margins. No pay rates.',
+          AE_NO_CONFIRM:   'Same as AE. Quote delivery requires CSO/Director approval.',
+          DIRECTORS:       'All read + approval authority.',
+          LEADERSHIP:      'Portfolio visibility. Approval authority for Director+ gates.',
+          SCHEDULING:      'Crew scheduling, pay rates, travel, per diem.',
+          TSMS:            'Full warehouse, inventory. No pay rates or margins.',
+          WH_SUPERVISORS:  'Full warehouse operations. No financial data.',
+          WH_TECHS:        'Scan operations only.',
+          ACCOUNTING:      'All financial read + invoice milestones. No pay rates.',
+          PRODUCER:        'ROS live control. Show-day execution.',
+          PA:              'Production Assistant admin support.',
+          CREW:            'Crew PWA only. Own show data only. No ops data.'
+        };
+        return `
+          <div class="card">
+            <div class="card-header"><div class="title">Entra ID Security Groups (§19.1)</div></div>
+            <div style="display:grid; grid-template-columns:240px 1fr auto; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+              <div>Group Name</div><div>Access Summary</div><div>Members</div>
+            </div>
+            ${groups.map(([k,v])=>{
+              const membersCount = (PCG.PERSONAS||[]).filter(p=>(p.groups||[]).includes(v)).length;
+              return `<div class="own-row" style="grid-template-columns:240px 1fr auto;">
+                <div><span class="group-chip ${v.includes('Admin')?'admin':v.includes('Director')?'directors':v.includes('WH')?'warehouse':v.includes('Crew')?'crew':''}">${PCG.escapeHtml(v)}</span></div>
+                <div style="font-size:var(--fs-xs); color:var(--text-secondary);">${PCG.escapeHtml(descMap[k]||'—')}</div>
+                <div class="mono" style="font-size:11px; color:var(--text-tertiary);">${membersCount} user${membersCount===1?'':'s'}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        `;
+      },
+
+      rates: () => {
+        const rates = PCG.api.getRateCardVersions ? PCG.api.getRateCardVersions() : (PCG.rateCardVersions||[]);
+        return `
+          <div class="card">
+            <div class="card-header"><div class="title">Rate Cards</div>
+              <button class="btn sm primary" style="margin-left:auto;">＋ New Version</button>
+            </div>
+            <table class="pcg-table">
+              <thead><tr><th>Version</th><th>Effective From</th><th>Effective To</th><th>Positions</th><th>Used by</th><th></th></tr></thead>
+              <tbody>
+                ${rates.map(r=>{
+                  const usedBy = (PCG.quoteRevisions||[]).filter(q=>q.rateCardVersionId===r.id).length;
+                  return `<tr>
+                    <td class="mono">${PCG.escapeHtml(r.id)} — ${PCG.escapeHtml(r.name)}</td>
+                    <td class="mono">${PCG.fmtShort(r.effectiveFrom)}</td>
+                    <td class="mono">${PCG.fmtShort(r.effectiveTo)}</td>
+                    <td class="mono">${(PCG.crewPositions||[]).length}</td>
+                    <td class="mono">${usedBy} revision${usedBy===1?'':'s'}</td>
+                    <td><button class="btn sm ghost">View</button></td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="card" style="margin-top: var(--sp-4); padding: var(--sp-4); font-size:var(--fs-xs); color:var(--text-secondary);">
+            Effective-dated. New version on every rate change — existing quotes stay on their snapshot <code>rateCardVersionId</code>. Never overwrite. Owner: Finance + Director of Ops.
+          </div>
+        `;
+      },
+
+      positions: () => `
+        <div class="card">
+          <div class="card-header"><div class="title">Crew Position Standards</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${(PCG.crewPositions||[]).length} positions · PCG naming (PP/PA/PV/PL/UHP)</span>
+          </div>
+          <table class="pcg-table">
+            <thead><tr><th>Position Name</th><th>Display</th><th>Department</th><th>Union</th>${PCG.canSeeTier('T3_BILL_RATES')?'<th>Bill Rate</th>':''}${PCG.canSeeTier('T1_CREW_PAY_RATES')?'<th>Pay Rate</th>':''}</tr></thead>
+            <tbody>
+              ${(PCG.crewPositions||[]).map(p=>{
+                const rate = p.ratesByVersion && p.ratesByVersion[0];
+                return `<tr>
+                  <td class="mono" style="font-size:11px;">${PCG.escapeHtml(p.name)}</td>
+                  <td>${PCG.escapeHtml(p.displayName||p.name)}</td>
+                  <td><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(p.department)}</span></td>
+                  <td>${p.union ? `<span class="pill red" style="font-size:10px;">${PCG.escapeHtml(p.unionLocal||'UNION')}</span>` : '<span class="muted">—</span>'}</td>
+                  ${PCG.canSeeTier('T3_BILL_RATES')?`<td class="mono">${rate && rate.billRate ? PCG.money(rate.billRate) : '—'}</td>`:''}
+                  ${PCG.canSeeTier('T1_CREW_PAY_RATES')?`<td class="mono">${rate && rate.payRate ? PCG.money(rate.payRate) : '—'}</td>`:''}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `,
+
+      categories: () => {
+        const cats = PCG.api.getInventoryCategories ? PCG.api.getInventoryCategories() : (PCG.inventoryCategories||[]);
+        return `
+          <div class="card">
+            <div class="card-header"><div class="title">Inventory Categories</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${cats.length} categories · Director approves changes</span></div>
+            <table class="pcg-table">
+              <thead><tr><th>Category</th><th>Department</th><th>Models</th></tr></thead>
+              <tbody>
+                ${cats.map(c=>{
+                  const count = (PCG.inventory||[]).filter(i=>i.categoryId===c.id).length;
+                  return `<tr>
+                    <td><strong>${PCG.escapeHtml(c.name)}</strong></td>
+                    <td><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(c.department)}</span></td>
+                    <td class="mono">${count}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      },
+
+      naming: () => `
+        <div class="card">
+          <div class="card-header"><div class="title">Naming Conventions</div></div>
+          <div style="padding: var(--sp-5);">
+            <div style="margin-bottom: var(--sp-4);">
+              <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:var(--fs-sm); margin-bottom:6px;">Project Code</div>
+              <div class="mono" style="font-size:var(--fs-md); padding:10px; background:var(--surface-2); border-radius:var(--r-sm);">[ClientAbbreviation]-[Year]</div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">Examples: LCE-2026, SAE-WCX-2026, GLBX-GSK-2026. Sequence suffix added if same client has multiple projects in same year (LCE-2026-A, LCE-2026-B).</div>
+            </div>
+
+            <div style="margin-bottom: var(--sp-4);">
+              <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:var(--fs-sm); margin-bottom:6px;">Quote Number</div>
+              <div class="mono" style="font-size:var(--fs-md); padding:10px; background:var(--surface-2); border-radius:var(--r-sm);">P01-[Sequence]</div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">Format from existing Flex. Examples: P01-5437, P01-5481.</div>
+            </div>
+
+            <div style="margin-bottom: var(--sp-4);">
+              <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:var(--fs-sm); margin-bottom:6px;">Serialized Item</div>
+              <div class="mono" style="font-size:var(--fs-md); padding:10px; background:var(--surface-2); border-radius:var(--r-sm);">[ModelCode]-[SequenceSuffix]</div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">Examples: J8-0024, AXD-003, LCD55-017. Auto-incremented on inventory birth.</div>
+            </div>
+
+            <div style="margin-bottom: var(--sp-4);">
+              <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:var(--fs-sm); margin-bottom:6px;">Position Code (PCG)</div>
+              <div class="mono" style="font-size:var(--fs-md); padding:10px; background:var(--surface-2); border-radius:var(--r-sm);">[Prefix] - [Department] - [Role]</div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">
+                Prefixes: <strong>PP</strong>=Production · <strong>PA</strong>=Production Audio · <strong>PV</strong>=Production Video · <strong>PL</strong>=Production Lighting · <strong>UHP</strong>=Union House Person<br>
+                Examples: PA - Audio - Tech (A1), PL - Lighting - Director (LD), UHP - Rigger - General.
+              </div>
+            </div>
+
+            <div>
+              <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:var(--fs-sm); margin-bottom:6px;">Manifest / Pull Sheet</div>
+              <div class="mono" style="font-size:var(--fs-md); padding:10px; background:var(--surface-2); border-radius:var(--r-sm);">MNF-[Year]-[Sequence] · Flex-native 5-char IDs for pull sheets</div>
+            </div>
+
+            <div class="divider"></div>
+            <div style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              <strong>Owner:</strong> Director of Operations. <strong>Enforcement:</strong> STAGE validates format on <code>projectCode</code> and <code>serialNumber</code> at create time. Deviations logged to AuditLog. Full SOP in SharePoint.
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    function render(){
+      document.querySelectorAll('.admin-tabs a').forEach(a => a.classList.toggle('on', a.dataset.t===tab));
+      document.getElementById('pane').innerHTML = (views[tab] || views.governance)();
+    }
+
+    document.querySelectorAll('.admin-tabs a').forEach(a => a.addEventListener('click', e => {
+      tab = e.target.dataset.t; render();
+    }));
+    render();
+  }
+</script>
+</body>
+</html>

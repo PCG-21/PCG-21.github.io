@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Logistics</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .truck-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-4);
+    display: grid; grid-template-columns: 56px 1fr auto; gap: var(--sp-3); align-items: center;
+    margin-bottom: var(--sp-3);
+  }
+  .truck-icon {
+    width: 56px; height: 56px; border-radius: 12px;
+    background: var(--grad-show-light-blue);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
+  .truck-card.departed .truck-icon   { background: var(--grad-show-light-purple); }
+  .truck-card.returning .truck-icon  { background: linear-gradient(135deg,#F5B73C,#0199FD); }
+  .truck-card.delivered .truck-icon  { background: linear-gradient(135deg,#2FBF71,#0199FD); }
+  .zone-bar {
+    display: flex; gap: 4px; margin-top: 8px;
+  }
+  .zone {
+    flex: 1; padding: 4px 6px; border-radius: 4px; text-align: center;
+    font-family: var(--font-mono); font-size: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .zone .z-qty { font-weight: 600; color: var(--pcg-bright-blue); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Logistics · Trucking · Manifests</div>
+          <h1>Transportation Operations</h1>
+          <div class="muted">§20 — Load zones, drivers, DOT compliance, multi-stop routes.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="all">All</button>
+          <button class="chip" data-f="outbound">Outbound</button>
+          <button class="chip" data-f="returning">Returning</button>
+          <button class="btn sm">＋ Schedule Manifest</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Active Manifests</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+            <div class="card-body" id="manifests"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Driver Roster</div></div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>Driver</th><th>License Class</th><th>License Expiry</th><th>DOT Medical Expiry</th><th>Status</th></tr></thead>
+                <tbody id="driverRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Vehicle Roster</div></div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>Vehicle</th><th>Type</th><th>License Plate</th><th>Status</th><th>Current Assignment</th></tr></thead>
+                <tbody id="vehRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Marshalling Yards</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div><strong>Huntington Place · Detroit</strong><br><span class="muted">SAE WCX + DAS Booth · stagger required</span></div>
+              <div class="divider"></div>
+              <div><strong>Silver State Industrial · LV</strong><br><span class="muted">LCE / GLBX overnight staging</span></div>
+              <div class="divider"></div>
+              <div><strong>McCormick Place · Chicago</strong><br><span class="muted">Mandatory for 53'+ trucks</span></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Load Zone Logic (§20)</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              Items assigned to truck zones (A = back/unloaded first). Stackability and fragility flags on InventoryModel drive load-order suggestions. Multi-stop routes use DeliveryStop records chained in order.
+            </div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">License Expiry Watch</div></div>
+            <div class="card-body" id="expiry"></div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'warehouse', crumbs:[{label:'Logistics'}]});
+
+  let filter = 'all';
+
+  function render(){
+    const manifests = (PCG.manifests||[]).filter(m=>{
+      if(filter==='outbound') return ['Staged','Departed'].includes(m.status);
+      if(filter==='returning') return ['Delivered','Returning','Received'].includes(m.status);
+      return true;
+    });
+    document.getElementById('count').textContent = `${manifests.length} of ${(PCG.manifests||[]).length}`;
+
+    document.getElementById('manifests').innerHTML = manifests.length ? manifests.map(m=>{
+      const cls = m.status==='Departed' ? 'departed'
+                : m.status==='Returning'? 'returning'
+                : m.status==='Delivered'? 'delivered':'';
+      const totalCases = (m.loadZones||[]).reduce((s,z)=>s+(z.cases||0), 0);
+      return `
+        <div class="truck-card ${cls}" onclick="openManifest('${m.id}')">
+          <div class="truck-icon">🚚</div>
+          <div>
+            <div style="font-weight:600;">${PCG.escapeHtml(m.id)} · ${PCG.escapeHtml(m.showId)}</div>
+            <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(m.vehicle||'—')} · Driver ${PCG.escapeHtml(m.driverName||'—')}</div>
+            <div class="muted" style="font-size:11px;">${PCG.escapeHtml(m.address||'')}</div>
+            <div class="zone-bar">
+              ${(m.loadZones||[]).map(z=>`<div class="zone"><div>${PCG.escapeHtml(z.zone)}</div><div class="z-qty">${z.cases} cases</div></div>`).join('')}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div><span class="pill ${m.status==='Delivered'?'green':m.status==='Departed'?'blue':m.status==='Returning'?'amber':'gray'}">${m.status.toUpperCase()}</span></div>
+            <div class="mono muted" style="font-size:11px; margin-top:4px;">DEP ${PCG.fmtShort(m.departureDate)}</div>
+            <div class="mono muted" style="font-size:11px;">ARR ${PCG.fmtShort(m.arrivalDate)}</div>
+            <div class="mono" style="font-size:10px; color:var(--pcg-bright-blue); margin-top:2px;">${totalCases} cases total</div>
+          </div>
+        </div>`;
+    }).join('') : PCG.states.empty('No manifests match this filter.');
+
+    // Drivers
+    const drivers = PCG.api.getDrivers();
+    const now = new Date();
+    document.getElementById('driverRows').innerHTML = drivers.map(d=>{
+      const licExp = new Date(d.licenseExpiry);
+      const licDays = Math.round((licExp - now)/(1000*60*60*24));
+      const dotExp = new Date(d.dotMedicalExpiry);
+      const dotDays = Math.round((dotExp - now)/(1000*60*60*24));
+      return `<tr>
+        <td><strong>${PCG.escapeHtml(d.name)}</strong></td>
+        <td><span class="pill blue plain" style="font-size:10px;">${d.licenseClass}</span></td>
+        <td class="mono" style="color:${licDays<60?'var(--status-amber)':'inherit'};">${PCG.fmtShort(d.licenseExpiry)} (${licDays}d)</td>
+        <td class="mono" style="color:${dotDays<60?'var(--status-amber)':'inherit'};">${PCG.fmtShort(d.dotMedicalExpiry)} (${dotDays}d)</td>
+        <td>${(licDays<0||dotDays<0)?'<span class="pill red">EXPIRED</span>':(licDays<60||dotDays<60)?'<span class="pill amber">EXPIRING</span>':'<span class="pill green plain">✓</span>'}</td>
+      </tr>`;
+    }).join('');
+
+    // Vehicles
+    const veh = PCG.api.getVehicles();
+    document.getElementById('vehRows').innerHTML = veh.map(v=>{
+      const mf = (PCG.manifests||[]).find(m=>m.vehicleId===v.id);
+      return `<tr>
+        <td><strong>${PCG.escapeHtml(v.name)}</strong></td>
+        <td><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(v.type||'—')}</span></td>
+        <td class="mono">${PCG.escapeHtml(v.licensePlate||'')}</td>
+        <td><span class="pill ${v.status==='On Show'?'blue':v.status==='On Route'?'amber':'green'}">${PCG.escapeHtml(v.status||'—')}</span></td>
+        <td class="mono">${mf?PCG.escapeHtml(mf.showId):'—'}</td>
+      </tr>`;
+    }).join('');
+
+    // Expiry watch
+    const watch = drivers.filter(d=>{
+      const lic = (new Date(d.licenseExpiry)-now)/(1000*60*60*24);
+      const dot = (new Date(d.dotMedicalExpiry)-now)/(1000*60*60*24);
+      return lic<60 || dot<60;
+    });
+    document.getElementById('expiry').innerHTML = watch.length ? watch.map(d=>`
+      <div class="attn-item amber" style="margin-bottom:6px;">
+        <div><div class="ttl">${PCG.escapeHtml(d.name)}</div>
+        <div class="meta">License ${PCG.fmtShort(d.licenseExpiry)} · DOT ${PCG.fmtShort(d.dotMedicalExpiry)}</div></div>
+      </div>
+    `).join('') : PCG.states.empty('All licenses current.');
+
+    // KPIs
+    const all = (PCG.manifests||[]);
+    const out = all.filter(m=>['Staged','Departed'].includes(m.status)).length;
+    const inbound = all.filter(m=>['Returning'].includes(m.status)).length;
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi blue"><div class="label">Outbound</div><div class="value">${out}</div><div class="sub">on the road</div></div>
+      <div class="kpi amber"><div class="label">Returning</div><div class="value">${inbound}</div><div class="sub">inbound</div></div>
+      <div class="kpi"><div class="label">Drivers Active</div><div class="value">${drivers.length}</div><div class="sub">roster</div></div>
+      <div class="kpi"><div class="label">Vehicles</div><div class="value">${veh.length}</div><div class="sub">fleet</div></div>
+      <div class="kpi red"><div class="label">License Watch</div><div class="value">${watch.length}</div><div class="sub">&lt; 60 days</div></div>
+      <div class="kpi"><div class="label">Total Manifests</div><div class="value">${all.length}</div><div class="sub">this window</div></div>
+    `;
+  }
+
+  window.openManifest = (id)=>location.href = `driver.html?manifest=${id}`;
+  document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+    document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+    filter = e.target.dataset.f; render();
+  }));
+  render();
+</script>
+</body>
+</html>

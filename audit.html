@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Audit Trail</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .audit-row {
+    display: grid; grid-template-columns: 130px 150px 1fr 200px;
+    gap: var(--sp-3); align-items: start;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .audit-row:hover { background: var(--surface-2); }
+  .audit-row .ts { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .audit-row .action-pill {
+    display: inline-block; padding: 2px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .cat-lifecycle { background: rgba(122,65,229,0.15); color: var(--pcg-spotlight-purple-l1); }
+  .cat-quote     { background: rgba(1,153,253,0.15); color: var(--pcg-bright-blue); }
+  .cat-crew      { background: rgba(47,191,113,0.15); color: var(--status-green); }
+  .cat-checklist { background: rgba(245,183,60,0.15); color: var(--status-amber); }
+  .cat-override  { background: rgba(240,78,85,0.15); color: var(--status-red); }
+  .cat-pullSheet { background: rgba(1,153,253,0.15); color: var(--pcg-bright-blue); }
+  .cat-closeout  { background: rgba(47,191,113,0.15); color: var(--status-green); }
+  .cat-pitch     { background: rgba(122,65,229,0.15); color: var(--pcg-spotlight-purple-l1); }
+  .cat-default   { background: var(--surface-3); color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Audit Trail · §34</div>
+          <h1>Accountability Log</h1>
+          <div class="muted">Every significant state change, approval, override, pricing change, schedule change, and scan conflict — logged with who, when, and prior value.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="btn sm ghost">Export CSV</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:var(--sp-2); margin-bottom:var(--sp-4); flex-wrap:wrap; align-items:center;">
+        <span class="eyebrow" style="font-size:10px;">FILTER</span>
+        <button class="chip on" data-f="all">All</button>
+        <button class="chip" data-f="quote">Quotes</button>
+        <button class="chip" data-f="crew">Crew / Staffing</button>
+        <button class="chip" data-f="override">Overrides</button>
+        <button class="chip" data-f="lifecycle">Lifecycle</button>
+        <button class="chip" data-f="pullSheet">Pull Sheets</button>
+        <button class="chip" data-f="checklist">Checklist</button>
+        <input id="q" placeholder="Search entity / actor / action…" style="margin-left:auto; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 12px; border-radius:var(--r-pill); width:260px; font-size:var(--fs-sm);" />
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="title">Log Entries</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+        <div style="display:grid; grid-template-columns:130px 150px 1fr 200px; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+          <div>Timestamp</div>
+          <div>Action</div>
+          <div>Detail</div>
+          <div>Actor</div>
+        </div>
+        <div id="rows"></div>
+      </div>
+
+      <div class="card" style="margin-top: var(--sp-5);">
+        <div class="card-header"><div class="title">Mandatory Audit Events (§34.1)</div></div>
+        <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.8; columns: 2;">
+          <div>Quote Revision status change</div>
+          <div>Quote Revision approval</div>
+          <div>Client proposal issuance</div>
+          <div>Quote award</div>
+          <div>ScopeRecord creation</div>
+          <div>Change Order approval</div>
+          <div>Damage Charge creation</div>
+          <div>Lifecycle state transition</div>
+          <div>State transition override</div>
+          <div>Backward lifecycle transition</div>
+          <div>Pull Sheet Dept Lock</div>
+          <div>Walk-the-Pile authorization</div>
+          <div>Walk-the-Pile override</div>
+          <div>Scan conflict resolution</div>
+          <div>SerializedItem state change</div>
+          <div>Checklist override</div>
+          <div>Shift Assignment status change</div>
+          <div>Internal correction (awarded quote)</div>
+          <div>Manifest departure / delivery</div>
+          <div>Rate Card version update</div>
+          <div>Permission / group change</div>
+          <div>Magic link issuance / revocation</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Audit'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    // Seed some synthetic audit log entries so the demo has volume
+    const baseLog = PCG.auditLog || [];
+    if(baseLog.length < 15){
+      const synth = [
+        { action:'quote.issue',           entityId:'q.LCE-2026.v3', actor:'p.jspringer', at:'2026-04-09T14:22:00' },
+        { action:'quote.approval',        entityId:'q.LCE-2026.v3', actor:'p.kbenz',     at:'2026-04-11T10:05:00', detail:'Director approval (discount <10%)' },
+        { action:'quote.award',           entityId:'q.LCE-2026.v3', actor:'p.jspringer', at:'2026-04-11T10:10:00', detail:'ScopeRecord created. 14 ShiftAssignments seeded.' },
+        { action:'lifecycle.transition',  entityId:'LCE-2026',      actor:'p.jsharp',    at:'2026-04-12T14:30:00', detail:'Awarded → InPrep' },
+        { action:'pullSheet.deptLock',    entityId:'ps.lce.audio',  actor:'p.pshah',     at:'2026-04-09T15:00:00', detail:'Audio Dept Locked' },
+        { action:'pullSheet.walkThePile', entityId:'ps.lce.audio',  actor:'p.svance',    at:'2026-04-09T16:00:00', detail:'Walk-the-Pile authorized' },
+        { action:'crew.invite',           entityId:'sa.lce.a1',     actor:'p.coliver',   at:'2026-04-01T09:00:00', detail:'Mike Chen → Audio A1' },
+        { action:'crew.status.confirmed', entityId:'sa.lce.a1',     actor:'p.coliver',   at:'2026-04-03T11:00:00', detail:'Mike Chen confirmed' },
+        { action:'crew.reassign',         entityId:'sa.lce.a1',     actor:'p.coliver',   at:'2026-04-13T20:18:00', detail:'Reassigned: Mike Chen → Priya Shah (conflict resolution)' },
+        { action:'changeOrder.submit',    entityId:'co.001',        actor:'p.jspringer', at:'2026-04-14T17:40:00', detail:'CO #3 — Awards Ready Room · $18,400' },
+        { action:'checklist.override',    entityId:'cli.LCE-2026.lce-lf-0', actor:'p.coliver', at:'2026-04-14T10:00:00', detail:'A2 position unfilled — freelance swap booked' },
+        { action:'scan.conflict',         entityId:'sc.orphan.001', actor:'p.arachilla', at:'2026-04-14T16:00:00', detail:'Orphaned return scan (LCD55-024)' },
+        { action:'override.walkThePile',  entityId:'ps.demo',       actor:'p.jsharp',    at:'2026-04-10T11:15:00', detail:'Walk-the-Pile override (Admin) — reason: last-min schedule compression' },
+        { action:'pitch.convert',         entityId:'pitch.lce.2026',actor:'p.jspringer', at:'2026-02-08T12:00:00', detail:'Pitch converted to Quote' },
+        { action:'lifecycle.transition',  entityId:'LCE-2026',      actor:'p.jspringer', at:'2026-04-11T10:05:00', detail:'Quoted → Awarded' }
+      ];
+      synth.forEach(s => baseLog.push(s));
+      PCG.auditLog = baseLog;
+    }
+
+    let filter = 'all';
+
+    function getCategory(action){
+      if(!action) return 'default';
+      if(action.startsWith('quote.')) return 'quote';
+      if(action.startsWith('crew.')) return 'crew';
+      if(action.startsWith('lifecycle.')) return 'lifecycle';
+      if(action.startsWith('pullSheet.')) return 'pullSheet';
+      if(action.startsWith('checklist.')) return 'checklist';
+      if(action.startsWith('override.')) return 'override';
+      if(action.startsWith('pitch.')) return 'pitch';
+      if(action.startsWith('closeout.')) return 'closeout';
+      return 'default';
+    }
+
+    function render(){
+      const q = (document.getElementById('q').value || '').toLowerCase();
+      let list = (PCG.auditLog || []).slice().sort((a,b)=>new Date(b.at)-new Date(a.at));
+
+      if(filter !== 'all'){
+        list = list.filter(e => getCategory(e.action) === filter);
+      }
+      if(q){
+        list = list.filter(e => {
+          const parts = [e.action||'', e.entityId||'', e.actor||'', e.detail||'', e.reason||'', e.overrideReason||''];
+          return parts.some(p => p.toLowerCase().includes(q));
+        });
+      }
+
+      document.getElementById('count').textContent = `${list.length} of ${(PCG.auditLog||[]).length}`;
+
+      document.getElementById('rows').innerHTML = list.length ? list.map(e => {
+        const actor = PCG.findPerson(e.actor);
+        const cat = getCategory(e.action);
+        const actionLabel = (e.action||'').replace(/\./g,' · ');
+        const detail = e.detail || e.reason || e.overrideReason || (e.from && e.to ? `${e.from} → ${e.to}` : '—');
+        return `<div class="audit-row">
+          <div>
+            <div class="ts">${new Date(e.at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+            <div class="ts">${new Date(e.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+          </div>
+          <div><span class="action-pill cat-${cat}">${PCG.escapeHtml(actionLabel)}</span></div>
+          <div>
+            <div style="font-size:var(--fs-sm);">${PCG.escapeHtml(detail)}</div>
+            <div class="muted" style="font-size:11px; margin-top:2px;">Entity: <span class="mono">${PCG.escapeHtml(e.entityId||'—')}</span>${e.override?' · <span style="color:var(--status-red);">OVERRIDE</span>':''}</div>
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="av" style="width:24px; height:24px; font-size:10px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--grad-show-light-blue); color:white; font-family:var(--font-display); font-weight:600;">${actor?actor.name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase():'?'}</span>
+              <span style="font-size:11px;">${actor?PCG.escapeHtml(actor.name):PCG.escapeHtml(e.actor||'—')}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('') : PCG.states.empty('No audit entries match.');
+
+      // KPIs
+      const all = (PCG.auditLog||[]);
+      const overrides = all.filter(e=>e.override || (e.action||'').startsWith('override.') || e.action==='checklist.override').length;
+      const lifecycleCount = all.filter(e=>getCategory(e.action)==='lifecycle').length;
+      const quoteCount = all.filter(e=>getCategory(e.action)==='quote').length;
+      const crewCount = all.filter(e=>getCategory(e.action)==='crew').length;
+      const today = new Date();
+      const todayCount = all.filter(e=>new Date(e.at).toDateString()===today.toDateString()).length;
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi"><div class="label">Total Events</div><div class="value">${all.length}</div><div class="sub">lifetime log</div></div>
+        <div class="kpi"><div class="label">Today</div><div class="value">${todayCount}</div><div class="sub">events logged</div></div>
+        <div class="kpi red"><div class="label">Overrides</div><div class="value">${overrides}</div><div class="sub">logged exceptions</div></div>
+        <div class="kpi purple"><div class="label">Lifecycle</div><div class="value">${lifecycleCount}</div><div class="sub">state changes</div></div>
+        <div class="kpi blue"><div class="label">Quote Events</div><div class="value">${quoteCount}</div><div class="sub">issued / awarded / corrected</div></div>
+        <div class="kpi"><div class="label">Crew Events</div><div class="value">${crewCount}</div><div class="sub">invite / confirm / reassign</div></div>
+      `;
+    }
+
+    document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+      document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+      filter = e.target.dataset.f; render();
+    }));
+    document.getElementById('q').addEventListener('input', render);
+    render();
+  }
+</script>
+</body>
+</html>

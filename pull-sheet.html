@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Pull Sheet</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .ps-state-bar {
+    display: grid; grid-template-columns: repeat(11, 1fr);
+    gap: 4px; padding: var(--sp-3); background: var(--surface-2);
+    border-radius: var(--r-md); margin-bottom: var(--sp-4);
+  }
+  .ps-state {
+    padding: 6px 4px; text-align: center;
+    font-family: var(--font-display); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-tertiary); background: var(--surface-3);
+    border-radius: 4px;
+  }
+  .ps-state.done    { color: var(--status-green); background: rgba(47,191,113,0.15); }
+  .ps-state.current { color: var(--pcg-bright-blue); background: rgba(1,153,253,0.15); font-weight: 700; }
+  .line-row {
+    display: grid; grid-template-columns: 50px 2fr 100px 120px 120px 140px;
+    gap: var(--sp-3); align-items: center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .line-row:hover { background: var(--surface-2); }
+  .line-row.scanned   { border-left: 3px solid var(--status-green); }
+  .line-row.pending   { border-left: 3px solid var(--text-tertiary); }
+  .gate-panel {
+    padding: var(--sp-5); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+  }
+  .gate-item {
+    display: flex; align-items: center; gap: var(--sp-3);
+    padding: 10px; border-radius: var(--r-sm);
+    margin-bottom: 6px; font-size: var(--fs-sm);
+  }
+  .gate-item.ok   { background: rgba(47,191,113,0.08); color: var(--text-primary); }
+  .gate-item.bad  { background: rgba(240,78,85,0.08); color: var(--text-primary); }
+  .gate-item .icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .gate-item.ok .icon  { background: rgba(47,191,113,0.2); color: var(--status-green); }
+  .gate-item.bad .icon { background: rgba(240,78,85,0.2); color: var(--status-red); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div id="header"></div>
+      <div id="state"></div>
+      <div class="split">
+        <div>
+          <div id="gateCard"></div>
+          <div class="card" style="margin-top: var(--sp-5);">
+            <div class="card-header"><div class="title">Pull Sheet Lines</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="lineCount"></span></div>
+            <div style="display:grid; grid-template-columns:50px 2fr 100px 120px 120px 140px; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+              <div>#</div>
+              <div>Item / Model</div>
+              <div style="text-align:right;">Qty</div>
+              <div>Scan Status</div>
+              <div>Serials Assigned</div>
+              <div>Condition</div>
+            </div>
+            <div id="lines"></div>
+          </div>
+        </div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Show Sheets by Dept (§10.2)</div></div>
+            <div class="card-body" id="siblingList" style="font-size:var(--fs-sm);"></div>
+          </div>
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Walk-the-Pile Rules</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.7;">
+              1. Dept Lead locks their pull sheet (DeptLock) before Walk-the-Pile.<br>
+              2. A Dept Director cannot pile-walk a sheet their Dept Lead hasn't confirmed.<br>
+              3. Walk-the-Pile authorization requires acknowledging any outstanding warnings.<br>
+              4. Override recorded in AuditLog (Administrator only).<br>
+              5. Show cannot advance InPrep → OnShow without Walk-the-Pile on every finalized sheet.
+            </div>
+          </div>
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">System Completeness (§7.4)</div></div>
+            <div class="card-body" id="sysCheck" style="font-size:var(--fs-sm);"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const psId = PCG.qs('id','ps.sae.breakout');
+  const ps = PCG.api.getPullSheet(psId);
+
+  if(!ps){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.empty('Pull sheet not found.')}</div>`;
+  } else {
+    const p = PCG.api.getProject(ps.showId);
+    PCG.mountShell({active:'warehouse', crumbs:[
+      {label:'Portfolio', href:'index.html'},
+      {label:p.code, href:`playbook.html?project=${p.code}`},
+      {label:`Pull · ${ps.department}`}
+    ]});
+
+    // ---- State bar ----
+    const STATES = ['NotStarted','InProgress','DeptLocked','Prepped','PreppedWithIssues','Finalized','Staged','Loaded','Shipped','OnShow','Returning'];
+    const curIdx = STATES.indexOf(ps.status);
+    document.getElementById('state').innerHTML = `
+      <div class="ps-state-bar">
+        ${STATES.map((s,i)=>`<div class="ps-state ${i<curIdx?'done':i===curIdx?'current':''}">${s}</div>`).join('')}
+      </div>`;
+
+    // ---- Header ----
+    const finalizer = PCG.findPerson(ps.finalizedById);
+    const authorizer = PCG.findPerson(ps.authorizedById);
+    document.getElementById('header').innerHTML = `
+      <section class="proj-header">
+        <div class="motif"></div>
+        <div class="eyebrow">${PCG.escapeHtml(ps.department)} · Pull Sheet · ${PCG.lifecyclePill((p.show&&p.show.lifecycleState)||'—')}</div>
+        <h1>${PCG.escapeHtml(ps.id)}</h1>
+        <div class="meta">
+          <div class="i"><span class="k">Show</span><span class="v mono">${PCG.escapeHtml(ps.showId)}</span></div>
+          <div class="i"><span class="k">Dept</span><span class="v">${PCG.escapeHtml(ps.department)}</span></div>
+          <div class="i"><span class="k">Status</span><span class="v">${PCG.escapeHtml(ps.status)}</span></div>
+          <div class="i"><span class="k">Lines</span><span class="v mono">${(ps.lines||[]).length}</span></div>
+          <div class="i"><span class="k">Finalized By</span><span class="v">${finalizer?PCG.escapeHtml(finalizer.name):'—'}</span></div>
+          <div class="i"><span class="k">Authorized (Pile Walk)</span><span class="v">${authorizer?PCG.escapeHtml(authorizer.name):'—'}${ps.authorizedAt?` · ${PCG.fmtShort(ps.authorizedAt)}`:''}</span></div>
+        </div>
+        <div class="actions">
+          <a class="btn primary" href="qc-scan.html?pullSheet=${ps.id}">Open QC Scan →</a>
+          <a class="btn" href="project-crew.html?project=${ps.showId}">Show Crew</a>
+          <a class="btn ghost" href="playbook.html?project=${ps.showId}">Playbook</a>
+        </div>
+      </section>
+    `;
+
+    // ---- Gate / Workflow card ----
+    const lines = ps.lines || [];
+    const scanned = lines.filter(l=>l.scanStatus==='verified').length;
+    const total = lines.length;
+    const pct = total ? Math.round(scanned/total*100) : 0;
+    const allScanned = scanned === total && total > 0;
+    const canLock = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS);
+    const canAuthorize = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.TSMS);
+
+    const state = ps.status;
+    const deptLocked = ['DeptLocked','Prepped','PreppedWithIssues','Finalized','Staged','Loaded','Shipped','OnShow','Returning'].includes(state);
+    const walked = !!ps.authorizedById;
+
+    document.getElementById('gateCard').innerHTML = `
+      <div class="gate-panel">
+        <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3);">
+          <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.08em; font-size:var(--fs-md);">Finalization Gates</div>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+            <div class="mono" style="font-size:var(--fs-xs); color:var(--text-tertiary);">${scanned}/${total} scanned</div>
+            <div style="height:6px; width:120px; background:var(--surface-3); border-radius:3px; overflow:hidden;">
+              <div style="width:${pct}%; height:100%; background:var(--grad-show-light-blue);"></div>
+            </div>
+            <div class="mono">${pct}%</div>
+          </div>
+        </div>
+
+        <div class="gate-item ${allScanned?'ok':'bad'}">
+          <div class="icon">${allScanned?'✓':'!'}</div>
+          <div><strong>All lines scanned (QC OUT)</strong><div class="muted" style="font-size:11px;">${allScanned?'Complete':`${total-scanned} lines remaining`}</div></div>
+        </div>
+
+        <div class="gate-item ${deptLocked?'ok':'bad'}">
+          <div class="icon">${deptLocked?'✓':'!'}</div>
+          <div style="flex:1;"><strong>Department Lock (Dept Lead confirms)</strong>
+            <div class="muted" style="font-size:11px;">${deptLocked?'Locked — ready for pile walk':'Dept Lead must confirm availability and scope'}</div>
+          </div>
+          ${!deptLocked && canLock ? '<button class="btn sm primary" onclick="lockDept()">Lock Department</button>':''}
+        </div>
+
+        <div class="gate-item ${walked?'ok':'bad'}">
+          <div class="icon">${walked?'✓':'!'}</div>
+          <div style="flex:1;"><strong>Walk-the-Pile Authorization</strong>
+            <div class="muted" style="font-size:11px;">${walked?`Authorized by ${authorizer?authorizer.name:'—'} on ${PCG.fmtDate(ps.authorizedAt,{time:true})}`:'Dept Director / TSM physically reviews staged gear. Outstanding warnings must be acknowledged.'}</div>
+          </div>
+          ${!walked && deptLocked && canAuthorize ? '<button class="btn sm primary" onclick="authorizePile()">Authorize Walk-the-Pile</button>' : ''}
+          ${!walked && !deptLocked ? '<button class="btn sm" disabled>Dept Lock Required</button>' : ''}
+        </div>
+
+        ${walked ? `
+          <div class="gate-item ok">
+            <div class="icon">✓</div>
+            <div><strong>Pull sheet is Finalized</strong><div class="muted" style="font-size:11px;">Ready for manifest creation and truck load.</div></div>
+          </div>` : ''}
+      </div>
+    `;
+
+    // ---- Lines ----
+    document.getElementById('lineCount').textContent = `${total} lines · ${scanned} scanned`;
+    document.getElementById('lines').innerHTML = lines.length ? lines.map((l,i)=>{
+      const item = PCG.api.getInventoryItem(l.inventoryItemId);
+      const cls = l.scanStatus==='verified' ? 'scanned' : 'pending';
+      const pill = l.scanStatus==='verified' ? '<span class="pill green plain" style="font-size:10px;">✓ VERIFIED</span>'
+                  : l.scanStatus==='scanned' ? '<span class="pill blue plain" style="font-size:10px;">SCANNED</span>'
+                  : '<span class="pill gray plain" style="font-size:10px;">PENDING</span>';
+      return `<div class="line-row ${cls}">
+        <div class="mono muted">${i+1}</div>
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml((item&&item.name)||l.inventoryItemId)}</div>
+          <div class="muted" style="font-size:11px;">${item?PCG.escapeHtml(item.manufacturer||''):''} ${item&&item.model?'· '+PCG.escapeHtml(item.model):''}</div>
+        </div>
+        <div class="mono" style="text-align:right; font-weight:600;">${l.qty}</div>
+        <div>${pill}</div>
+        <div class="mono" style="font-size:11px;">${(l.serialsAssigned||[]).length ? (l.serialsAssigned||[]).slice(0,2).join(', ')+((l.serialsAssigned||[]).length>2?' +'+((l.serialsAssigned||[]).length-2):'') : '—'}</div>
+        <div><span class="pill gray plain" style="font-size:10px;">${l.conditionOnReturn?'RETURNED: '+l.conditionOnReturn:'—'}</span></div>
+      </div>`;
+    }).join('') : PCG.states.empty('No lines on this pull sheet.');
+
+    // ---- Sibling pull sheets (all depts for this show) ----
+    const siblings = PCG.api.getPullSheets(ps.showId);
+    document.getElementById('siblingList').innerHTML = siblings.map(s=>{
+      const active = s.id===ps.id;
+      const stCls = {NotStarted:'gray',InProgress:'amber',DeptLocked:'blue',Finalized:'green',Shipped:'purple'}[s.status]||'gray';
+      const done = (s.lines||[]).filter(l=>l.scanStatus==='verified').length;
+      return `<div style="padding: 10px 0; border-bottom: 1px dashed var(--border); cursor:pointer; ${active?'background:rgba(1,153,253,0.06);':''}" onclick="location.href='pull-sheet.html?id=${s.id}'">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <strong>${PCG.escapeHtml(s.department)}</strong>
+          <span class="pill ${stCls}" style="font-size:10px; margin-left:auto;">${s.status.toUpperCase()}</span>
+        </div>
+        <div class="muted mono" style="font-size:11px; margin-top:2px;">${done}/${(s.lines||[]).length} · ${s.authorizedById?'✓ Pile walk':'Pile walk pending'}</div>
+      </div>`;
+    }).join('');
+
+    // ---- System completeness (kit check) ----
+    const kitWarnings = [];
+    (ps.lines||[]).forEach(l=>{
+      const sd = (PCG.systemDefinitions||[]).find(k => (k.requiredComponents||[]).some(c=>c.modelId===l.inventoryItemId));
+      if(sd){
+        (sd.compatibilityRules||[]).filter(r=>r.severity==='warning' || r.severity==='error').forEach(r=>{
+          kitWarnings.push({ kit:sd.name, rule:r });
+        });
+      }
+    });
+    document.getElementById('sysCheck').innerHTML = kitWarnings.length ? `
+      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:6px;">System Builder (§7.4) returned ${kitWarnings.length} warning(s):</div>
+      ${kitWarnings.slice(0,3).map(w=>`<div class="attn-item ${w.rule.severity==='error'?'red':''}" style="margin-bottom:6px;">
+        <div><div class="ttl">${PCG.escapeHtml(w.kit)}</div>
+        <div class="meta">${PCG.escapeHtml(w.rule.description)}</div></div>
+      </div>`).join('')}
+    ` : `<div class="muted" style="font-size:var(--fs-xs);">✓ No compatibility warnings from linked System Definitions.</div>`;
+
+    // ---- Actions ----
+    window.lockDept = () => {
+      if(!canLock){ alert('Only Dept Lead / TSM / Admin can lock the department.'); return; }
+      ps.status = 'DeptLocked';
+      PCG.auditLog = PCG.auditLog || [];
+      PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'pullSheet.deptLock', entityId:ps.id });
+      PCG.engines.notify.emit('PullSheetDeptLocked', { pullSheetId: ps.id, by: PCG.user.id });
+      location.reload();
+    };
+    window.authorizePile = () => {
+      if(!canAuthorize){ alert('Only TSM / WH Supervisor / Admin can authorize Walk-the-Pile.'); return; }
+      if(kitWarnings.length){
+        if(!confirm(`There are ${kitWarnings.length} System Builder warning(s). You must acknowledge before Walk-the-Pile. Proceed?`)) return;
+      }
+      ps.authorizedById = PCG.user.id;
+      ps.authorizedAt = new Date().toISOString();
+      ps.status = 'Finalized';
+      PCG.auditLog = PCG.auditLog || [];
+      PCG.auditLog.push({ at:ps.authorizedAt, actor:PCG.user.id, action:'pullSheet.walkThePile', entityId:ps.id });
+      PCG.engines.notify.emit('WalkThePileAuthorized', { pullSheetId: ps.id, by: PCG.user.id });
+      location.reload();
+    };
+  }
+</script>
+</body>
+</html>

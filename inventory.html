@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Inventory</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .inv-row {
+    display:grid; grid-template-columns: 2fr 130px 80px 80px 80px 80px 80px 80px 80px;
+    gap: var(--sp-3); align-items:center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm); cursor: pointer;
+  }
+  .inv-row:hover { background: var(--surface-2); }
+  .inv-row .n { font-family: var(--font-mono); text-align:right; }
+  .inv-row.alert { background: rgba(240,78,85,0.06); border-left: 3px solid var(--status-red); }
+  .state-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; }
+  .state-Available { background: var(--status-green); }
+  .state-Reserved,.state-Allocated,.state-Picked,.state-Loaded,.state-OnShow { background: var(--pcg-bright-blue); }
+  .state-Returned { background: var(--pcg-spotlight-purple); }
+  .state-QCHold   { background: var(--status-amber); }
+  .state-OOC,.state-Lost,.state-Retired { background: var(--status-red); }
+  .state-OnOrder  { background: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Inventory · Source of Truth for Gear</div>
+          <h1>Catalog · Balance · Serialized State</h1>
+          <div class="muted">Inventory State Engine (§6). Every serialized item is in exactly one state at all times.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="whSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+          <input id="q" placeholder="Search model…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 12px; border-radius:var(--r-pill); width:220px; font-size:var(--fs-sm);" />
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Model Catalog · Balance View</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+            <div style="display:grid; grid-template-columns: 2fr 130px 80px 80px 80px 80px 80px 80px 80px; gap:var(--sp-3); padding: 10px var(--sp-4); background: var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-tertiary);">
+              <div>Model</div>
+              <div>Category</div>
+              <div style="text-align:right;">Owned</div>
+              <div style="text-align:right;">Avail</div>
+              <div style="text-align:right;">Alloc</div>
+              <div style="text-align:right;">OnShow</div>
+              <div style="text-align:right;">OOC</div>
+              <div style="text-align:right;">Missing</div>
+              <div style="text-align:right;">RPO</div>
+            </div>
+            <div id="rows"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card" id="reorderCard">
+            <div class="card-header"><div class="title">⚠ Reorder Alerts</div></div>
+            <div class="card-body" id="reorder"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Warehouse Info</div></div>
+            <div class="card-body" id="whInfo"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Serial State Legend (§6.4)</div></div>
+            <div class="card-body" style="font-size:11px;">
+              <div><span class="state-dot state-Available"></span>Available</div>
+              <div><span class="state-dot state-Allocated"></span>Reserved/Allocated/Picked/Loaded/OnShow</div>
+              <div><span class="state-dot state-Returned"></span>Returned</div>
+              <div><span class="state-dot state-QCHold"></span>QCHold</div>
+              <div><span class="state-dot state-OOC"></span>OOC · Lost · Retired</div>
+              <div><span class="state-dot state-OnOrder"></span>OnOrder</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Serial detail overlay -->
+<div class="overlay-backdrop" id="bd" onclick="PCG.closeOverlay()"></div>
+<aside class="overlay" id="ov">
+  <button class="close" onclick="PCG.closeOverlay()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+  <div class="ov-body" id="ovb"></div>
+</aside>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'warehouse', crumbs:[{label:'Inventory'}]});
+
+  // Warehouse selector
+  const whs = PCG.api.getWarehouses();
+  const whSel = document.getElementById('whSel');
+  whSel.innerHTML = whs.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+
+  const inv = PCG.api.getInventoryCategories();
+  const catById = Object.fromEntries(inv.map(c=>[c.id,c]));
+
+  function render(){
+    const q = document.getElementById('q').value.toLowerCase();
+    const models = PCG.api.getInventory(q ? {q} : undefined);
+    document.getElementById('count').textContent = `${models.length} model${models.length===1?'':'s'}`;
+
+    const whId = whSel.value;
+    const rows = models.map(m => {
+      const b = PCG.api.getInventoryBalance(m.id, whId) || {};
+      const cat = catById[m.categoryId];
+      const alert = (b.available||0) < ((PCG.api.getReorderRules()||[]).find(r=>r.modelId===m.id)?.minQty||-1);
+      return `
+        <div class="inv-row ${alert?'alert':''}" onclick="openSerials('${m.id}')">
+          <div>
+            <div style="font-weight:600;">${PCG.escapeHtml(m.name)}</div>
+            <div class="muted" style="font-size:11px;">${PCG.escapeHtml(m.manufacturer||'')} ${m.model?' · '+PCG.escapeHtml(m.model):''}</div>
+          </div>
+          <div><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml((cat&&cat.department)||'—')}</span></div>
+          <div class="n mono">${b.owned||0}</div>
+          <div class="n mono" style="font-weight:600; color:${(b.available||0)===0?'var(--status-red)':'inherit'};">${b.available||0}</div>
+          <div class="n mono">${b.allocated||0}</div>
+          <div class="n mono">${b.onShow||0}</div>
+          <div class="n mono" style="color:${b.ooc?'var(--status-red)':'inherit'};">${b.ooc||0}</div>
+          <div class="n mono" style="color:${b.missing?'var(--status-red)':'inherit'};">${b.missing||0}</div>
+          <div class="n mono" style="color:${b.subrental?'var(--pcg-bright-blue)':'inherit'};">${b.subrental||0}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('rows').innerHTML = rows || PCG.states.empty('No models match.');
+
+    // KPIs
+    const totalOwned = models.reduce((s,m)=>s+(m.qty||0),0);
+    const totalActive = (PCG.inventorySerials||[]).length;
+    const totalOOC = (PCG.inventorySerials||[]).filter(s=>s.status==='OOC').length;
+    const totalLost = (PCG.inventorySerials||[]).filter(s=>s.status==='Lost' || s.status==='Missing').length;
+    const totalQCHold = (PCG.inventorySerials||[]).filter(s=>s.status==='QCHold').length;
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi"><div class="label">Models</div><div class="value">${models.length}</div><div class="sub">in catalog</div></div>
+      <div class="kpi"><div class="label">Owned Units</div><div class="value">${totalOwned}</div><div class="sub">sum across models</div></div>
+      <div class="kpi blue"><div class="label">Serialized</div><div class="value">${totalActive}</div><div class="sub">tracked individually</div></div>
+      <div class="kpi amber"><div class="label">QC Hold</div><div class="value">${totalQCHold}</div><div class="sub">awaiting inspection</div></div>
+      <div class="kpi red"><div class="label">Out of Commission</div><div class="value">${totalOOC}</div><div class="sub">open service tickets</div></div>
+      <div class="kpi red"><div class="label">Lost / Missing</div><div class="value">${totalLost}</div><div class="sub">reconciliation needed</div></div>
+    `;
+
+    // Reorder alerts
+    const alerts = PCG.api.getReorderAlerts();
+    document.getElementById('reorder').innerHTML = alerts.length ? alerts.map(a=>`
+      <div class="attn-item red" style="margin-bottom:6px;">
+        <div>
+          <div class="ttl">${PCG.escapeHtml(a.model.name)}</div>
+          <div class="meta">Available ${a.balance.available} &lt; min ${a.rule.minQty} · reorder ${a.rule.reorderQty}</div>
+        </div>
+        <div class="act"><button class="btn sm primary">Create PO</button></div>
+      </div>
+    `).join('') : PCG.states.empty('No reorder alerts.');
+
+    // Warehouse info
+    const wh = whs.find(w=>w.id===whId);
+    document.getElementById('whInfo').innerHTML = wh ? `
+      <div class="kv-grid">
+        <div class="k">Name</div><div class="v">${PCG.escapeHtml(wh.name)}</div>
+        <div class="k">Address</div><div class="v">${PCG.escapeHtml(wh.address)}</div>
+        <div class="k">Purpose</div><div class="v">${PCG.escapeHtml(wh.purpose)}</div>
+        <div class="k">Capacity</div><div class="v mono">${wh.capacitySqft.toLocaleString()} sqft</div>
+      </div>
+    ` : '—';
+  }
+
+  // Serial detail overlay
+  window.openSerials = (modelId) => {
+    const m = PCG.api.getInventoryItem(modelId);
+    const serials = PCG.api.getSerializedItems({modelId});
+    const b = PCG.api.getInventoryBalance(modelId, whSel.value);
+    const body = document.getElementById('ovb');
+    body.innerHTML = `
+      <div class="eyebrow">${PCG.escapeHtml(m.manufacturer||'')} ${m.model?'· '+m.model:''}</div>
+      <h2 style="margin-top:4px;">${PCG.escapeHtml(m.name)}</h2>
+      <div class="divider"></div>
+      <div class="eyebrow">Balance — Warehouse</div>
+      <table class="pcg-table" style="margin-top:8px;">
+        <tbody>
+          <tr><td>Owned</td><td class="mono">${b.owned}</td></tr>
+          <tr><td>Available</td><td class="mono" style="color:${b.available===0?'var(--status-red)':'var(--status-green)'};">${b.available}</td></tr>
+          <tr><td>Allocated (confirmed)</td><td class="mono">${b.allocated}</td></tr>
+          <tr><td>On Show</td><td class="mono">${b.onShow}</td></tr>
+          <tr><td>QC Hold</td><td class="mono">${b.qcHold}</td></tr>
+          <tr><td>OOC</td><td class="mono" style="color:${b.ooc?'var(--status-red)':'inherit'};">${b.ooc}</td></tr>
+          <tr><td>Missing / Lost</td><td class="mono" style="color:${b.missing?'var(--status-red)':'inherit'};">${b.missing}</td></tr>
+          <tr><td>RPO Supply</td><td class="mono" style="color:var(--pcg-bright-blue);">${b.subrental}</td></tr>
+        </tbody>
+      </table>
+      <div class="divider"></div>
+      <div class="eyebrow">Serialized Units (${serials.length})</div>
+      <table class="pcg-table" style="margin-top:8px;">
+        <thead><tr><th>Serial</th><th>Barcode</th><th>Status</th><th>Location</th></tr></thead>
+        <tbody>${serials.map(s=>`
+          <tr>
+            <td class="mono">${PCG.escapeHtml(s.serial)}</td>
+            <td class="mono" style="font-size:11px;">${PCG.escapeHtml(s.barcode||'')}</td>
+            <td><span class="state-dot state-${s.status}"></span><span class="mono" style="font-size:11px;">${s.status}</span></td>
+            <td class="mono" style="font-size:11px;">${PCG.escapeHtml(s.currentLocationId||'—')}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+      ${(m.rates && PCG.canSeeTier('T3_BILL_RATES')) ? `
+        <div class="divider"></div>
+        <div class="eyebrow">Rates</div>
+        <div class="kv-grid" style="margin-top:8px;">
+          <div class="k">Day</div><div class="v mono">${PCG.money(m.rates.day)}</div>
+          <div class="k">Week</div><div class="v mono">${PCG.money(m.rates.week)}</div>
+        </div>`:''}
+    `;
+    document.getElementById('bd').classList.add('show');
+    document.getElementById('ov').classList.add('show');
+  };
+  PCG.closeOverlay = () => {
+    document.getElementById('bd').classList.remove('show');
+    document.getElementById('ov').classList.remove('show');
+  };
+
+  document.getElementById('q').addEventListener('input', render);
+  whSel.addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

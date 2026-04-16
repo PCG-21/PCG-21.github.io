@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Warehouse Tech</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .clock-hero {
+    background: var(--grad-hero); border: 1px solid var(--border-accent);
+    border-radius: var(--r-lg); padding: var(--sp-6);
+    display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-5);
+    align-items: center; margin-bottom: var(--sp-5); position: relative; overflow: hidden;
+  }
+  .clock-hero::before {
+    content:""; position: absolute; right: -40px; top: -40px;
+    width: 260px; height: 260px; border-radius: 50%;
+    background: var(--grad-show-light-spectrum); opacity: 0.18; filter: blur(2px);
+  }
+  .clock-time {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 72px; line-height: 1; letter-spacing: 0.02em;
+    background: var(--grad-spectrum-text); -webkit-background-clip: text;
+    background-clip: text; color: transparent; position: relative;
+  }
+  .clock-state { position: relative; }
+  .clock-state .eyebrow { color: #B3D3F5; }
+  .clock-state h2 { font-size: 22px; margin-top: 6px; }
+  .clock-btn {
+    position: relative;
+    padding: 16px 28px; font-size: var(--fs-md);
+    font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+  .clock-btn.out { background: var(--status-red); border-color: var(--status-red); color: white; }
+  .task-row {
+    display: grid; grid-template-columns: 28px 1fr 120px 120px;
+    gap: var(--sp-3); align-items: center;
+    padding: 12px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .task-row:hover { background: var(--surface-2); }
+  .task-cb {
+    width: 22px; height: 22px; border-radius: 4px;
+    border: 1.5px solid var(--border-strong);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--status-green); font-size: 14px;
+    background: var(--surface-2);
+  }
+  .task-cb.done { background: rgba(47,191,113,0.2); border-color: var(--status-green); }
+  .task-row.done .task-label { text-decoration: line-through; opacity: 0.5; }
+  .pull-tile {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-4);
+    cursor: pointer; transition: border-color var(--t-fast);
+  }
+  .pull-tile:hover { border-color: var(--border-accent); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div id="clockCard"></div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">My Daily Tasks</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="taskCount"></span></div>
+            <div id="tasks"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Assigned Pull Sheets</div></div>
+            <div class="card-body">
+              <div class="grid-3" style="gap:var(--sp-3);" id="pulls"></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Quick Scan</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="muted">Jump straight to a scan interface. Offline queue auto-syncs when back online.</div>
+              <div class="divider"></div>
+              <div style="display:flex; gap:var(--sp-2); flex-wrap:wrap;">
+                <a class="btn primary" href="qc-scan.html?pullSheet=ps.sae.breakout">➜ QC Scan · SAE Breakout</a>
+                <a class="btn" href="ic-scan.html?manifest=man.lce.out1">➜ IC Return Scan · LCE</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Today at Troy / Main</div></div>
+            <div class="card-body" id="whToday"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Assigned Work Queue</div></div>
+            <div class="card-body" id="workQ"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">My Week</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="kv-grid">
+                <div class="k">Hours (week)</div><div class="v mono" id="wkHrs">—</div>
+                <div class="k">Last clock-in</div><div class="v mono" id="lastIn">—</div>
+                <div class="k">Last clock-out</div><div class="v mono" id="lastOut">—</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Warehouse · Tech'}]});
+
+  function render(){
+    const active = PCG.api.getActiveClockEvent(PCG.user.id);
+    const isIn = !!active;
+    const loc = (PCG.warehouses||[]).find(w=>w.id===(active && active.warehouseId)) || (PCG.warehouses||[])[0];
+
+    // Clock hero
+    const now = new Date();
+    const elapsed = isIn ? ((now - new Date(active.clockIn))/1000) : 0;
+    const hrs = Math.floor(elapsed/3600);
+    const mins = Math.floor((elapsed%3600)/60);
+    document.getElementById('clockCard').innerHTML = `
+      <div class="clock-hero">
+        <div>
+          <div class="clock-time">${now.toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit'})}</div>
+        </div>
+        <div class="clock-state">
+          <div class="eyebrow">${isIn ? 'CLOCKED IN' : 'NOT CLOCKED IN'}</div>
+          <h2>${isIn ? `On shift — ${hrs}h ${mins}m elapsed` : 'Tap to start your shift'}</h2>
+          <div class="muted" style="margin-top:6px; position:relative;">${isIn
+            ? `${PCG.escapeHtml(loc ? loc.name : '—')} · Shift: ${PCG.escapeHtml(active.shift)} · Started ${PCG.fmtTime(active.clockIn)}`
+            : PCG.escapeHtml(loc ? loc.name : 'Select warehouse below')}</div>
+        </div>
+        <div>
+          <button id="clockBtn" class="btn ${isIn?'clock-btn out':'clock-btn primary'}">${isIn ? '⏱ CLOCK OUT' : '⏱ CLOCK IN'}</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('clockBtn').addEventListener('click', ()=>{
+      if(isIn){
+        PCG.api.clockOut(PCG.user.id);
+        PCG.engines.notify.emit('ShopClockOut', { crewMemberId:PCG.user.id });
+      } else {
+        PCG.api.clockIn(PCG.user.id, 'wh.troy', 'Day Shift');
+        PCG.engines.notify.emit('ShopClockIn', { crewMemberId:PCG.user.id });
+      }
+      render();
+    });
+
+    // Tasks
+    const tasks = active ? (active.assignedTasks||[]) : [
+      { id:'demo.1', description:'Clock in to see your daily task list.', status:'Pending' }
+    ];
+    const totalTasks = tasks.length;
+    const doneTasks = tasks.filter(t=>t.status==='Completed').length;
+    document.getElementById('taskCount').textContent = `${doneTasks} of ${totalTasks} complete`;
+    document.getElementById('tasks').innerHTML = tasks.length ? tasks.map(t=>{
+      const done = t.status==='Completed';
+      return `<div class="task-row ${done?'done':''}">
+        <div class="task-cb ${done?'done':''}" onclick="toggleTask('${t.id}')">${done?'✓':''}</div>
+        <div class="task-label">${PCG.escapeHtml(t.description)}</div>
+        <div>${t.status==='InProgress'?'<span class="pill purple plain" style="font-size:10px;">IN PROGRESS</span>':t.status==='Pending'?'<span class="pill amber plain" style="font-size:10px;">PENDING</span>':'<span class="pill green plain" style="font-size:10px;">DONE</span>'}</div>
+        <div style="display:flex; gap:4px; justify-content:flex-end;">
+          ${!done?`<button class="btn sm" onclick="markStarted('${t.id}')">Start</button>`:''}
+        </div>
+      </div>`;
+    }).join('') : PCG.states.empty('No tasks assigned today.');
+
+    // Pull sheets assigned
+    const assignedPS = (PCG.pullSheets||[]).filter(p=>['InProgress','Prepped','Finalized','NotStarted'].includes(p.status));
+    document.getElementById('pulls').innerHTML = assignedPS.length ? assignedPS.map(ps=>{
+      const scanned = (ps.lines||[]).filter(l=>l.scanStatus==='verified').length;
+      const total = (ps.lines||[]).length;
+      const pct = total ? Math.round(scanned/total*100) : 0;
+      const stCls = {'NotStarted':'gray','InProgress':'amber','Prepped':'blue','Finalized':'green','Shipped':'purple'}[ps.status]||'gray';
+      return `<div class="pull-tile" onclick="location.href='qc-scan.html?pullSheet=${ps.id}'">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span class="pill ${stCls}" style="font-size:10px;">${ps.status.toUpperCase()}</span>
+          <strong>${ps.department}</strong>
+        </div>
+        <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;"><span class="mono">${ps.showId}</span> · ${total} lines</div>
+        <div style="margin-top:8px; height:6px; background: var(--surface-3); border-radius: 3px; overflow:hidden;">
+          <div style="width:${pct}%; height:100%; background: var(--grad-show-light-blue);"></div>
+        </div>
+        <div class="mono muted" style="font-size:11px; margin-top:4px;">${pct}% · ${scanned}/${total}</div>
+      </div>`;
+    }).join('') : PCG.states.empty('No pull sheets assigned.');
+
+    // KPIs
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi ${isIn?'':'gray'}"><div class="label">Shift</div><div class="value" style="font-size:22px;">${isIn?'ACTIVE':'—'}</div><div class="sub">${isIn?'on the clock':'not clocked in'}</div></div>
+      <div class="kpi"><div class="label">Tasks Today</div><div class="value">${totalTasks}</div><div class="sub">${doneTasks} complete</div></div>
+      <div class="kpi blue"><div class="label">Pull Sheets</div><div class="value">${assignedPS.length}</div><div class="sub">active</div></div>
+      <div class="kpi"><div class="label">Scans Today</div><div class="value">${(PCG.scanRecords||[]).filter(s=>s.techId===PCG.user.id && new Date(s.ts).toDateString()===now.toDateString()).length}</div><div class="sub">recorded</div></div>
+      <div class="kpi amber"><div class="label">Work Queue</div><div class="value">${PCG.api.getWorkItems({ownerId:PCG.user.id, status:'Open'}).length}</div><div class="sub">open items</div></div>
+      <div class="kpi"><div class="label">Offline Queue</div><div class="value" id="qCount">—</div><div class="sub">scans to sync</div></div>
+    `;
+    if(PCG.engines.sync){
+      PCG.engines.sync.pending().then(l=>{
+        const el = document.getElementById('qCount'); if(el) el.textContent = (l||[]).length;
+      }).catch(()=>{});
+    }
+
+    // Warehouse today panel
+    const today = new Date();
+    const todayStr = today.toDateString();
+    const outbound = (PCG.manifests||[]).filter(m => new Date(m.departureDate).toDateString()===todayStr || m.status==='Departed');
+    const returns = (PCG.manifests||[]).filter(m => m.status==='Returning');
+    const svcOpen = PCG.api.getServiceTickets({status:'Open'}).length;
+    document.getElementById('whToday').innerHTML = `
+      <div style="display:grid; gap:8px; font-size:var(--fs-sm);">
+        <div><strong>${outbound.length}</strong> outbound · <strong>${returns.length}</strong> returning</div>
+        <div><strong>${svcOpen}</strong> open service tickets</div>
+        <div class="muted" style="font-size:var(--fs-xs);">${loc?loc.serialCount.toLocaleString():''} serials tracked here</div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <a class="btn sm" href="warehouse-tv.html" target="_blank">TV Mode ↗</a>
+        <a class="btn sm ghost" href="warehouse.html">Supervisor View</a>
+      </div>
+    `;
+
+    // Work queue
+    const wi = PCG.api.getWorkItems({ownerId:PCG.user.id, status:'Open'}).slice(0,5);
+    document.getElementById('workQ').innerHTML = wi.length ? wi.map(w=>{
+      const pTone = w.priority==='Critical'?'red':w.priority==='High'?'amber':'gray';
+      return `<div class="attn-item ${w.priority==='Critical'?'red':''}" style="margin-bottom:6px;">
+        <div><div class="ttl"><span class="pill ${pTone} plain" style="font-size:10px;">${w.priority.toUpperCase()}</span> ${PCG.escapeHtml(w.title)}</div>
+        <div class="meta">${PCG.escapeHtml(w.description)}${w.dueBy?` · Due ${PCG.fmtDate(w.dueBy,{time:true})}`:''}</div></div>
+      </div>`;
+    }).join('') : PCG.states.empty('Inbox clear.');
+
+    // Week summary
+    const myEvents = (PCG.clockEvents||[]).filter(e=>e.crewMemberId===PCG.user.id);
+    const last = myEvents[myEvents.length-1];
+    const wkHrs = myEvents.reduce((s,e)=>{
+      if(!e.clockOut) return s + ((new Date() - new Date(e.clockIn))/3600000);
+      return s + ((new Date(e.clockOut) - new Date(e.clockIn))/3600000);
+    },0);
+    document.getElementById('wkHrs').textContent = Math.round(wkHrs*10)/10 + 'h';
+    document.getElementById('lastIn').textContent  = last ? PCG.fmtDate(last.clockIn,{time:true}) : '—';
+    document.getElementById('lastOut').textContent = last && last.clockOut ? PCG.fmtDate(last.clockOut,{time:true}) : (last?'— (active)':'—');
+  }
+
+  window.toggleTask = (id)=>{
+    const ev = PCG.api.getActiveClockEvent(PCG.user.id);
+    if(!ev) return;
+    const t = (ev.assignedTasks||[]).find(x=>x.id===id);
+    if(!t) return;
+    t.status = t.status==='Completed' ? 'Pending' : 'Completed';
+    render();
+  };
+  window.markStarted = (id)=>{
+    const ev = PCG.api.getActiveClockEvent(PCG.user.id);
+    if(!ev) return;
+    const t = (ev.assignedTasks||[]).find(x=>x.id===id);
+    if(t) t.status = 'InProgress';
+    render();
+  };
+
+  render();
+  setInterval(render, 30000);
+</script>
+</body>
+</html>

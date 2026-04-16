@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Incidents & Safety</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .inc-row {
+    padding: 14px var(--sp-4); border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: 90px 1fr 120px 130px 140px 140px;
+    gap: var(--sp-3); align-items: start;
+    font-size: var(--fs-sm);
+  }
+  .inc-row.critical { border-left: 4px solid var(--status-red); background: rgba(240,78,85,0.04); }
+  .inc-row.serious  { border-left: 4px solid var(--status-red); }
+  .inc-row.moderate { border-left: 4px solid var(--status-amber); }
+  .inc-row.minor    { border-left: 4px solid var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Safety · Incident Workflow</div>
+          <h1>Incident Log</h1>
+          <div class="muted">§22 — Critical incidents auto-notify Director of Operations + COO. Personal injury requires Director sign-off to close.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="open">Open</button>
+          <button class="chip" data-f="critical">Critical/Serious</button>
+          <button class="chip" data-f="all">All</button>
+          <button class="btn sm primary">＋ Report Incident</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Reports</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+            <div style="display:grid; grid-template-columns: 90px 1fr 120px 130px 140px 140px; gap: var(--sp-3); padding: 10px var(--sp-4); background: var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-tertiary);">
+              <div>When</div>
+              <div>Description</div>
+              <div>Type</div>
+              <div>Severity</div>
+              <div>Status</div>
+              <div>Actions</div>
+            </div>
+            <div id="rows"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Severity Escalation</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              <div><strong style="color:var(--status-red);">Critical</strong> — auto-notify Director of Ops + COO</div>
+              <div class="divider"></div>
+              <div><strong style="color:var(--status-red);">Serious</strong> — auto-escalate if not acknowledged in 2h</div>
+              <div class="divider"></div>
+              <div><strong style="color:var(--status-amber);">Moderate</strong> — PM + TSM notified</div>
+              <div class="divider"></div>
+              <div><strong>Minor</strong> — logged for records</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Required for Close</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              <ul style="margin:0; padding-left:18px;">
+                <li>Personal Injury → Director of Operations sign-off</li>
+                <li>Property Damage → ServiceTicket linked if gear involved</li>
+                <li>Rigging / Electrical → post-show safety review scheduled</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">FROI Forms</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="pinned" style="margin-bottom:6px;"><span class="icon">📄</span><div><strong>FROI Employee Packet</strong><div class="muted" style="font-size:var(--fs-xs);">Workers Comp · SharePoint</div></div></div>
+              <div class="pinned"><span class="icon">📄</span><div><strong>FROI Witness Statement</strong><div class="muted" style="font-size:var(--fs-xs);">Workers Comp · SharePoint</div></div></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Incidents'}]});
+
+  let filter = 'open';
+
+  function render(){
+    let list = PCG.api.getIncidents();
+    if(filter==='open')     list = list.filter(i=>i.status!=='Closed');
+    if(filter==='critical') list = list.filter(i=>['Critical','Serious'].includes(i.severity));
+    document.getElementById('count').textContent = `${list.length} of ${PCG.api.getIncidents().length}`;
+
+    const SEV = { Critical:'red', Serious:'red', Moderate:'amber', Minor:'gray' };
+    const TYPE = { PersonalInjury:'red', NearMiss:'amber', PropertyDamage:'blue', ElectricalIncident:'red', RiggingIncident:'red', Other:'gray' };
+    const STATUS = { Open:'red', UnderReview:'amber', Escalated:'red', Closed:'green' };
+
+    document.getElementById('rows').innerHTML = list.length ? list.map(i=>{
+      const reporter = PCG.findPerson(i.reportedById);
+      const showName = (PCG.projects||[]).find(p=>p.code===i.showId)?.name || i.showId;
+      return `<div class="inc-row ${(i.severity||'').toLowerCase()}">
+        <div>
+          <div class="mono" style="font-size:11px;">${PCG.fmtShort(i.reportedAt)}</div>
+          <div class="muted" style="font-size:10px;">${PCG.fmtTime(i.reportedAt)}</div>
+        </div>
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(i.description)}</div>
+          <div class="muted" style="font-size:11px; margin-top:2px;">📍 ${PCG.escapeHtml(i.locationDescription||'—')}</div>
+          <div class="muted" style="font-size:11px;">Show: <span class="mono">${PCG.escapeHtml(showName)}</span> · Reported by ${reporter?PCG.escapeHtml(reporter.name):'—'}</div>
+          ${i.witnessNames && i.witnessNames.length ? `<div class="muted" style="font-size:11px;">👥 Witnesses: ${PCG.escapeHtml(i.witnessNames.join(', '))}</div>`:''}
+          ${i.immediateActionTaken ? `<div style="margin-top:6px; padding:6px 10px; background:var(--surface-2); border-radius:4px; font-size:11px;"><strong>Action:</strong> ${PCG.escapeHtml(i.immediateActionTaken)}</div>`:''}
+          ${i.medicalAttentionRequired ? `<div class="pill red" style="font-size:10px; margin-top:6px;">⚕ MEDICAL ATTN</div>`:''}
+          ${i.venueNotified ? `<span class="pill gray plain" style="font-size:10px; margin-top:4px;">VENUE NOTIFIED</span>`:''}
+        </div>
+        <div><span class="pill ${TYPE[i.type]||'gray'} plain" style="font-size:10px;">${(i.type||'').replace(/([A-Z])/g,' $1').trim().toUpperCase()}</span></div>
+        <div><span class="pill ${SEV[i.severity]||'gray'}" style="font-size:10px;">${(i.severity||'—').toUpperCase()}</span></div>
+        <div><span class="pill ${STATUS[i.status]||'gray'}" style="font-size:10px;">${(i.status||'—').toUpperCase()}</span>${i.escalatedTo?`<div class="muted" style="font-size:10px; margin-top:2px;">→ ${PCG.escapeHtml(PCG.findPerson(i.escalatedTo)?.name || i.escalatedTo)}</div>`:''}</div>
+        <div style="display:flex; gap:4px; justify-content:flex-end; flex-wrap:wrap;">
+          ${i.status==='UnderReview' ? '<button class="btn sm">Escalate</button>' : ''}
+          ${i.status!=='Closed' && !['PersonalInjury'].includes(i.type) ? '<button class="btn sm primary">Close</button>' : ''}
+          ${i.status!=='Closed' && i.type==='PersonalInjury' && PCG.hasAnyPermission(PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN) ? '<button class="btn sm primary">Director Sign-Off</button>' : ''}
+          <button class="btn sm ghost">Open</button>
+        </div>
+      </div>`;
+    }).join('') : PCG.states.empty('No incidents match.');
+
+    // KPIs
+    const all = PCG.api.getIncidents();
+    const open = all.filter(i=>i.status!=='Closed').length;
+    const crit = all.filter(i=>i.severity==='Critical').length;
+    const ser  = all.filter(i=>i.severity==='Serious').length;
+    const pi   = all.filter(i=>i.type==='PersonalInjury').length;
+    const esc  = all.filter(i=>i.status==='Escalated').length;
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi ${open?'amber':''}"><div class="label">Open</div><div class="value">${open}</div><div class="sub">active reports</div></div>
+      <div class="kpi red"><div class="label">Critical</div><div class="value">${crit}</div><div class="sub">Dir Ops + COO notified</div></div>
+      <div class="kpi red"><div class="label">Serious</div><div class="value">${ser}</div><div class="sub">2h escalation window</div></div>
+      <div class="kpi red"><div class="label">Personal Injury</div><div class="value">${pi}</div><div class="sub">require Director close</div></div>
+      <div class="kpi amber"><div class="label">Escalated</div><div class="value">${esc}</div><div class="sub">in review</div></div>
+      <div class="kpi"><div class="label">Total Logged</div><div class="value">${all.length}</div><div class="sub">lifetime</div></div>
+    `;
+  }
+
+  document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+    document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+    filter = e.target.dataset.f; render();
+  }));
+  render();
+</script>
+</body>
+</html>

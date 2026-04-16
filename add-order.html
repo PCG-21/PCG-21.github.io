@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Add Orders</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .ao-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-4); margin-bottom: var(--sp-3);
+    display: grid; grid-template-columns: 54px 1fr auto; gap: var(--sp-3); align-items: start;
+  }
+  .ao-card.urgent    { border-left: 3px solid var(--status-amber); }
+  .ao-card.emergency { border-left: 3px solid var(--status-red); background: rgba(240,78,85,0.05); }
+  .ao-card .num {
+    width: 54px; height: 54px; border-radius: 10px;
+    background: var(--grad-show-light-blue);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 13px;
+    color: white;
+  }
+  .ao-card.emergency .num { background: linear-gradient(135deg,var(--status-red),#B82899); }
+  .ao-card.urgent    .num { background: linear-gradient(135deg,var(--status-amber),var(--pcg-bright-blue)); }
+  .ao-stages {
+    display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .ao-stage {
+    padding: 2px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-tertiary); border: 1px solid var(--border);
+  }
+  .ao-stage.done    { color: var(--status-green); border-color: rgba(47,191,113,0.5); background: rgba(47,191,113,0.1); }
+  .ao-stage.current { color: var(--pcg-bright-blue); border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.1); }
+  .ao-field {
+    display: grid; grid-template-columns: 140px 1fr; align-items: center;
+    margin-bottom: var(--sp-3);
+  }
+  .ao-field label {
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-tertiary);
+  }
+  .ao-field input, .ao-field select, .ao-field textarea {
+    background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 8px 10px; font-size: var(--fs-sm); font-family: inherit; width: 100%;
+  }
+  .item-row {
+    display: grid; grid-template-columns: 80px 1fr 60px 40px;
+    gap: 6px; align-items: center; margin-bottom: 6px;
+  }
+  .item-row input, .item-row select {
+    background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 6px 8px; font-size: var(--fs-sm); font-family: inherit;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Add Orders · Field-to-Warehouse Loop</div>
+          <h1>Add Orders</h1>
+          <div class="muted">§10.6 — Initiated by PM / TD / TSM / AE from field. Routed to warehouse for same-day pickup/dispatch.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="active">Active</button>
+          <button class="chip" data-f="all">All</button>
+          <button class="chip" data-f="Emergency">Emergency</button>
+          <button class="chip" data-f="Urgent">Urgent</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card" style="margin-bottom: var(--sp-5);">
+            <div class="card-header"><div class="title">Submit Add Order (Field)</div></div>
+            <div class="card-body">
+              <div class="ao-field">
+                <label>Show</label>
+                <select id="showSel"></select>
+              </div>
+              <div class="ao-field">
+                <label>Urgency</label>
+                <select id="urgencySel">
+                  <option value="Standard">Standard (next truck)</option>
+                  <option value="Urgent">Urgent (expedite same-day)</option>
+                  <option value="Emergency">Emergency (SMS WH Lead)</option>
+                </select>
+              </div>
+              <div class="ao-field">
+                <label>Description</label>
+                <textarea id="desc" rows="2" placeholder="Short description of what's needed and why (e.g., 'Add 2x HH wireless for pre-function cocktail ambient')"></textarea>
+              </div>
+
+              <div style="margin: var(--sp-3) 0;">
+                <div class="eyebrow" style="margin-bottom:6px;">Items Needed</div>
+                <div style="display:grid; grid-template-columns:80px 1fr 60px 40px; gap:6px; font-size:10px; font-family:var(--font-display); letter-spacing:0.06em; color:var(--text-tertiary); text-transform:uppercase; margin-bottom:4px;">
+                  <div>Qty</div><div>Item / Description</div><div>Unit</div><div></div>
+                </div>
+                <div id="items"></div>
+                <button class="btn sm ghost" onclick="addItem()" style="margin-top:4px;">＋ Add Line</button>
+              </div>
+
+              <div style="display:flex; gap:var(--sp-2); margin-top:var(--sp-4);">
+                <button class="btn primary" onclick="submitAO()">Submit Add Order</button>
+                <button class="btn ghost" onclick="resetForm()">Reset</button>
+                <div class="muted" style="margin-left:auto; align-self:center; font-size:var(--fs-xs);">Warehouse Lead notified on submit. Emergency urgency triggers SMS.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Add Order Queue</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+            <div class="card-body" id="list"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Warehouse Response Loop (§10.6)</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.7;">
+              <ol style="padding-left:18px; margin:0;">
+                <li>PM / TD / TSM submits AO from field</li>
+                <li>WH Lead gets notification (SMS if emergency)</li>
+                <li>WH Lead acknowledges — enters ETA</li>
+                <li>WH Tech picks items, scans OUT</li>
+                <li>Driver/runner dispatched — manifest created</li>
+                <li>PM confirms delivery at venue</li>
+                <li>Items return tracked if <code>returnTracked=true</code></li>
+                <li>Finance/AE sets billableDecision at closeout</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Origination Rule (§G.4)</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              <strong>Add Orders do NOT originate from general field crew.</strong> They are initiated by PM / TD / TSM / AE. Crew tells TSM/PM what's needed — they submit here.
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Add Orders'}]});
+
+  const canSubmit = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS);
+
+  // Show selector
+  const activeShows = PCG.api.getProjects().filter(p=>p.show && ['Awarded','InPrep','OnShow','Striking'].includes(p.show.lifecycleState));
+  const showSel = document.getElementById('showSel');
+  showSel.innerHTML = activeShows.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('');
+
+  // Preselect from URL
+  const q = PCG.qs('project');
+  if(q && activeShows.find(p=>p.code===q)) showSel.value = q;
+
+  // Items state
+  let items = [{ id: Date.now(), qty:1, desc:'', unit:'ea' }];
+
+  function renderItems(){
+    document.getElementById('items').innerHTML = items.map((it,idx)=>`
+      <div class="item-row">
+        <input type="number" min="1" value="${it.qty}" onchange="updateItem(${idx},'qty',parseInt(this.value,10))" />
+        <input type="text" value="${PCG.escapeHtml(it.desc)}" placeholder="Item or kit description" onchange="updateItem(${idx},'desc',this.value)" />
+        <input type="text" value="${PCG.escapeHtml(it.unit)}" onchange="updateItem(${idx},'unit',this.value)" />
+        <button class="btn sm ghost" onclick="removeItem(${idx})" ${items.length<=1?'disabled':''}>✕</button>
+      </div>
+    `).join('');
+  }
+  window.addItem = () => { items.push({id:Date.now()+Math.random(), qty:1, desc:'', unit:'ea'}); renderItems(); };
+  window.removeItem = (i) => { if(items.length>1){ items.splice(i,1); renderItems(); } };
+  window.updateItem = (i, field, val) => { items[i][field] = val; };
+  renderItems();
+
+  window.resetForm = () => {
+    items = [{ id: Date.now(), qty:1, desc:'', unit:'ea' }];
+    document.getElementById('desc').value = '';
+    document.getElementById('urgencySel').value = 'Standard';
+    renderItems();
+  };
+
+  window.submitAO = () => {
+    if(!canSubmit){ alert('Only PM / TSM / AE / Director can submit Add Orders (§G.4).'); return; }
+    const desc = document.getElementById('desc').value.trim();
+    if(!desc){ alert('Description required.'); return; }
+    const valid = items.filter(it=>(it.desc||'').trim());
+    if(!valid.length){ alert('Add at least one item.'); return; }
+    try {
+      const ao = PCG.api.submitAddOrder(
+        showSel.value,
+        desc,
+        document.getElementById('urgencySel').value,
+        valid.map(i=>({ description:i.desc, qty:i.qty, unit:i.unit }))
+      );
+      alert(`Add Order ${ao.aoNumber} submitted for ${ao.showId}. Warehouse Lead notified.${ao.urgency==='Emergency'?' Emergency SMS dispatched.':''}`);
+      resetForm(); render();
+    } catch(e){ alert('Submit failed: '+e.message); }
+  };
+
+  // Queue
+  let filter = 'active';
+  function render(){
+    let list = (PCG.addOrders||[]).slice().reverse();
+    if(filter==='active') list = list.filter(a=>['Requested','Acknowledged','Picking','Dispatched'].includes(a.status));
+    if(filter==='Emergency') list = list.filter(a=>a.urgency==='Emergency');
+    if(filter==='Urgent')    list = list.filter(a=>a.urgency==='Urgent');
+    document.getElementById('count').textContent = `${list.length} of ${(PCG.addOrders||[]).length}`;
+
+    const STAGES = ['Requested','Acknowledged','Picking','Dispatched','Delivered','Returned','Closed'];
+    document.getElementById('list').innerHTML = list.length ? list.map(ao=>{
+      const requester = PCG.findPerson(ao.requestedById);
+      const idx = STAGES.indexOf(ao.status);
+      const cls = ao.urgency==='Emergency'?'emergency':ao.urgency==='Urgent'?'urgent':'';
+      return `
+        <div class="ao-card ${cls}">
+          <div class="num">${PCG.escapeHtml(ao.aoNumber)}</div>
+          <div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span class="pill ${ao.urgency==='Emergency'?'red':ao.urgency==='Urgent'?'amber':'gray'}" style="font-size:10px;">${ao.urgency.toUpperCase()}</span>
+              <span class="pill blue plain" style="font-size:10px;"><span class="mono">${PCG.escapeHtml(ao.showId)}</span></span>
+              <strong>${PCG.escapeHtml(ao.description)}</strong>
+            </div>
+            <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">
+              Requested by ${requester?PCG.escapeHtml(requester.name):'—'} · ${PCG.ago(ao.requestedAt)}
+              ${ao.deliveredAt?` · Delivered ${PCG.fmtDate(ao.deliveredAt,{time:true})}`:''}
+              ${ao.billableDecision==='ClientBillable' && PCG.canSeeTier('T2_MARGINS')?` · Billable ${PCG.money(ao.financialImpact)}`:''}
+            </div>
+            <div class="muted" style="font-size:11px; margin-top:4px;">Items: ${(ao.items||[]).map(i=>`${i.qty}× ${PCG.escapeHtml(i.description||'')}`).join(', ')}</div>
+            <div class="ao-stages">
+              ${STAGES.map((s,i)=>`<div class="ao-stage ${i<idx?'done':i===idx?'current':''}">${s}</div>`).join('')}
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            ${ao.status==='Requested' && PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS) ? '<button class="btn sm primary">Acknowledge</button>' : ''}
+            ${ao.status==='Acknowledged' ? '<button class="btn sm">Start Picking</button>' : ''}
+            ${ao.status==='Picking' ? '<button class="btn sm">Dispatch</button>' : ''}
+            ${ao.status==='Dispatched' ? '<button class="btn sm">Confirm Delivery</button>' : ''}
+            <button class="btn sm ghost">Details</button>
+          </div>
+        </div>`;
+    }).join('') : PCG.states.empty('No add orders match.');
+
+    // KPIs
+    const all = (PCG.addOrders||[]);
+    const req = all.filter(a=>a.status==='Requested').length;
+    const act = all.filter(a=>['Requested','Acknowledged','Picking','Dispatched'].includes(a.status)).length;
+    const em = all.filter(a=>a.urgency==='Emergency').length;
+    const ur = all.filter(a=>a.urgency==='Urgent').length;
+    const bill = all.filter(a=>a.billableDecision==='ClientBillable').length;
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi ${req?'red':''}"><div class="label">Awaiting Ack</div><div class="value">${req}</div><div class="sub">WH lead response</div></div>
+      <div class="kpi amber"><div class="label">Active</div><div class="value">${act}</div><div class="sub">in flight</div></div>
+      <div class="kpi red"><div class="label">Emergency</div><div class="value">${em}</div><div class="sub">SMS dispatched</div></div>
+      <div class="kpi"><div class="label">Urgent</div><div class="value">${ur}</div><div class="sub">expedite</div></div>
+      <div class="kpi blue"><div class="label">Client-Billable</div><div class="value">${bill}</div><div class="sub">→ billing queue</div></div>
+      <div class="kpi"><div class="label">Total Logged</div><div class="value">${all.length}</div><div class="sub">history</div></div>
+    `;
+  }
+
+  document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+    document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+    filter = e.target.dataset.f; render();
+  }));
+  render();
+</script>
+</body>
+</html>

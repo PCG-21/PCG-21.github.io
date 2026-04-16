@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Labor Home</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Labor Coordinator · Work Queue</div>
+          <h1 id="hello">—</h1>
+          <div class="muted">Unconfirmed positions, travel gaps, OT flags, payroll ready — the Lasso replacement workflow (§25.1).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn sm primary" href="crew-assign.html">＋ Assign Crew</a>
+          <a class="btn sm ghost" href="scheduling.html">Scheduling Grid</a>
+          <a class="btn sm ghost" href="travel.html">Travel</a>
+          <a class="btn sm ghost" href="timesheets.html">Timesheets</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+
+          <div class="card">
+            <div class="card-header"><div class="title" style="color:var(--status-red);">⛔ Unconfirmed Positions — by Show Urgency</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="urgentCount"></span></div>
+            <div id="urgent"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Uncommunicated Changes</div></div>
+            <div class="card-body" id="uncomm"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Travel Not Booked</div></div>
+            <div class="card-body" id="travelGaps"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">OT &gt; 2h Flags</div></div>
+            <div class="card-body" id="otFlags"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Payroll Export Ready</div><a class="btn sm ghost" style="margin-left:auto;" href="timesheets.html">Open Timesheets</a></div>
+            <div class="card-body" id="payReady"></div>
+          </div>
+
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Show Staffing Snapshot</div></div>
+            <div class="card-body" id="snapshot"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Availability Blocks</div></div>
+            <div class="card-body" id="blocks"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">My Work Queue</div></div>
+            <div class="card-body" id="myWork"></div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'scheduling', crumbs:[{label:'Labor Home'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    document.getElementById('hello').textContent = `Good day, ${PCG.user.name.split(' ')[0]}`;
+
+    const today = new Date();
+    const activeShows = PCG.api.getProjects().filter(p=>p.show && !['Archived','Closing'].includes(p.show.lifecycleState));
+    const hrsTo = show => (new Date(show.dates.loadIn) - today) / 3600000;
+
+    // ---- Urgent unconfirmed ----
+    const urgentRows = [];
+    activeShows.forEach(p => {
+      const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===p.code);
+      const unconfirmed = assns.filter(a => !['Confirmed','Acknowledged','Completed'].includes(a.status));
+      if(!unconfirmed.length) return;
+      const hrs = hrsTo(p);
+      urgentRows.push({ show:p, unconfirmed, totalAssns: assns.length, hrsToLoadIn: hrs });
+    });
+    urgentRows.sort((a,b)=>a.hrsToLoadIn - b.hrsToLoadIn);
+    document.getElementById('urgentCount').textContent = `${urgentRows.reduce((s,r)=>s+r.unconfirmed.length,0)} across ${urgentRows.length} show(s)`;
+
+    document.getElementById('urgent').innerHTML = urgentRows.length ? urgentRows.slice(0,6).map(r => {
+      const hrs = Math.round(r.hrsToLoadIn);
+      const urgency = hrs < 48 ? 'red' : hrs < 168 ? 'amber' : '';
+      const pct = Math.round((r.totalAssns - r.unconfirmed.length) / r.totalAssns * 100);
+      return `
+        <div class="attn-item ${urgency}" style="align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="ttl">${PCG.escapeHtml(r.show.code)} · ${PCG.escapeHtml(r.show.name)}</div>
+            <div class="meta">Load-in <span class="mono">${PCG.fmtShort(r.show.dates.loadIn)}</span> · <strong>${hrs < 0 ? 'PAST' : hrs + 'h away'}</strong></div>
+            <div style="margin-top:6px;">
+              <div style="height:6px; width:200px; background:var(--surface-3); border-radius:3px; overflow:hidden; display:inline-block; vertical-align:middle;">
+                <div style="width:${pct}%; height:100%; background:var(--grad-show-light-blue);"></div>
+              </div>
+              <span class="mono muted" style="font-size:11px; margin-left:8px;">${pct}% confirmed · ${r.unconfirmed.length} open</span>
+            </div>
+            <div class="meta" style="margin-top:4px;">
+              ${r.unconfirmed.slice(0,3).map(a=>{
+                const pos = (PCG.crewPositions||[]).find(pp=>pp.id===a.positionId);
+                return `<span class="pill gray plain" style="font-size:10px;">${pos?PCG.escapeHtml(pos.name):PCG.escapeHtml(a.positionId)}</span>`;
+              }).join(' ')}
+              ${r.unconfirmed.length > 3 ? ` <span class="muted">+${r.unconfirmed.length-3} more</span>` : ''}
+            </div>
+          </div>
+          <div class="act"><a class="btn sm primary" href="crew-assign.html?project=${r.show.code}">Staff Now →</a></div>
+        </div>`;
+    }).join('') : PCG.states.empty('All shows fully confirmed.');
+
+    // ---- Uncommunicated changes ----
+    // Heuristic: confirmed assignment whose show recently changed dates or venue
+    const uncomm = [];
+    // (In live system, compare ShiftAssignment.status timestamp vs Show.datesModifiedAt)
+    uncomm.push({
+      text:'LCE-2026 wireless mics upgraded 12→16ch — crew roster not yet re-briefed',
+      linkedShow:'LCE-2026', severity:'amber'
+    });
+    uncomm.push({
+      text:'SAE WCX 310B room added last-week — 310B floor lead not assigned',
+      linkedShow:'SAE-WCX-2026', severity:'red'
+    });
+    document.getElementById('uncomm').innerHTML = uncomm.length ? uncomm.map(c=>`
+      <div class="attn-item ${c.severity==='red'?'red':''}">
+        <div><div class="ttl">${PCG.escapeHtml(c.text)}</div>
+          <div class="meta"><span class="mono">${c.linkedShow}</span></div></div>
+        <div class="act"><a class="btn sm" href="crew-assign.html?project=${c.linkedShow}">Review</a></div>
+      </div>
+    `).join('') : PCG.states.empty('Up to date.');
+
+    // ---- Travel gaps ----
+    const travelGaps = [];
+    activeShows.forEach(p => {
+      const confirmed = (PCG.shiftAssignments||[]).filter(s=>s.showId===p.code && ['Confirmed','Acknowledged'].includes(s.status) && s.crewMemberId);
+      confirmed.forEach(a => {
+        const travel = (PCG.travelRecords||[]).find(t=>t.crewMemberId===a.crewMemberId && t.showId===p.code);
+        const crew = PCG.findPerson(a.crewMemberId);
+        const isTraveling = crew && (crew.market||[]).length && !(crew.market||[]).some(m => (p.venueName||'').toLowerCase().includes(m.toLowerCase()));
+        if(isTraveling && !travel) travelGaps.push({ crew, show:p });
+      });
+    });
+    document.getElementById('travelGaps').innerHTML = travelGaps.length ? travelGaps.slice(0,5).map(g=>`
+      <div class="attn-item amber">
+        <div><div class="ttl">${PCG.escapeHtml(g.crew.name)} — no travel booked</div>
+        <div class="meta"><span class="mono">${g.show.code}</span> · ${PCG.fmtShort(g.show.dates.loadIn)} · ${PCG.escapeHtml(g.show.venueName||'')}</div></div>
+        <div class="act"><a class="btn sm" href="travel.html">Book</a></div>
+      </div>
+    `).join('') : PCG.states.empty('All confirmed travelers booked.');
+
+    // ---- OT flags ----
+    const otTS = (PCG.timesheets||[]).filter(t=>(t.otHours||0) > 2);
+    document.getElementById('otFlags').innerHTML = otTS.length ? otTS.slice(0,5).map(t=>{
+      const crew = PCG.findPerson(t.crewMemberId);
+      return `<div class="attn-item amber">
+        <div><div class="ttl">${crew?PCG.escapeHtml(crew.name):'—'} — ${t.otHours}h OT on ${PCG.fmtShort(t.workDate)}</div>
+        <div class="meta"><span class="mono">${t.showId}</span> · Status <strong>${t.status}</strong>${t.notes?' · Note on file':''}</div></div>
+        <div class="act"><a class="btn sm" href="timesheets.html">Review</a></div>
+      </div>`;
+    }).join('') : PCG.states.empty('No OT exceptions.');
+
+    // ---- Payroll ready ----
+    const approved = (PCG.timesheets||[]).filter(t=>t.status==='Approved');
+    const byShow = {};
+    approved.forEach(t => { byShow[t.showId] = (byShow[t.showId]||0) + 1; });
+    document.getElementById('payReady').innerHTML = Object.keys(byShow).length ? Object.entries(byShow).map(([showId, count])=>`
+      <div class="attn-item blue">
+        <div><div class="ttl">${PCG.escapeHtml(showId)} — ${count} approved timesheet(s) ready for export</div>
+        <div class="meta">Routes to ADP Work Market (TBD) · OPEN DECISION #3</div></div>
+        <div class="act"><a class="btn sm primary" href="timesheets.html">Export Packet →</a></div>
+      </div>
+    `).join('') : PCG.states.empty('No payroll ready for export yet.');
+
+    // ---- KPIs ----
+    const totalPositions = activeShows.reduce((s,p)=>s + (PCG.shiftAssignments||[]).filter(x=>x.showId===p.code).length, 0);
+    const openPositions = activeShows.reduce((s,p)=>s + (PCG.shiftAssignments||[]).filter(x=>x.showId===p.code && !['Confirmed','Acknowledged','Completed'].includes(x.status)).length, 0);
+    const critical48h = urgentRows.filter(r => r.hrsToLoadIn >= 0 && r.hrsToLoadIn < 48 && r.unconfirmed.length > 0).length;
+    const totalAck = activeShows.reduce((s,p)=>s + (PCG.shiftAssignments||[]).filter(x=>x.showId===p.code && ['Acknowledged','Completed'].includes(x.status)).length, 0);
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi red"><div class="label">Open Positions</div><div class="value">${openPositions}</div><div class="sub">across active shows</div></div>
+      <div class="kpi red"><div class="label">Critical &lt; 48h</div><div class="value">${critical48h}</div><div class="sub">shows w/ open slots</div></div>
+      <div class="kpi amber"><div class="label">OT Flags</div><div class="value">${otTS.length}</div><div class="sub">need approval note</div></div>
+      <div class="kpi blue"><div class="label">Payroll Ready</div><div class="value">${approved.length}</div><div class="sub">timesheets approved</div></div>
+      <div class="kpi"><div class="label">Total Acknowledged</div><div class="value" style="color:var(--status-green);">${totalAck}</div><div class="sub">letter-eligible</div></div>
+      <div class="kpi"><div class="label">Active Shows</div><div class="value">${activeShows.length}</div><div class="sub">staffing window</div></div>
+    `;
+
+    // ---- Snapshot (per-show summary) ----
+    document.getElementById('snapshot').innerHTML = activeShows.slice(0,6).map(p=>{
+      const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===p.code);
+      const confirmed = assns.filter(a=>['Confirmed','Acknowledged','Completed'].includes(a.status)).length;
+      const pct = assns.length ? Math.round(confirmed/assns.length*100) : 0;
+      const tone = pct >= 95 ? 'green' : pct >= 70 ? 'amber' : 'red';
+      return `<a href="crew-assign.html?project=${p.code}" style="display:block; padding:8px 0; border-bottom:1px dashed var(--border); text-decoration:none; color:inherit;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="pill ${tone}" style="font-size:10px;">${pct}%</span>
+          <strong>${PCG.escapeHtml(p.code)}</strong>
+          <span class="muted mono" style="font-size:11px; margin-left:auto;">${PCG.fmtShort(p.dates.loadIn)}</span>
+        </div>
+        <div class="muted" style="font-size:11px; margin-top:2px;">${confirmed}/${assns.length} confirmed</div>
+      </a>`;
+    }).join('');
+
+    // ---- Availability Blocks ----
+    const blocks = (PCG.availabilityBlocks||[]).filter(b=>new Date(b.toDate) >= today);
+    document.getElementById('blocks').innerHTML = blocks.length ? blocks.map(b=>{
+      const crew = PCG.findPerson(b.crewMemberId);
+      return `<div style="padding:8px 0; border-bottom:1px dashed var(--border); font-size:var(--fs-sm);">
+        <strong>${crew?PCG.escapeHtml(crew.name):b.crewMemberId}</strong>
+        <div class="muted mono" style="font-size:11px;">${PCG.fmtShort(b.fromDate)} → ${PCG.fmtShort(b.toDate)}</div>
+        <div class="muted" style="font-size:11px;">${PCG.escapeHtml(b.reason||'—')}</div>
+      </div>`;
+    }).join('') : PCG.states.empty('No blocks declared.');
+
+    // ---- My work queue ----
+    const wi = PCG.api.getWorkItems({ownerId:PCG.user.id, status:'Open'}).slice(0,5);
+    document.getElementById('myWork').innerHTML = wi.length ? wi.map(w=>`
+      <div class="attn-item ${w.priority==='Critical'?'red':w.priority==='High'?'':'blue'}" style="margin-bottom:6px;">
+        <div><div class="ttl">${PCG.escapeHtml(w.title)}</div>
+        <div class="meta">${PCG.escapeHtml(w.description)}${w.dueBy?` · Due ${PCG.fmtShort(w.dueBy)}`:''}</div></div>
+      </div>
+    `).join('') : PCG.states.empty('Nothing assigned.');
+  }
+</script>
+</body>
+</html>

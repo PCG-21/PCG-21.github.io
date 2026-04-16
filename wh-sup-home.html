@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Warehouse Lead</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .quad {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+  }
+  .q-col {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .q-col header {
+    padding: 12px var(--sp-4); background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .q-col header h3 { font-size: var(--fs-md); text-transform: uppercase; letter-spacing: 0.06em; }
+  .q-col header .ct {
+    margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
+  }
+  .show-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: var(--sp-3); align-items: center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .show-row:hover { background: var(--surface-2); }
+  .show-row.urgent { border-left: 3px solid var(--status-red); }
+  .show-row.amber  { border-left: 3px solid var(--status-amber); }
+  .show-row.green  { border-left: 3px solid var(--status-green); }
+  .orphan-row, .tix-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: var(--sp-3); align-items: center;
+    padding: 8px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .tix-row.critical { border-left: 3px solid var(--status-red); background: rgba(240,78,85,0.04); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Warehouse Lead · Daily Command</div>
+          <h1 id="hello">—</h1>
+          <div class="muted">Today's outbound · Returns · Prep queue · Issues & gaps. TV Mode mirrors these quads (§25.1, §10.5).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn sm" href="warehouse-tv.html" target="_blank">📺 TV Mode</a>
+          <a class="btn sm ghost" href="warehouse.html">Classic Warehouse View</a>
+          <a class="btn sm ghost" href="inventory.html">Inventory</a>
+          <a class="btn sm ghost" href="service.html">Service</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <!-- Main 4-quadrant layout matches §10.5 TV Mode -->
+      <div class="quad">
+        <!-- Outbound Today -->
+        <div class="q-col">
+          <header><h3>🚚 Outbound Today</h3><span class="ct" id="obCt">—</span></header>
+          <div id="outbound"></div>
+        </div>
+
+        <!-- Returns Today -->
+        <div class="q-col">
+          <header><h3>📥 Returns Today</h3><span class="ct" id="rtCt">—</span></header>
+          <div id="returns"></div>
+        </div>
+
+        <!-- Prep Queue -->
+        <div class="q-col">
+          <header><h3>🛠 Prep Queue</h3><span class="ct" id="ppCt">—</span></header>
+          <div id="prepQueue"></div>
+        </div>
+
+        <!-- Issues & Gaps -->
+        <div class="q-col">
+          <header><h3 style="color:var(--status-red);">⚠ Issues & Gaps</h3><span class="ct" id="igCt">—</span></header>
+          <div id="issues"></div>
+        </div>
+      </div>
+
+      <!-- Add Order response loop row -->
+      <div class="card" style="margin-top: var(--sp-5);">
+        <div class="card-header"><div class="title">Add Orders — Needing Response (§10.6)</div>
+          <a class="btn sm primary" style="margin-left:auto;" href="add-order.html">Open AO Queue</a>
+        </div>
+        <div id="addOrders"></div>
+      </div>
+
+      <div class="split" style="margin-top: var(--sp-5);">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Scan Orphans (Offline Sync Conflicts)</div></div>
+            <div id="orphans"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Dock Conflicts This Week</div></div>
+            <div class="card-body" id="dockConflicts"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Warehouse Snapshot</div></div>
+            <div class="card-body" id="whSnap"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">My Work Queue</div></div>
+            <div class="card-body" id="myWork"></div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'warehouse', crumbs:[{label:'Warehouse Lead'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    document.getElementById('hello').textContent = `Good day, ${PCG.user.name.split(' ')[0]}`;
+
+    const today = new Date();
+    const todayStr = today.toDateString();
+
+    // ---- Outbound Today ----
+    const outMan = (PCG.manifests||[]).filter(m=>['Staged','Departed'].includes(m.status) || (m.departureDate && new Date(m.departureDate).toDateString()===todayStr));
+    document.getElementById('obCt').textContent = `${outMan.length} manifest${outMan.length===1?'':'s'}`;
+    document.getElementById('outbound').innerHTML = outMan.length ? outMan.map(m=>{
+      const cls = m.status==='Departed' ? 'green' : 'amber';
+      const cases = (m.loadZones||[]).reduce((s,z)=>s+(z.cases||0),0);
+      return `<div class="show-row ${cls}" onclick="location.href='driver.html?manifest=${m.id}'">
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(m.showId)} · ${PCG.escapeHtml(m.vehicle||'—')}</div>
+          <div class="muted" style="font-size:11px;">Driver ${PCG.escapeHtml(m.driverName||'—')} · ${cases} cases · <span class="mono">${PCG.fmtTime(m.departureDate)}</span></div>
+        </div>
+        <div><span class="pill ${m.status==='Departed'?'blue':'amber'}" style="font-size:10px;">${m.status.toUpperCase()}</span></div>
+      </div>`;
+    }).join('') : PCG.states.empty('Nothing going out right now.');
+
+    // ---- Returns Today ----
+    const returnMan = (PCG.manifests||[]).filter(m=>m.status==='Returning' || m.status==='Received');
+    document.getElementById('rtCt').textContent = `${returnMan.length} inbound`;
+    document.getElementById('returns').innerHTML = returnMan.length ? returnMan.map(m=>{
+      return `<div class="show-row amber" onclick="location.href='ic-scan.html?manifest=${m.id}'">
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(m.showId)} · ${PCG.escapeHtml(m.vehicle||'—')}</div>
+          <div class="muted" style="font-size:11px;">ETA ${PCG.fmtShort(m.arrivalDate)}</div>
+        </div>
+        <div><span class="pill amber" style="font-size:10px;">${m.status.toUpperCase()}</span></div>
+      </div>`;
+    }).join('') : PCG.states.empty('No returns inbound.');
+
+    // ---- Prep Queue ----
+    const prepShows = PCG.api.getProjects().filter(p=>p.show && p.show.lifecycleState==='InPrep');
+    prepShows.sort((a,b)=>new Date(a.dates.loadIn)-new Date(b.dates.loadIn));
+    document.getElementById('ppCt').textContent = `${prepShows.length} in prep`;
+    document.getElementById('prepQueue').innerHTML = prepShows.length ? prepShows.map(p=>{
+      const pulls = (PCG.pullSheets||[]).filter(ps=>ps.showId===p.code);
+      const finalized = pulls.filter(ps=>['Finalized','Shipped','OnShow'].includes(ps.status)).length;
+      const total = pulls.length || 1;
+      const pct = Math.round(finalized/total*100);
+      const hrsTo = (new Date(p.dates.loadIn) - today)/3600000;
+      const cls = hrsTo < 48 ? 'urgent' : hrsTo < 168 ? 'amber' : 'green';
+      return `<div class="show-row ${cls}" onclick="location.href='pull-sheet.html?id=${pulls[0]?pulls[0].id:''}'">
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(p.code)} <span class="muted mono" style="font-size:11px;">${PCG.fmtShort(p.dates.loadIn)}</span></div>
+          <div class="muted" style="font-size:11px;">${finalized}/${total} pull sheets finalized · ${pct}%</div>
+        </div>
+        <div><span class="pill ${cls==='urgent'?'red':cls==='amber'?'amber':'green'}" style="font-size:10px;">${Math.round(hrsTo)}H</span></div>
+      </div>`;
+    }).join('') : PCG.states.empty('No shows in prep.');
+
+    // ---- Issues & Gaps ----
+    const issues = [];
+    const openTix = PCG.api.getServiceTickets({status:'Open'});
+    openTix.forEach(t => issues.push({ title: `Service: ${t.serialId||t.id}`, sub: (t.description||'').slice(0,60), kind: t.triage==='Critical'?'critical':'', href: 'service.html' }));
+    const expRPO = PCG.api.getSubRentals().filter(r => r.status==='PendingApproval' && r.holdExpiry && (new Date(r.holdExpiry)-today)/(1000*3600) < 48);
+    expRPO.forEach(r => issues.push({ title: `RPO hold <48h: ${r.vendorName}`, sub: `${r.itemDescription} for ${r.showId}`, kind: 'critical', href: 'procurement.html' }));
+    const missingSerials = (PCG.inventorySerials||[]).filter(s=>s.status==='Lost' || s.status==='Missing');
+    missingSerials.forEach(s => issues.push({ title: `Missing: ${s.serial}`, sub: 'Reconciliation needed', kind: '', href: 'inventory.html' }));
+
+    document.getElementById('igCt').textContent = `${issues.length} open`;
+    document.getElementById('issues').innerHTML = issues.length ? issues.slice(0,8).map(i=>`
+      <div class="tix-row ${i.kind}" onclick="location.href='${i.href}'">
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(i.title)}</div>
+          <div class="muted" style="font-size:11px;">${PCG.escapeHtml(i.sub||'')}</div>
+        </div>
+        <div>${i.kind==='critical'?'<span class="pill red" style="font-size:10px;">CRITICAL</span>':'<span class="pill amber plain" style="font-size:10px;">OPEN</span>'}</div>
+      </div>
+    `).join('') : PCG.states.empty('All clear.');
+
+    // ---- Add Orders needing response ----
+    const openAOs = (PCG.addOrders||[]).filter(a=>['Requested','Acknowledged','Picking'].includes(a.status));
+    document.getElementById('addOrders').innerHTML = openAOs.length ? openAOs.map(a=>{
+      const u = a.urgency==='Emergency'?'red':a.urgency==='Urgent'?'amber':'gray';
+      return `<div class="show-row ${a.urgency==='Emergency'?'urgent':a.urgency==='Urgent'?'amber':''}">
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(a.aoNumber)} — ${PCG.escapeHtml(a.showId)}</div>
+          <div class="muted" style="font-size:11px;">${PCG.escapeHtml(a.description)} · ${PCG.ago(a.requestedAt)}</div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span class="pill ${u}" style="font-size:10px;">${a.urgency.toUpperCase()}</span>
+          <span class="pill blue plain" style="font-size:10px;">${a.status.toUpperCase()}</span>
+          ${a.status==='Requested' ? '<button class="btn sm primary">Ack</button>' : ''}
+        </div>
+      </div>`;
+    }).join('') : PCG.states.empty('No open add orders.');
+
+    // ---- Orphan scans ----
+    const orphans = (PCG.workItems||[]).filter(w=>w.type==='ScanOrphan' && w.status==='Open');
+    document.getElementById('orphans').innerHTML = orphans.length ? orphans.map(w=>`
+      <div class="orphan-row">
+        <div>
+          <div style="font-weight:600;">${PCG.escapeHtml(w.title)}</div>
+          <div class="muted" style="font-size:11px;">${PCG.escapeHtml(w.description)}</div>
+        </div>
+        <div><button class="btn sm">Resolve</button></div>
+      </div>
+    `).join('') : PCG.states.empty('No orphaned scans. ✓');
+
+    // ---- Dock conflicts ----
+    const dockRows = [];
+    // Simple: same venue + overlapping manifest windows
+    const manifestsByVenue = {};
+    (PCG.manifests||[]).forEach(m=>{
+      const showProj = (PCG.projects||[]).find(p=>p.code===m.showId);
+      if(!showProj) return;
+      const venue = showProj.venueId;
+      manifestsByVenue[venue] = manifestsByVenue[venue] || [];
+      manifestsByVenue[venue].push(m);
+    });
+    Object.entries(manifestsByVenue).forEach(([venueId, list]) => {
+      if(list.length >= 2){
+        const v = (PCG.venues||[]).find(x=>x.id===venueId);
+        dockRows.push({ venueName: v ? v.name : venueId, showCodes: list.map(m=>m.showId) });
+      }
+    });
+    document.getElementById('dockConflicts').innerHTML = dockRows.length ? dockRows.map(d=>`
+      <div class="attn-item amber" style="margin-bottom:6px;">
+        <div><div class="ttl">${PCG.escapeHtml(d.venueName)}</div>
+        <div class="meta">${d.showCodes.join(' · ')}</div></div>
+      </div>
+    `).join('') : PCG.states.empty('No stacking.');
+
+    // ---- Warehouse snapshot ----
+    const totalSerials = (PCG.inventorySerials||[]).length;
+    const onShow = (PCG.inventorySerials||[]).filter(s=>s.status==='OnShow').length;
+    const ooc = (PCG.inventorySerials||[]).filter(s=>s.status==='OOC').length;
+    document.getElementById('whSnap').innerHTML = `
+      <div class="kv-grid">
+        <div class="k">Total Serials</div><div class="v mono">${totalSerials.toLocaleString()}</div>
+        <div class="k">On Show</div><div class="v mono">${onShow}</div>
+        <div class="k">OOC</div><div class="v mono" style="color:var(--status-red);">${ooc}</div>
+        <div class="k">Warehouses</div><div class="v mono">${(PCG.warehouses||[]).length}</div>
+      </div>
+    `;
+
+    // ---- My Work Queue ----
+    const wi = PCG.api.getWorkItems({ownerId:PCG.user.id, status:'Open'}).slice(0,5);
+    document.getElementById('myWork').innerHTML = wi.length ? wi.map(w=>`
+      <div class="attn-item ${w.priority==='Critical'?'red':''}" style="margin-bottom:6px;">
+        <div><div class="ttl">${PCG.escapeHtml(w.title)}</div>
+        <div class="meta">${PCG.escapeHtml(w.description)}${w.dueBy?` · Due ${PCG.fmtShort(w.dueBy)}`:''}</div></div>
+      </div>
+    `).join('') : PCG.states.empty('Clear.');
+
+    // ---- KPIs ----
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi blue"><div class="label">Outbound</div><div class="value">${outMan.length}</div><div class="sub">today</div></div>
+      <div class="kpi amber"><div class="label">Returns</div><div class="value">${returnMan.length}</div><div class="sub">inbound</div></div>
+      <div class="kpi"><div class="label">Prep Queue</div><div class="value">${prepShows.length}</div><div class="sub">shows in prep</div></div>
+      <div class="kpi red"><div class="label">Issues</div><div class="value">${issues.length}</div><div class="sub">need resolution</div></div>
+      <div class="kpi red"><div class="label">Add Orders Open</div><div class="value">${openAOs.length}</div><div class="sub">field requests</div></div>
+      <div class="kpi"><div class="label">Orphan Scans</div><div class="value">${orphans.length}</div><div class="sub">awaiting review</div></div>
+    `;
+  }
+</script>
+</body>
+</html>

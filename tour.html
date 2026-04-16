@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Guided Tour</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .tour-hero {
+    background: var(--grad-hero);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-lg);
+    padding: var(--sp-8) var(--sp-6);
+    margin-bottom: var(--sp-6);
+    position: relative; overflow: hidden;
+    text-align: center;
+  }
+  .tour-hero::before {
+    content:""; position:absolute; left:-100px; top:-100px;
+    width: 420px; height:420px; border-radius:50%;
+    background: var(--grad-show-light-spectrum); opacity:0.18; filter: blur(4px);
+  }
+  .tour-hero h1 {
+    font-size: 56px; line-height: 1.05; position: relative;
+    background: var(--grad-spectrum-text); -webkit-background-clip: text; background-clip: text; color: transparent;
+    letter-spacing: 0.01em;
+  }
+  .tour-hero .tag {
+    font-family: var(--font-display); font-size: 14px;
+    text-transform: uppercase; letter-spacing: 0.16em;
+    color: #B3D3F5; margin-bottom: 10px; position: relative;
+  }
+  .tour-hero p {
+    max-width: 620px; margin: var(--sp-4) auto 0;
+    font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.6; position: relative;
+  }
+
+  .persona-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    justify-content: center; margin: var(--sp-4) 0 0; position: relative;
+  }
+  .persona-bar button {
+    padding: 8px 16px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+  .persona-bar button.on {
+    background: var(--pcg-bright-blue); color: #001a2a; border-color: var(--pcg-bright-blue);
+  }
+
+  .tour-chapter {
+    display: grid; grid-template-columns: 70px 1fr;
+    gap: var(--sp-4);
+    padding: var(--sp-5);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    margin-bottom: var(--sp-4);
+    position: relative;
+  }
+  .tour-chapter .num {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 54px; line-height: 1;
+    background: var(--grad-spectrum-text); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .tour-chapter h3 {
+    font-size: var(--fs-xl); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .tour-chapter .eyebrow {
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--text-tertiary); margin-bottom: 6px;
+  }
+  .tour-chapter .body {
+    font-size: var(--fs-sm); line-height: 1.65; color: var(--text-secondary);
+    margin-bottom: var(--sp-3);
+  }
+  .tour-steps {
+    display: grid; gap: 8px; margin-top: var(--sp-3);
+  }
+  .tour-step {
+    display: grid; grid-template-columns: 28px 1fr auto;
+    gap: var(--sp-3); align-items: center;
+    padding: 10px 14px;
+    background: var(--surface-2); border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    border: 1px solid var(--border);
+  }
+  .tour-step .mark {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(1,153,253,0.2); color: var(--pcg-bright-blue);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  }
+
+  .outline {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3);
+    margin-bottom: var(--sp-5);
+  }
+  .outline a {
+    display: block; padding: var(--sp-4);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    text-decoration: none; color: inherit;
+    transition: border-color var(--t-fast);
+  }
+  .outline a:hover { border-color: var(--border-accent); }
+  .outline a .idx {
+    font-family: var(--font-display); font-size: 34px; font-weight: 700;
+    color: var(--pcg-bright-blue); line-height: 1;
+  }
+  .outline a .t { font-weight: 600; margin-top: 8px; font-size: var(--fs-sm); }
+  .outline a .s { color: var(--text-tertiary); font-size: 11px; margin-top: 2px; }
+
+  .scenic-divider {
+    height: 1px; background: linear-gradient(90deg, transparent, var(--border-accent), transparent);
+    margin: var(--sp-6) 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <!-- Hero -->
+      <section class="tour-hero">
+        <div class="tag">PCG STAGE · GUIDED TOUR</div>
+        <h1>HOW IT WORKS</h1>
+        <p>A narrated walkthrough of PCG Stage. Each chapter shows a real workflow end-to-end — from AE pitch through show closeout and payroll export. Open each link in a new tab and follow along.</p>
+        <div class="persona-bar" id="personaBar"></div>
+      </section>
+
+      <!-- Outline -->
+      <div class="outline" id="outline"></div>
+
+      <div class="scenic-divider"></div>
+
+      <!-- Chapters -->
+      <div id="chapters"></div>
+
+      <div class="scenic-divider"></div>
+
+      <!-- Close -->
+      <section class="tour-hero" style="text-align: center; padding: var(--sp-6);">
+        <div class="tag" style="color:#9DD4FF;">WHAT'S NEXT</div>
+        <h2 style="font-family:var(--font-display); font-size:28px; text-transform:uppercase; letter-spacing:0.04em; position:relative;">Ready for the real build?</h2>
+        <p style="font-size:var(--fs-md); color: var(--text-secondary); margin: var(--sp-3) auto 0; max-width: 640px; position: relative;">
+          This demo runs 100% in the browser with static seed data. Behind every page is the real API abstraction (<code>PCG.api.*</code>), the real state machine, the real permission layer. Phase 1 wires this UI to SharePoint Lists + Azure SQL. Phase 2 replaces Flex quoting. Phase 3 replaces Lasso. Phase 4 replaces Flex warehouse.
+        </p>
+        <div style="margin-top: var(--sp-5); position: relative; display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap;">
+          <a class="btn spectrum" href="home.html">Start in the app →</a>
+          <a class="btn" href="reports.html">Leadership Reports</a>
+          <a class="btn ghost" href="admin.html">Admin + Governance</a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'myhome', crumbs:[{label:'Guided Tour'}]});
+
+  // Persona quick-switcher in hero
+  const switchablePersonas = (PCG.PERSONAS||[]).map(p=>({id:p.id,name:p.name.split(' ')[0],role:p.role.split(' ')[0]}));
+  document.getElementById('personaBar').innerHTML = switchablePersonas.map(p=>
+    `<button class="${p.id===PCG.user.id?'on':''}" onclick="sw('${p.id}')">${PCG.escapeHtml(p.name)} · ${PCG.escapeHtml(p.role)}</button>`
+  ).join('');
+  window.sw = (id) => { PCG.switchPersona(id); location.reload(); };
+
+  // Full tour
+  const chapters = [
+    {
+      num: 1,
+      eyebrow: 'Start of the funnel',
+      title: 'AE Builds a Pitch',
+      body: 'Before a formal quote, the AE creates a pitch/proposal. Stage-set choice, budget range, value propositions, key dates — all rendered as a 7-slide export-ready deck.',
+      steps: [
+        { href:'pitch.html', label:'Open pitch.html — walk the Microsoft Summer Partner Summit 2026 deck' },
+        { href:'pitch.html?id=pitch.lce.2026', label:'See an Accepted + Converted example (LCE)' },
+        { href:'clients.html', label:'Check the client master — this is where the client lives' }
+      ]
+    },
+    {
+      num: 2,
+      eyebrow: 'Upstream seed',
+      title: 'PIF Intake',
+      body: 'When a client confirms, AE submits a Project Intake Form. Readiness score blocks submission below 60. On submit, STAGE creates the Project, Quote skeleton, workback schedule, surfaces venue history, and routes to each department director.',
+      steps: [
+        { href:'pif.html', label:'Open pif.html — submit the Microsoft PIF' },
+        { href:'pif.html?id=pif.lce', label:'See the LCE PIF (already Converted)' }
+      ]
+    },
+    {
+      num: 3,
+      eyebrow: 'Commercial',
+      title: 'Quote Builder (5 view tabs)',
+      body: 'AE builds the line-item quote. Every rental line gets a live availability check. Labor lines bind to CrewPosition — on Award, they auto-seed Placeholder ShiftAssignments for the Labor Coordinator to fill. Margin view is Tier-2 gated.',
+      steps: [
+        { href:'quote.html?id=q.LCE-2026.v3', label:'Open quote — click Working / Profit-Margin / Change / Warehouse / Labor tabs' },
+        { href:'quote.html?id=q.NAT-TOUR26.v2', label:'See a non-awarded revision (editable)' }
+      ]
+    },
+    {
+      num: 4,
+      eyebrow: 'Staffing',
+      title: 'Labor Coord Staffs the Show',
+      body: 'Lasso replacement. The Labor Coordinator opens the Show, sees Placeholder positions seeded from the quote. For each open slot, the crew pool filters to qualified members with live conflict detection. Multi-step confirmation workflow (Invited → Applied → Approved → Confirmed → Acknowledged). Clone Prior Roster cuts setup to minutes.',
+      steps: [
+        { href:'labor-home.html',    label:'Labor Home — morning work-queue' },
+        { href:'crew-assign.html?project=LCE-2026',  label:'Assign Crew — fill Placeholder slots' },
+        { href:'crew-profile.html?id=p.pshah', label:'Crew Profile — qualifications, ratings, onboarding' }
+      ]
+    },
+    {
+      num: 5,
+      eyebrow: 'Project execution',
+      title: 'PM Runs the Show',
+      body: 'Project Manager\'s command center. Readiness signal synthesized from 5 components. Blocking checklist items gate lifecycle advance. Active banners call out exceptions. Playbook is the 5-minute handoff brief.',
+      steps: [
+        { href:'pm-home.html', label:'PM Home — readiness board' },
+        { href:'playbook.html?project=LCE-2026', label:'Playbook — 5-min brief format' },
+        { href:'project-crew.html?project=LCE-2026', label:'Project Crew — per-show roster' },
+        { href:'checklist.html?project=LCE-2026', label:'Checklists — phase gates' },
+        { href:'field-notes.html?project=LCE-2026', label:'Field Notes — issue log' }
+      ]
+    },
+    {
+      num: 6,
+      eyebrow: 'Crew experience',
+      title: 'Crew PWA (separate product)',
+      body: 'Switch persona to Mike Chen and open the Crew PWA. Standalone mobile-first app. 5 tabs match the Lasso pattern: Home · Events · Time · Inbox · Sheets. Clock in/out, submit timesheet, see travel, acknowledge shifts.',
+      steps: [
+        { href:'crew/index.html#/home',      label:'Home — today\'s shifts, roster confirmations, recent messages' },
+        { href:'crew/index.html#/time',      label:'Time — big clock-in / clock-out screen' },
+        { href:'crew/index.html#/timesheet', label:'Timesheet — submit hours with OT auto-calc' },
+        { href:'crew/index.html#/messages',  label:'Inbox — messages from Labor Coord' },
+        { href:'crew/index.html#/travel',    label:'Travel — flight + hotel + per diem' }
+      ]
+    },
+    {
+      num: 7,
+      eyebrow: 'Warehouse execution',
+      title: 'Flex Replacement',
+      body: 'Three warehouse roles with distinct surfaces. Lead sees the 4-quadrant command view (outbound / returns / prep / issues). Tech gets clock-in + daily tasks + scan shortcut. EQLPC owns the inventory conflict dashboard.',
+      steps: [
+        { href:'wh-sup-home.html',  label:'Warehouse Lead Home — 4-quadrant daily view' },
+        { href:'wh-tech-home.html', label:'Warehouse Tech — clock in + daily tasks' },
+        { href:'eqlpc.html',        label:'EQLPC — conflict + shortage dashboard' },
+        { href:'inventory.html',    label:'Inventory — catalog + serialized state' },
+        { href:'pull-sheet.html?id=ps.sae.breakout', label:'Pull Sheet — Dept Lock + Walk-the-Pile' },
+        { href:'qc-scan.html?pullSheet=ps.sae.breakout', label:'QC Scan — Code 128, IndexedDB offline queue' },
+        { href:'kits.html',         label:'System Builder — kit intelligence engine' },
+        { href:'service.html',      label:'Service / R&M — ticket pipeline' },
+        { href:'logistics.html',    label:'Logistics — manifests + trucks + drivers' }
+      ]
+    },
+    {
+      num: 8,
+      eyebrow: 'Live show',
+      title: 'Producer Runs ROS',
+      body: 'During the show, Producer runs the Run of Show module. ShowFlo replacement. Live execution mode with NOW / NEXT, blocked items in red, department cue columns, overrun tracking.',
+      steps: [
+        { href:'producer-home.html?project=GLBX-GSK26', label:'Producer Home — live ROS (GLBX currently On Show)' },
+        { href:'ros.html?project=GLBX-GSK26', label:'Full ROS grid — all items, cue columns, confidence' },
+        { href:'add-order.html', label:'Add Orders — field team submits, warehouse responds' }
+      ]
+    },
+    {
+      num: 9,
+      eyebrow: 'Closeout',
+      title: 'Strike → Close → Archive',
+      body: 'After the show: return scan, labor actuals approved, service tickets resolved, finance handoff packet generated. Lessons Learned is a required field. Closeout gates block archive.',
+      steps: [
+        { href:'ic-scan.html?manifest=man.lce.out1', label:'IC Return Scan — confirm / flag damage / flag missing' },
+        { href:'timesheets.html',  label:'Timesheets — approve, flag OT, export payroll' },
+        { href:'closeout.html?project=GLBX-GSK26', label:'Closeout — 7 gates + Lessons Learned' },
+        { href:'finance.html',     label:'Finance — QB handoff packet generation' }
+      ]
+    },
+    {
+      num: 10,
+      eyebrow: 'Leadership',
+      title: 'Reports · Audit · Admin',
+      body: 'For leadership + directors: portfolio rollup (margin by show type, revenue by client, crew utilization, open positions 7/14/30d), audit trail across the whole system, master data governance.',
+      steps: [
+        { href:'reports.html',             label:'Reports — leadership dashboard' },
+        { href:'leadership-home.html',     label:'Leadership Home — portfolio readiness board' },
+        { href:'audit.html',               label:'Audit Trail — every override logged' },
+        { href:'admin.html',               label:'Admin — master data governance (§38)' }
+      ]
+    }
+  ];
+
+  // Outline cards
+  document.getElementById('outline').innerHTML = chapters.map(c=>`
+    <a href="#ch-${c.num}">
+      <div class="idx">${String(c.num).padStart(2,'0')}</div>
+      <div class="t">${PCG.escapeHtml(c.title)}</div>
+      <div class="s">${PCG.escapeHtml(c.eyebrow)}</div>
+    </a>
+  `).join('');
+
+  // Chapters
+  document.getElementById('chapters').innerHTML = chapters.map(c=>`
+    <section class="tour-chapter" id="ch-${c.num}">
+      <div class="num">${String(c.num).padStart(2,'0')}</div>
+      <div>
+        <div class="eyebrow">${PCG.escapeHtml(c.eyebrow)}</div>
+        <h3>${PCG.escapeHtml(c.title)}</h3>
+        <div class="body">${PCG.escapeHtml(c.body)}</div>
+        <div class="tour-steps">
+          ${c.steps.map((s,i)=>`
+            <a class="tour-step" href="${s.href}" target="_blank" style="text-decoration:none; color:inherit;">
+              <span class="mark">${i+1}</span>
+              <span>${PCG.escapeHtml(s.label)}</span>
+              <span class="muted mono" style="font-size:10px;">${PCG.escapeHtml(s.href)} ↗</span>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `).join('');
+</script>
+</body>
+</html>

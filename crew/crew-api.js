@@ -134,4 +134,154 @@
     return true;
   };
 
+  // --- Timesheet entry (§12.3) ---
+  CrewApi.getMyTimesheets = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return [];
+    return (window.PCG.timesheets||[])
+      .filter(t=>t.crewMemberId===ctx.crewMemberId && t.showId===ctx.showId)
+      .sort((a,b)=>new Date(a.workDate)-new Date(b.workDate));
+  };
+
+  CrewApi.updateTimesheetField = (timesheetId, fields)=>{
+    const t = (window.PCG.timesheets||[]).find(x=>x.id===timesheetId);
+    if(!t || t.status!=='Draft') return null;
+    Object.assign(t, fields);
+    if(t.clockIn && t.clockOut){
+      const hrs = (new Date(t.clockOut) - new Date(t.clockIn))/3600000 - (t.mealBreakMinutes||0)/60;
+      t.workedHours = Math.max(0, Math.round(hrs*10)/10);
+      t.otHours = Math.max(0, Math.min(t.workedHours - 8, 4));
+      t.dtHours = Math.max(0, t.workedHours - 12);
+    }
+    return t;
+  };
+
+  CrewApi.submitTimesheet = (timesheetId)=>{
+    const t = (window.PCG.timesheets||[]).find(x=>x.id===timesheetId);
+    if(!t) return null;
+    t.status = 'Submitted';
+    t.submittedAt = new Date().toISOString();
+    return t;
+  };
+
+  // --- Availability (§14.2 screen) ---
+  CrewApi.addAvailabilityBlock = (fromDate, toDate, reason)=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return null;
+    window.PCG.availabilityBlocks = window.PCG.availabilityBlocks || [];
+    const block = {
+      id:'ab.'+Math.random().toString(36).slice(2,8),
+      crewMemberId: ctx.crewMemberId,
+      fromDate, toDate,
+      type:'Unavailable', reason,
+      createdById: ctx.crewMemberId
+    };
+    window.PCG.availabilityBlocks.push(block);
+    return block;
+  };
+
+  CrewApi.getMyAvailabilityBlocks = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return [];
+    return (window.PCG.availabilityBlocks||[]).filter(b=>b.crewMemberId===ctx.crewMemberId);
+  };
+
+  // --- Clock in/out (Time screen, Lasso parity) ---
+  CrewApi.getActiveClockEvent = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return null;
+    return (window.PCG.clockEvents||[]).find(e => e.crewMemberId===ctx.crewMemberId && !e.clockOut) || null;
+  };
+
+  CrewApi.clockIn = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return null;
+    window.PCG.clockEvents = window.PCG.clockEvents || [];
+    if(CrewApi.getActiveClockEvent()) return null;
+    const ev = {
+      id:'ce.'+Math.random().toString(36).slice(2,8),
+      crewMemberId: ctx.crewMemberId,
+      clockIn: new Date().toISOString(), clockOut: null,
+      shift:'Field Crew',
+      showId: ctx.showId
+    };
+    window.PCG.clockEvents.push(ev);
+    return ev;
+  };
+
+  CrewApi.clockOut = ()=>{
+    const ev = CrewApi.getActiveClockEvent();
+    if(!ev) return null;
+    ev.clockOut = new Date().toISOString();
+    return ev;
+  };
+
+  // --- Time cards (list of past clock events + timesheets) ---
+  CrewApi.getMyTimeCards = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return [];
+    const events = (window.PCG.clockEvents||[]).filter(e=>e.crewMemberId===ctx.crewMemberId);
+    return events.map(e => {
+      const hrs = e.clockOut
+        ? ((new Date(e.clockOut) - new Date(e.clockIn))/3600000).toFixed(2)
+        : 'Active';
+      return {
+        id: e.id,
+        begin: e.clockIn,
+        end: e.clockOut,
+        account: e.showId || '—',
+        hours: hrs
+      };
+    }).sort((a,b)=>new Date(b.begin) - new Date(a.begin));
+  };
+
+  // --- Messages (inbox) — combines static seed with live-sent messages ---
+  CrewApi.getMyMessages = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return [];
+    const seeded = [
+      { id:'m.1', subject:'Detroit Uniform', preview:'The attire for Detroit is plain black polo, black pants, closed-toe black shoes. Ask Tyler if you need anything.', from:'p.tscheff', date:'2026-03-18', archived:false, showId:ctx.showId },
+      { id:'m.2', subject:'Start Time and Point of Contact', preview:'Your start time for Sunday is 11 am. On-site lead is Chris Taylor. Message him when you arrive at dock 3.', from:'p.coliver', date:'2026-03-18', archived:false, showId:ctx.showId },
+      { id:'m.3', subject:'Parking and Load-in', preview:'Enter via Atwater off Washington. Crew parking at American Center lot B. Badge at security hut.', from:'p.ctaylor', date:'2026-02-09', archived:false, showId:ctx.showId },
+      { id:'m.4', subject:'IMPORTANT MESSAGE FROM OPERATIONS', preview:'When working with Premier, technical paperwork is to be submitted within 24 hours of strike. Timecards in Lasso, damage reports in STAGE.', from:'p.kbenz', date:'2026-01-28', archived:false, showId:ctx.showId },
+      { id:'m.5', subject:'Crew Entrance', preview:'Hello All. We will be entering through the Atwater dock for this show. Please use the badges at the security desk.', from:'p.ctaylor', date:'2026-01-19', archived:true, showId:ctx.showId }
+    ];
+    // Pull messages sent to this crew member from the live messages store
+    const live = (window.PCG.messages || []).filter(m => {
+      const toMe = (m.toCrewIds||[]).includes(ctx.crewMemberId) || m.toAll;
+      const forThisShow = !m.showId || m.showId === ctx.showId;
+      return toMe && forThisShow;
+    }).map(m => ({
+      id: m.id, subject: m.subject, preview: m.body,
+      from: m.fromId, date: m.sentAt, archived: false, showId: m.showId
+    }));
+    return live.concat(seeded);
+  };
+
+  // --- Upcoming events (all shows I am on) ---
+  CrewApi.getMyUpcomingEvents = ()=>{
+    const ctx = CrewApi.parseToken();
+    if(!ctx) return [];
+    const assns = (window.PCG.shiftAssignments||[]).filter(a=>a.crewMemberId===ctx.crewMemberId);
+    const byShow = {};
+    assns.forEach(a=>{
+      const proj = (window.PCG.projects||[]).find(p=>p.code===a.showId);
+      if(!proj) return;
+      if(!byShow[a.showId]){
+        byShow[a.showId] = {
+          showId: a.showId,
+          showName: proj.name,
+          venueName: proj.venueName,
+          loadIn: proj.dates.loadIn,
+          loadOut: proj.dates.loadOut,
+          allDates: new Set()
+        };
+      }
+      (a.dates||[]).forEach(d => byShow[a.showId].allDates.add(d));
+    });
+    return Object.values(byShow)
+      .map(x => ({ ...x, allDates: Array.from(x.allDates).sort() }))
+      .sort((a,b)=>new Date(a.loadIn)-new Date(b.loadIn));
+  };
+
 })();

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Crew Profile</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .profile-hero {
+    display: grid; grid-template-columns: 120px 1fr auto;
+    gap: var(--sp-5); align-items: center;
+    background: var(--grad-hero);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-lg);
+    padding: var(--sp-5) var(--sp-6);
+    position: relative; overflow: hidden;
+    margin-bottom: var(--sp-5);
+  }
+  .profile-hero::before {
+    content:""; position:absolute; right:-40px; top:-40px;
+    width:240px; height:240px; border-radius:50%;
+    background: var(--grad-show-light-purple); opacity:0.25; filter:blur(4px);
+  }
+  .profile-av {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: var(--grad-show-light-blue);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 38px;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(1,153,253,0.35);
+    position: relative; z-index: 2;
+  }
+  .profile-meta {
+    position: relative; z-index: 2;
+  }
+  .profile-meta h1 { font-size: 34px; margin: 0; }
+  .profile-meta .sub {
+    font-family: var(--font-display); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: #B3D3F5; margin-bottom: 4px;
+  }
+  .profile-meta .tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .sect { margin-bottom: var(--sp-5); }
+  .sect h3 {
+    font-family: var(--font-display); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--text-tertiary);
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    margin-bottom: var(--sp-3);
+  }
+
+  .qual-row {
+    display: grid; grid-template-columns: 1fr 120px 90px;
+    gap: var(--sp-3); align-items: center;
+    padding: 8px 0; border-bottom: 1px dashed var(--border);
+    font-size: var(--fs-sm);
+  }
+  .stars { color: var(--status-amber); letter-spacing: 2px; font-family: var(--font-mono); }
+
+  .exp-grid {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 6px 10px; font-size: var(--fs-sm);
+  }
+  .exp-lvl {
+    display: inline-block; padding: 1px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .lvl-Expert      { background: rgba(47,191,113,0.2); color: var(--status-green); }
+  .lvl-Strong      { background: rgba(1,153,253,0.2); color: var(--pcg-bright-blue); }
+  .lvl-Some        { background: rgba(245,183,60,0.2); color: var(--status-amber); }
+  .lvl-Yet         { background: rgba(110,125,148,0.2); color: var(--text-tertiary); }
+  .lvl-default     { background: var(--surface-2); color: var(--text-tertiary); }
+
+  .cert-row {
+    display: grid; grid-template-columns: 1fr 100px 100px;
+    gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border);
+    font-size: var(--fs-sm);
+  }
+  .assn-row {
+    display: grid; grid-template-columns: 110px 1fr 120px 90px;
+    gap: 10px; align-items: center;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .assn-row:hover { background: var(--surface-2); cursor: pointer; }
+
+  .onboard-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 8px; font-size: var(--fs-sm);
+  }
+  .onboard-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+  }
+  .onboard-row.ok  { border-left: 3px solid var(--status-green); }
+  .onboard-row.bad { border-left: 3px solid var(--status-red); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container" id="body"></div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const memberId = PCG.qs('id','p.pshah');
+  const prof = PCG.api.getCrewProfile(memberId);
+
+  PCG.mountShell({active:'scheduling', crumbs:[
+    {label:'Scheduling', href:'scheduling.html'},
+    {label: prof ? prof.member.name : 'Profile'}
+  ]});
+
+  if(!prof){
+    document.getElementById('body').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.empty('Crew member not found.')}</div>`;
+  } else {
+    const m = prof.member;
+    const initials = m.name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
+    const payrollTone = m.payrollReadiness ? 'green' : 'red';
+    const canSeePay = PCG.canSeeTier('T1_CREW_PAY_RATES');
+
+    const ob = m.onboardingStatus || {};
+    const onboardRow = (label, ok, contractSigned) => `
+      <div class="onboard-row ${ok?'ok':'bad'}">
+        <span style="color:${ok?'var(--status-green)':'var(--status-red)'}; font-size:15px;">${ok?'✓':'⚠'}</span>
+        <span>${PCG.escapeHtml(label)}</span>
+        <span style="margin-left:auto; color: var(--text-tertiary); font-size: 11px;">${contractSigned?contractSigned:(ok?'Complete':'Missing')}</span>
+      </div>`;
+
+    document.getElementById('body').innerHTML = `
+      <!-- Hero -->
+      <section class="profile-hero">
+        <div class="profile-av">${initials}</div>
+        <div class="profile-meta">
+          <div class="sub">${PCG.escapeHtml(m.employmentType||'—')} · ${PCG.escapeHtml(m.homeBase||'—')}</div>
+          <h1>${PCG.escapeHtml(m.name)}</h1>
+          <div class="sub" style="margin-top:6px;">${PCG.escapeHtml(m.role||'Crew')}${m.employeeCode?' · '+PCG.escapeHtml(m.employeeCode):''}</div>
+          <div class="tags">
+            ${(m.markets||[]).map(mkt=>`<span class="pill blue plain" style="font-size:10px;">${PCG.escapeHtml(mkt)}</span>`).join('')}
+            <span class="pill ${payrollTone}" style="font-size:10px;">${m.payrollReadiness?'✓ PAYROLL READY':'⚠ ONBOARDING INCOMPLETE'}</span>
+            ${m.doNotUse ? '<span class="pill red" style="font-size:10px;">DO NOT USE</span>' : ''}
+            ${prof.avgRating ? `<span class="pill amber plain" style="font-size:10px;">★ ${prof.avgRating.toFixed(1)} avg</span>` : ''}
+          </div>
+        </div>
+        <div style="position:relative; z-index:2; display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+          <a class="btn primary" href="crew-assign.html">Assign to Show</a>
+          <a class="btn" href="travel.html">Book Travel</a>
+          <a class="btn ghost" href="scheduling.html">Schedule Grid</a>
+        </div>
+      </section>
+
+      <!-- KPIs -->
+      <div class="kpi-strip">
+        <div class="kpi"><div class="label">Hours YTD</div><div class="value">${prof.totalHoursYTD||0}h</div><div class="sub">${prof.totalOTYTD||0}h OT</div></div>
+        <div class="kpi blue"><div class="label">Shifts Worked</div><div class="value">${prof.pastAssignments.length}</div><div class="sub">completed</div></div>
+        <div class="kpi"><div class="label">Upcoming</div><div class="value">${prof.upcomingAssignments.length}</div><div class="sub">scheduled</div></div>
+        <div class="kpi"><div class="label">Qualifications</div><div class="value">${prof.qualifications.length}</div><div class="sub">positions</div></div>
+        <div class="kpi"><div class="label">Certs Active</div><div class="value">${(m.certifications||[]).filter(c=>new Date(c.expiresAt) > new Date()).length}</div><div class="sub">ETCP / OSHA / etc.</div></div>
+        <div class="kpi"><div class="label">Avail Blocks</div><div class="value">${prof.availabilityBlocks.length}</div><div class="sub">declared</div></div>
+      </div>
+
+      <div class="split">
+        <div>
+          <!-- Position Qualifications + Ratings -->
+          <div class="card card-pad sect">
+            <h3>Position Qualifications (Rated 1–5)</h3>
+            ${prof.qualifications.length ? prof.qualifications.map(q=>{
+              const stars = '★'.repeat(Math.round(q.rating)) + '☆'.repeat(5 - Math.round(q.rating));
+              return `<div class="qual-row">
+                <div>
+                  <strong>${PCG.escapeHtml(q.positionName)}</strong>
+                  <div class="muted" style="font-size:11px;">${PCG.escapeHtml(q.department||'')}</div>
+                </div>
+                <div class="stars">${stars}</div>
+                <div class="mono muted">${q.rating.toFixed(1)}</div>
+              </div>`;
+            }).join('') : PCG.states.empty('No qualifications on record.')}
+          </div>
+
+          <!-- Experience by Vertical -->
+          <div class="card card-pad sect">
+            <h3>Experience by Industry Vertical</h3>
+            <div class="exp-grid">
+              ${Object.entries(m.experience||{}).map(([v,lvl])=>{
+                const cls = ['Expert','Strong','Some','Yet'].includes(lvl) ? `lvl-${lvl}` : 'lvl-default';
+                return `<span>${PCG.escapeHtml(v)}</span><span class="exp-lvl ${cls}">${PCG.escapeHtml(lvl)}</span>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Certifications -->
+          <div class="card card-pad sect">
+            <h3>Certifications</h3>
+            ${(m.certifications||[]).length ? (m.certifications||[]).map(c => {
+              const exp = new Date(c.expiresAt);
+              const days = Math.round((exp - new Date())/(1000*60*60*24));
+              const expired = days < 0;
+              const expiring = days < 60 && !expired;
+              return `<div class="cert-row">
+                <strong>${PCG.escapeHtml(c.type)}</strong>
+                <div class="mono" style="font-size:11px;">${PCG.fmtShort(c.issuedAt)} → ${PCG.fmtShort(c.expiresAt)}</div>
+                <div>${expired?'<span class="pill red">EXPIRED</span>':expiring?'<span class="pill amber">'+days+'d</span>':'<span class="pill green plain">ACTIVE</span>'}</div>
+              </div>`;
+            }).join('') : PCG.states.empty('None on record.')}
+          </div>
+
+          <!-- Assignment History -->
+          <div class="card card-pad sect">
+            <h3>Upcoming Assignments (${prof.upcomingAssignments.length})</h3>
+            ${prof.upcomingAssignments.length ? prof.upcomingAssignments.map(a => {
+              const show = (PCG.projects||[]).find(p=>p.code===a.showId);
+              const pos = (PCG.crewPositions||[]).find(p=>p.id===a.positionId);
+              return `<div class="assn-row" onclick="location.href='playbook.html?project=${a.showId}'">
+                <div class="mono">${PCG.fmtShort((a.dates||[])[0])}</div>
+                <div>
+                  <div style="font-weight:600;">${show ? PCG.escapeHtml(show.code) : PCG.escapeHtml(a.showId)} — ${show?PCG.escapeHtml(show.name):'—'}</div>
+                  <div class="muted" style="font-size:11px;">${pos?PCG.escapeHtml(pos.displayName):PCG.escapeHtml(a.positionId)} · Call ${PCG.escapeHtml(a.callTime||'—')}</div>
+                </div>
+                <div class="muted mono" style="font-size:11px;">${(a.dates||[]).length} day${(a.dates||[]).length===1?'':'s'}</div>
+                <div><span class="pill ${a.status==='Confirmed'?'green':a.status==='Acknowledged'?'green':'amber'}" style="font-size:10px;">${PCG.escapeHtml(a.status.toUpperCase())}</span></div>
+              </div>`;
+            }).join('') : PCG.states.empty('No upcoming.')}
+          </div>
+
+          <div class="card card-pad sect">
+            <h3>Past Assignments (${prof.pastAssignments.length})</h3>
+            ${prof.pastAssignments.length ? prof.pastAssignments.slice(0,8).map(a => {
+              const show = (PCG.projects||[]).find(p=>p.code===a.showId);
+              const pos = (PCG.crewPositions||[]).find(p=>p.id===a.positionId);
+              return `<div class="assn-row">
+                <div class="mono">${PCG.fmtShort((a.dates||[])[0])}</div>
+                <div>
+                  <div style="font-weight:600;">${show ? PCG.escapeHtml(show.code) : PCG.escapeHtml(a.showId)}</div>
+                  <div class="muted" style="font-size:11px;">${pos?PCG.escapeHtml(pos.displayName):''}</div>
+                </div>
+                <div class="muted mono" style="font-size:11px;">${(a.dates||[]).length}d</div>
+                <div><span class="pill gray plain" style="font-size:10px;">COMPLETED</span></div>
+              </div>`;
+            }).join('') : PCG.states.empty('—')}
+          </div>
+        </div>
+
+        <aside>
+          <!-- Contact -->
+          <div class="card card-pad sect" style="margin-bottom: var(--sp-4);">
+            <h3>Contact</h3>
+            <div style="font-size:var(--fs-sm); display:grid; gap:8px;">
+              <div><strong>${PCG.escapeHtml(m.name)}</strong></div>
+              ${m.phone ? `<div>📞 <a href="tel:${PCG.escapeHtml(m.phone)}" class="mono">${PCG.escapeHtml(m.phone)}</a></div>`:''}
+              ${m.email ? `<div>✉ <a href="mailto:${PCG.escapeHtml(m.email)}">${PCG.escapeHtml(m.email)}</a></div>`:''}
+              ${m.address ? `<div style="font-size:var(--fs-xs); color:var(--text-secondary);">${PCG.escapeHtml(m.address.street||'')}<br>${PCG.escapeHtml(m.address.city||'')}, ${PCG.escapeHtml(m.address.state||'')} ${PCG.escapeHtml(m.address.zip||'')}</div>` : ''}
+              ${m.homeBase ? `<div class="muted" style="font-size:11px;">Home base: ${PCG.escapeHtml(m.homeBase)}</div>`:''}
+            </div>
+          </div>
+
+          <!-- Emergency Contact -->
+          ${m.emergencyContact ? `
+          <div class="card card-pad sect" style="margin-bottom: var(--sp-4);">
+            <h3>Emergency Contact</h3>
+            <div style="font-size:var(--fs-sm); display:grid; gap:4px;">
+              <div><strong>${PCG.escapeHtml(m.emergencyContact.name)}</strong></div>
+              <div><span class="muted" style="font-size:11px;">${PCG.escapeHtml(m.emergencyContact.relationship||'')}</span></div>
+              <div>📞 <a href="tel:${PCG.escapeHtml(m.emergencyContact.phone)}" class="mono">${PCG.escapeHtml(m.emergencyContact.phone)}</a></div>
+            </div>
+          </div>`:''}
+
+          <!-- Onboarding -->
+          <div class="card card-pad sect" style="margin-bottom: var(--sp-4);">
+            <h3>Onboarding / Payroll</h3>
+            <div class="onboard-grid">
+              ${onboardRow('W-9', ob.w9)}
+              ${onboardRow('I-9', ob.i9)}
+              ${onboardRow('Emergency Contact', ob.emergencyContact)}
+              ${onboardRow('Rate Agreement', ob.rateAgreement)}
+              ${ob.contractStatus ? onboardRow('Contract', ob.contractStatus==='Signed', ob.contractStatus) : ''}
+            </div>
+          </div>
+
+          <!-- Client Preferences -->
+          <div class="card card-pad sect" style="margin-bottom: var(--sp-4);">
+            <h3>Client Preferences</h3>
+            ${(m.clientPreferences||[]).length ? (m.clientPreferences||[]).map(cp=>{
+              const client = PCG.api.getClient(cp.clientId);
+              const tone = cp.type==='preferred' ? 'green' : 'red';
+              return `<div class="attn-item" style="margin-bottom:6px;">
+                <div>
+                  <div class="ttl"><span class="pill ${tone}" style="font-size:10px;">${(cp.type||'').toUpperCase()}</span> ${client?PCG.escapeHtml(client.name):PCG.escapeHtml(cp.clientId)}</div>
+                  <div class="meta">${PCG.escapeHtml(cp.note||'')}</div>
+                </div>
+              </div>`;
+            }).join('') : PCG.states.empty('None on record.')}
+          </div>
+
+          <!-- Availability Blocks -->
+          <div class="card card-pad sect" style="margin-bottom: var(--sp-4);">
+            <h3>Availability Blocks</h3>
+            ${prof.availabilityBlocks.length ? prof.availabilityBlocks.map(b => `
+              <div style="padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: var(--fs-sm);">
+                <div><strong>${PCG.fmtShort(b.fromDate)} → ${PCG.fmtShort(b.toDate)}</strong></div>
+                <div class="muted" style="font-size:11px;">${PCG.escapeHtml(b.reason||'')}</div>
+              </div>
+            `).join('') : PCG.states.empty('No blocks declared.')}
+          </div>
+
+          <!-- Travel History -->
+          <div class="card card-pad sect">
+            <h3>Travel History (${prof.travelRecords.length})</h3>
+            ${prof.travelRecords.length ? prof.travelRecords.map(t => `
+              <div style="padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: var(--fs-sm);">
+                <div><strong>${PCG.escapeHtml(t.showId)}</strong></div>
+                <div class="muted" style="font-size:11px;">${PCG.escapeHtml(t.airline||'')} ${PCG.escapeHtml(t.departureCity||'')}→${PCG.escapeHtml(t.arrivalCity||'')} · ${PCG.fmtShort(t.departureTime)}</div>
+              </div>
+            `).join('') : PCG.states.empty('No travel on record.')}
+          </div>
+        </aside>
+      </div>
+    `;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Pitch / Proposal</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .pitch-list {
+    display: grid; gap: var(--sp-3);
+  }
+  .pitch-card {
+    display:grid; grid-template-columns: 1fr auto; gap: var(--sp-3);
+    padding: var(--sp-4); border: 1px solid var(--border);
+    border-radius: var(--r-md); background: var(--surface-1);
+    cursor: pointer; transition: border-color var(--t-fast);
+  }
+  .pitch-card:hover { border-color: var(--border-accent); }
+  .pitch-card.active { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.06); }
+
+  .deck-page {
+    background: white; color: #111;
+    border-radius: var(--r-md); padding: var(--sp-6);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    margin-bottom: var(--sp-4); font-family: var(--font-body);
+    position: relative; overflow: hidden;
+  }
+  .deck-page.dark {
+    background: linear-gradient(135deg, #012D4B 0%, #013558 50%, #7A41E5 140%);
+    color: white;
+  }
+  .deck-page.dark::after {
+    content: ""; position: absolute; right: -60px; top: -60px;
+    width: 360px; height: 360px; border-radius: 55% 45% 50% 50%;
+    background: linear-gradient(135deg, rgba(217,47,180,0.5), rgba(122,65,229,0.5));
+    opacity: 0.7; filter: blur(2px);
+  }
+  .deck-page h2 { font-family: var(--font-display); font-size: 36px; text-transform: uppercase; letter-spacing: 0.02em; color: #013558; margin-bottom: var(--sp-3); }
+  .deck-page.dark h2 { color: white; }
+  .deck-page .eyebrow { font-family: var(--font-display); font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: #0199FD; }
+  .deck-page.dark .eyebrow { color: #9DD4FF; }
+  .deck-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5);
+    font-size: 14px; line-height: 1.6;
+  }
+  .deck-grid .k { font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: #6E7D94; margin-bottom: 4px; }
+  .deck-grid .v { font-size: 16px; color: #111; }
+  .deck-page.dark .deck-grid .v { color: white; }
+  .deck-page.dark .deck-grid .k { color: #9DD4FF; }
+
+  .vp-list li {
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.15);
+    font-size: 15px;
+  }
+  .deck-page:not(.dark) .vp-list li { border-bottom-color: #E5E9EF; color: #111; }
+  .vp-list li::before { content: "▸ "; color: #0199FD; margin-right: 6px; }
+  .deck-page.dark .vp-list li::before { color: #9DD4FF; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Sales · Pre-Quote</div>
+          <h1>Creative Proposals</h1>
+          <div class="muted">Pitch the creative + scope + budget before committing a line-item quote. Accepted pitches convert to a quote with stage-set + department lines pre-seeded.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="btn sm primary" onclick="newPitch()">＋ New Pitch</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Pitch Library</div></div>
+            <div id="pitchList" class="pitch-list" style="padding: var(--sp-3);"></div>
+          </div>
+        </aside>
+
+        <div>
+          <div id="deck"></div>
+          <div style="display:flex; gap:var(--sp-2); margin-top: var(--sp-4);">
+            <button class="btn" onclick="window.print()">⎙ Export as PDF</button>
+            <button class="btn primary" id="convertBtn">Convert to Quote →</button>
+            <button class="btn ghost">Email to Client</button>
+            <button class="btn ghost">Duplicate</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Sales', href:'#'}, {label:'Pitches'}]});
+
+  const canEdit = PCG.hasAnyPermission(PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN);
+  const pitches = PCG.api.getPitches();
+  let currentId = PCG.qs('id') || (pitches[0] && pitches[0].id);
+
+  function renderList(){
+    document.getElementById('pitchList').innerHTML = pitches.map(p => {
+      const client = PCG.api.getClient(p.clientId);
+      const tone = { Accepted:'green', Converted:'green', Draft:'amber', Declined:'red', Sent:'blue' }[p.status] || 'gray';
+      return `<div class="pitch-card ${p.id===currentId?'active':''}" onclick="setPitch('${p.id}')">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span class="pill ${tone}" style="font-size:10px;">${PCG.escapeHtml(p.status.toUpperCase())}</span>
+            ${p.convertedQuoteId ? '<span class="pill blue plain" style="font-size:10px;">→ QUOTE</span>' : ''}
+          </div>
+          <div style="font-weight:600;">${PCG.escapeHtml(p.title)}</div>
+          <div class="muted" style="font-size:11px; margin-top:4px;">
+            ${client ? PCG.escapeHtml(client.name) : PCG.escapeHtml(p.clientId||'')} · ${PCG.escapeHtml(p.stageSetName||'—')}
+          </div>
+          <div class="muted mono" style="font-size:11px; margin-top:2px;">
+            ${PCG.canSeeTier('T2_MARGINS') && p.estimatedBudgetLow ? '$'+(p.estimatedBudgetLow/1000).toFixed(0)+'k – $'+(p.estimatedBudgetHigh/1000).toFixed(0)+'k' : '—'}
+          </div>
+        </div>
+      </div>`;
+    }).join('') || PCG.states.empty('No pitches yet.');
+  }
+
+  function renderDeck(){
+    const p = PCG.api.getPitch(currentId);
+    if(!p){ document.getElementById('deck').innerHTML = PCG.states.empty('Select a pitch.'); return; }
+    const client = PCG.api.getClient(p.clientId);
+    const ae = PCG.findPerson(p.aeId);
+
+    document.getElementById('deck').innerHTML = `
+      <!-- Slide 1 — Cover -->
+      <div class="deck-page dark">
+        <div class="eyebrow">CREATIVE PROPOSAL</div>
+        <h2 style="font-size: 44px; margin-top: 10px;">${PCG.escapeHtml(p.title)}</h2>
+        <div style="font-family: var(--font-display); font-size: 18px; color: #9DD4FF; letter-spacing: 0.04em;">
+          Lights. Camera. Showtime — done right.
+        </div>
+        <div style="margin-top: var(--sp-6); font-size: 14px; font-family: var(--font-mono); color: rgba(255,255,255,0.85); position: relative;">
+          <div>CLIENT · ${PCG.escapeHtml(client ? client.name : p.clientId||'')}</div>
+          <div>ACCOUNT EXECUTIVE · ${PCG.escapeHtml(ae ? ae.name : '—')}</div>
+          <div>STAGE SET · ${PCG.escapeHtml(p.stageSetName||'—')}</div>
+          <div>SHOW DATES · ${p.keyDates && p.keyDates.showStart ? PCG.fmtDate(p.keyDates.showStart) + ' → ' + PCG.fmtDate(p.keyDates.showEnd) : '—'}</div>
+          <div style="margin-top: var(--sp-3); opacity: 0.7;">Prepared ${PCG.fmtDate(p.createdAt)} · Premier Creative Group</div>
+        </div>
+      </div>
+
+      <!-- Slide 2 — Concept / Creative Direction -->
+      <div class="deck-page">
+        <div class="eyebrow">CONCEPT</div>
+        <h2>Creative Direction</h2>
+        <p style="font-size: 18px; color: #444; line-height: 1.55;">${PCG.escapeHtml(p.creativeDirection || 'Creative direction not yet captured.')}</p>
+        <div style="margin-top: var(--sp-5);">
+          <div class="eyebrow" style="margin-bottom: 8px;">SHOW TYPE &amp; SCALE</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4);">
+            <div><div class="k" style="font-family:var(--font-display); font-size:10px; color:#6E7D94; text-transform:uppercase; letter-spacing:0.14em;">Type</div><div class="v" style="font-size:18px; font-weight:600;">${PCG.escapeHtml(p.showType||'—')}</div></div>
+            <div><div class="k" style="font-family:var(--font-display); font-size:10px; color:#6E7D94; text-transform:uppercase; letter-spacing:0.14em;">Attendance</div><div class="v" style="font-size:18px; font-weight:600;">${p.estimatedAttendance ? p.estimatedAttendance.toLocaleString() : '—'}</div></div>
+            <div><div class="k" style="font-family:var(--font-display); font-size:10px; color:#6E7D94; text-transform:uppercase; letter-spacing:0.14em;">Breakouts</div><div class="v" style="font-size:18px; font-weight:600;">${p.breakoutCount||0}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3 — Value Propositions -->
+      <div class="deck-page dark">
+        <div class="eyebrow">WHAT YOU GET</div>
+        <h2>Value Propositions</h2>
+        <ul class="vp-list" style="list-style: none; padding: 0; margin: var(--sp-4) 0 0;">
+          ${(p.valueProps||[]).map(v => `<li>${PCG.escapeHtml(v)}</li>`).join('')}
+        </ul>
+      </div>
+
+      <!-- Slide 4 — Stage Set -->
+      <div class="deck-page">
+        <div class="eyebrow">STAGE SET</div>
+        <h2>${PCG.escapeHtml(p.stageSetName||'—')}</h2>
+        <p style="color:#444; font-size:15px;">Named PCG stage package. Industry-standard build, quick in/out, brand-swappable panels. See System Builder for full BOM + compatibility rules.</p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-top: var(--sp-4);">
+          ${['Scalable','Adaptable','Brandable','Shippable','Sustainable','Affordable'].map(f=>`
+            <div style="padding: var(--sp-3); background: #F7F8FA; border-radius: var(--r-sm); font-family:var(--font-display); font-size:14px; text-transform:uppercase; letter-spacing:0.08em; color: #013558; display:flex; align-items:center; gap:8px;">
+              <span style="color: #0199FD;">●</span>${PCG.escapeHtml(f)}
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Slide 5 — Scope / Deliverables -->
+      <div class="deck-page">
+        <div class="eyebrow">SCOPE</div>
+        <h2>Deliverables</h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: var(--sp-4); font-size:15px;">
+          ${(p.deliverables||[]).map(d=>`
+            <div style="padding: 12px 14px; background: #F7F8FA; border-left: 3px solid #7A41E5; border-radius: 4px;">${PCG.escapeHtml(d)}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Slide 6 — Budget & Key Dates -->
+      <div class="deck-page dark">
+        <div class="eyebrow">COMMERCIALS</div>
+        <h2>Budget &amp; Key Dates</h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); margin-top: var(--sp-4); position: relative;">
+          <div>
+            <div class="k" style="font-family:var(--font-display); font-size:10px; color:#9DD4FF; text-transform:uppercase; letter-spacing:0.14em;">Estimated Budget Range</div>
+            <div style="font-family:var(--font-display); font-size: 44px; font-weight: 600; color: white; margin-top: 8px;">
+              ${PCG.canSeeTier('T2_MARGINS') && p.estimatedBudgetLow
+                ? '$'+(p.estimatedBudgetLow/1000).toFixed(0)+'k – $'+(p.estimatedBudgetHigh/1000).toFixed(0)+'k'
+                : '—'}
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 8px;">Final pricing in signed quote</div>
+          </div>
+          <div>
+            <div class="k" style="font-family:var(--font-display); font-size:10px; color:#9DD4FF; text-transform:uppercase; letter-spacing:0.14em;">Key Dates</div>
+            <div style="font-family: var(--font-mono); font-size: 14px; color: white; margin-top: 8px; line-height: 1.9;">
+              LOAD-IN · ${p.keyDates && p.keyDates.loadIn ? PCG.fmtDate(p.keyDates.loadIn) : '—'}<br>
+              SHOW · ${p.keyDates && p.keyDates.showStart ? PCG.fmtDate(p.keyDates.showStart) + ' → ' + PCG.fmtDate(p.keyDates.showEnd) : '—'}<br>
+              LOAD-OUT · ${p.keyDates && p.keyDates.loadOut ? PCG.fmtDate(p.keyDates.loadOut) : '—'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 7 — Next Steps -->
+      <div class="deck-page">
+        <div class="eyebrow">NEXT</div>
+        <h2>Next Steps</h2>
+        <p style="font-size: 16px; color: #444; line-height: 1.6;">${PCG.escapeHtml(p.nextSteps || 'Review proposal → confirm direction → convert to signed quote.')}</p>
+        <div style="margin-top: var(--sp-5); padding-top: var(--sp-4); border-top: 1px solid #E5E9EF; display:flex; align-items:center; gap: var(--sp-3); font-family:var(--font-mono); font-size: 12px; color: #6E7D94;">
+          <span>PREMIER CREATIVE GROUP</span>
+          <span>·</span>
+          <span>${PCG.escapeHtml(ae ? ae.name : '')}${ae ? ' · '+PCG.escapeHtml(ae.role||''):''}</span>
+          <span style="margin-left:auto;">${PCG.escapeHtml(p.id)}</span>
+        </div>
+      </div>
+    `;
+
+    // Convert button state
+    const btn = document.getElementById('convertBtn');
+    if(p.convertedQuoteId){
+      btn.textContent = 'View Converted Quote →';
+      btn.onclick = () => location.href = `quote.html?id=${p.convertedQuoteId}`;
+    } else if(p.status === 'Accepted' || p.status === 'Converted'){
+      btn.textContent = 'Convert to Quote →';
+      btn.onclick = () => {
+        const r = PCG.api.convertPitchToQuote(p.id);
+        if(r.ok){ alert('Pitch marked converted. Quote skeleton created — open Quote Builder to add lines.'); renderList(); renderDeck(); }
+        else alert(r.reason);
+      };
+    } else {
+      btn.textContent = 'Mark Accepted';
+      btn.onclick = () => { p.status = 'Accepted'; p.acceptedAt = new Date().toISOString(); renderList(); renderDeck(); };
+    }
+  }
+
+  window.setPitch = (id) => { currentId = id; renderList(); renderDeck(); };
+  window.newPitch = () => {
+    const title = prompt('New pitch title?','New Proposal — Client Name');
+    if(!title) return;
+    const p = PCG.api.createPitch({
+      title, clientId:'c.microsoft', showType:'GeneralSession',
+      stageSetName:'Marquee', valueProps:[], deliverables:[], creativeDirection:''
+    });
+    currentId = p.id;
+    pitches.push(p);
+    renderList(); renderDeck();
+  };
+
+  renderList(); renderDeck();
+</script>
+</body>
+</html>

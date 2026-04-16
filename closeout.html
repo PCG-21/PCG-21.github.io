@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Closeout</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .co-gate {
+    display:grid; grid-template-columns: 32px 1fr auto;
+    gap: var(--sp-3); align-items: center;
+    padding: 14px var(--sp-4); border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    margin-bottom: var(--sp-3);
+  }
+  .co-gate.pass { border-left: 3px solid var(--status-green); background: rgba(47,191,113,0.05); }
+  .co-gate.fail { border-left: 3px solid var(--status-red); background: rgba(240,78,85,0.05); }
+  .co-gate .chk {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-flex; align-items:center; justify-content:center;
+    font-size: 15px;
+  }
+  .co-gate.pass .chk { background: rgba(47,191,113,0.25); color: var(--status-green); }
+  .co-gate.fail .chk { background: rgba(240,78,85,0.25);  color: var(--status-red); }
+
+  .co-section {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+  }
+  .co-section h4 {
+    font-family: var(--font-display); font-size: var(--fs-md);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: var(--sp-3);
+  }
+  .co-field {
+    display: grid; grid-template-columns: 180px 1fr;
+    align-items: start; margin-bottom: 10px;
+    font-size: var(--fs-sm);
+  }
+  .co-field label {
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+  }
+  .co-field input, .co-field textarea {
+    background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 8px 10px; font-family: inherit; font-size: var(--fs-sm); width: 100%;
+  }
+  .co-field textarea { min-height: 80px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Closeout · §35</div>
+          <h1 id="hdr">—</h1>
+          <div class="muted">Closing → Archived gates. Skipping steps creates financial exposure and uncaptured lessons.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+        </div>
+      </div>
+
+      <div id="gateBanner" style="margin-bottom: var(--sp-4);"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Closeout Gates</div></div>
+            <div class="card-body" id="gates"></div>
+          </div>
+
+          <div class="co-section" style="margin-top: var(--sp-5);">
+            <h4>PM Closeout Sign-Off</h4>
+            <div class="co-field">
+              <label>Sign-off</label>
+              <div id="pmSignoff"></div>
+            </div>
+            <div class="co-field">
+              <label>Scope Delivered vs Sold — Reviewed</label>
+              <div><input type="checkbox" id="scopeReviewed" /> <span class="muted">Check to confirm scope review complete</span></div>
+            </div>
+          </div>
+
+          <div class="co-section">
+            <h4>Lessons Learned (required)</h4>
+            <div class="co-field">
+              <label>Write it down</label>
+              <textarea id="lessons" placeholder="What went well? What didn't? What would you do differently next time? What should future PMs at this venue know?"></textarea>
+            </div>
+          </div>
+
+          <div class="co-section">
+            <h4>Tech / Crew Performance Ratings</h4>
+            <div id="techRatings"></div>
+          </div>
+
+          <div class="co-section">
+            <h4>Open Service Tickets — Disposition</h4>
+            <div id="tickDisp"></div>
+          </div>
+
+          <div class="co-section">
+            <h4>Missing Item Resolutions</h4>
+            <div id="missDisp"></div>
+          </div>
+
+          <div class="co-section">
+            <h4>Client Satisfaction Note (optional)</h4>
+            <div class="co-field">
+              <label>Captured feedback</label>
+              <textarea id="clientSat" placeholder="Anything the client said about the show, good or bad…"></textarea>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:var(--sp-2); margin-top:var(--sp-5);">
+            <button class="btn primary" id="saveBtn">Save Draft</button>
+            <button class="btn spectrum" id="signoffBtn">PM Sign Off Closeout</button>
+            <button class="btn ghost" id="genFinBtn">Generate Finance Handoff Packet</button>
+            <button class="btn" id="archiveBtn" style="margin-left:auto;">Advance to Archived →</button>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Finance Handoff</div></div>
+            <div class="card-body" id="finHandoff" style="font-size:var(--fs-sm);"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Post-Show Follow-Up</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color: var(--text-secondary);">
+              When a show transitions to Archived, the AE gets a 7-day window to log the post-show follow-up outcome with the client.
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color: var(--text-secondary);">
+              CloseoutRecord is the authoritative record for show closure. Once Archived, the record is locked. Corrections after Archive require a new Closing record and Admin reversal.
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Closeout'}]});
+
+  const projects = PCG.api.getProjects().filter(p=>p.show && ['Striking','Returning','Closing','Archived'].includes(p.show.lifecycleState));
+  const fallback = PCG.api.getProjects().filter(p=>p.show);
+  const list = projects.length ? projects : fallback;
+  const sel = document.getElementById('showSel');
+  sel.innerHTML = list.map(p=>`<option value="${p.code}">${p.code} — ${p.name} (${p.show.lifecycleState})</option>`).join('');
+  const q = PCG.qs('project');
+  if(q) sel.value = q;
+  if(!sel.value && list.find(p=>p.show.lifecycleState==='Closing')) sel.value = list.find(p=>p.show.lifecycleState==='Closing').code;
+
+  function render(){
+    const code = sel.value;
+    const p = PCG.api.getProject(code);
+    if(!p){ document.querySelector('.container').innerHTML = PCG.states.empty('Project not found.'); return; }
+
+    document.getElementById('hdr').textContent = `${p.code} — ${p.name}`;
+
+    // Ensure closeout record exists (create in-memory if not — demo)
+    let rec = PCG.api.getCloseoutRecord(code);
+    if(!rec){
+      rec = { id:'co.rec.'+code, showId:code,
+        pmSignoffAt:null, pmSignoffById:null,
+        laborActualsConfirmed:false, subRentalInvoicesMatched:false,
+        scopeVsDeliveredReviewed:false, financeHandoffGeneratedAt:null,
+        missingItemResolutions:[], openTicketDispositions:[],
+        lessonsLearned:'', techRatings:[], clientSatisfactionNote:'',
+        postShowFollowUpAssigned:false };
+      PCG.closeoutRecords = PCG.closeoutRecords || [];
+      PCG.closeoutRecords.push(rec);
+    }
+
+    const check = PCG.api.canCloseoutClose(code);
+
+    // ---- Gate banner ----
+    document.getElementById('gateBanner').innerHTML = check.ok ? `
+      <div class="attn-item blue">
+        <div><div class="ttl">✓ READY TO ADVANCE Closing → Archived</div>
+        <div class="meta">All closeout gates passed. Finance packet generated. Lessons captured.</div></div>
+        <div class="act"><button class="btn primary" onclick="doArchive()">Archive Show</button></div>
+      </div>
+    ` : `
+      <div class="attn-item red">
+        <div><div class="ttl">⛔ CLOSEOUT BLOCKED</div>
+        <div class="meta">${check.reasons.length} gate(s) open. See below.</div></div>
+      </div>
+    `;
+
+    // ---- Gates list ----
+    const openTix = (PCG.serviceTickets||[]).filter(t=>t.showId===code && !['Repaired','ReturnToService','Retired','Deferred'].includes(t.status));
+    const gates = [
+      { ok: !!rec.pmSignoffAt, title: 'PM Closeout Sign-Off', meta: rec.pmSignoffAt ? `Signed ${PCG.fmtDate(rec.pmSignoffAt,{time:true})}` : 'PM must sign off below.' },
+      { ok: rec.laborActualsConfirmed, title: 'Labor Actuals Finalized', meta: rec.laborActualsConfirmed ? 'Locked by Labor Coordinator' : 'Labor Coord must lock all timesheets. Go to Timesheets →', link:'timesheets.html' },
+      { ok: openTix.length===0, title: 'Open Service Tickets Resolved or Deferred', meta: openTix.length===0 ? 'None open' : `${openTix.length} open ticket(s) — resolve or defer below`, link:'service.html' },
+      { ok: !!rec.financeHandoffGeneratedAt, title: 'Finance Handoff Packet Generated', meta: rec.financeHandoffGeneratedAt ? `Generated ${PCG.fmtDate(rec.financeHandoffGeneratedAt,{time:true})}` : 'Click Generate to build packet' },
+      { ok: rec.scopeVsDeliveredReviewed, title: 'Scope Delivered vs Sold — Reviewed', meta: rec.scopeVsDeliveredReviewed ? 'PM confirmed' : 'PM must check reviewed below.' },
+      { ok: !!(rec.lessonsLearned && rec.lessonsLearned.trim()), title: 'Lessons Learned Captured', meta: rec.lessonsLearned ? 'Captured' : 'Required field below — must not be empty.' },
+      { ok: rec.subRentalInvoicesMatched, title: 'Sub-Rental Invoices Matched', meta: rec.subRentalInvoicesMatched ? 'Matched in 3-way' : 'Procurement pending — auto-checked when all RPO invoices reconcile' }
+    ];
+    document.getElementById('gates').innerHTML = gates.map(g=>`
+      <div class="co-gate ${g.ok?'pass':'fail'}">
+        <div class="chk">${g.ok?'✓':'!'}</div>
+        <div><strong>${PCG.escapeHtml(g.title)}</strong><div class="muted" style="font-size:11px; margin-top:2px;">${PCG.escapeHtml(g.meta)}</div></div>
+        <div>${g.link && !g.ok ? `<a class="btn sm ghost" href="${g.link}?project=${code}">Open</a>` : ''}</div>
+      </div>
+    `).join('');
+
+    // ---- PM Sign-off field ----
+    const signed = !!rec.pmSignoffAt;
+    const signer = signed ? (PCG.findPerson(rec.pmSignoffById)||{}).name : '';
+    document.getElementById('pmSignoff').innerHTML = signed
+      ? `<span class="pill green">✓ SIGNED</span> <span class="mono muted" style="font-size:11px;">by ${PCG.escapeHtml(signer||'—')} · ${PCG.fmtDate(rec.pmSignoffAt,{time:true})}</span>`
+      : `<span class="muted">Not signed — use "PM Sign Off" button below</span>`;
+
+    // ---- Inputs ----
+    document.getElementById('scopeReviewed').checked = !!rec.scopeVsDeliveredReviewed;
+    document.getElementById('lessons').value = rec.lessonsLearned || '';
+    document.getElementById('clientSat').value = rec.clientSatisfactionNote || '';
+
+    // ---- Tech ratings ----
+    const crew = PCG.api.getProjectCrew(code).filter(r=>r.crew && r.assignment.status==='Completed');
+    const anyCrew = PCG.api.getProjectCrew(code).filter(r=>r.crew);
+    document.getElementById('techRatings').innerHTML = (crew.length?crew:anyCrew).slice(0,8).map(r=>{
+      const existing = (rec.techRatings||[]).find(x=>x.crewMemberId===r.crew.id);
+      return `<div class="co-field">
+        <label>${PCG.escapeHtml(r.crew.name)}</label>
+        <div>
+          <select data-crew="${r.crew.id}" class="tech-rating-sel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+            <option value="">— rate —</option>
+            ${[1,2,3,4,5].map(n=>`<option ${existing && existing.rating===n?'selected':''}>${n}</option>`).join('')}
+          </select>
+          <input class="tech-rating-note" data-crew="${r.crew.id}" placeholder="Notes (optional)" value="${existing?PCG.escapeHtml(existing.notes||''):''}" style="margin-left:6px; width:calc(100% - 160px);"/>
+        </div>
+      </div>`;
+    }).join('') || PCG.states.empty('No completed crew to rate.');
+
+    // ---- Ticket dispositions ----
+    const showTix = (PCG.serviceTickets||[]).filter(t=>t.showId===code);
+    document.getElementById('tickDisp').innerHTML = showTix.length ? showTix.map(t=>{
+      const disp = (rec.openTicketDispositions||[]).find(d=>d.ticketId===t.id);
+      return `<div class="co-field">
+        <label><strong class="mono" style="font-size:11px;">${t.id}</strong> ${t.serialId||''}</label>
+        <div>
+          <div style="font-size:var(--fs-xs); color:var(--text-secondary); margin-bottom:4px;">${PCG.escapeHtml(t.description||'')}</div>
+          <select data-tid="${t.id}" class="tix-disp">
+            <option value="">— disposition —</option>
+            <option ${disp&&disp.disposition==='Resolved'?'selected':''}>Resolved</option>
+            <option ${disp&&disp.disposition==='Deferred'?'selected':''}>Deferred</option>
+          </select>
+          <input class="tix-note" data-tid="${t.id}" placeholder="Notes / expected resolution date" value="${disp?PCG.escapeHtml(disp.notes||''):''}" style="margin-left:6px; width:calc(100% - 180px);"/>
+        </div>
+      </div>`;
+    }).join('') : '<div class="muted" style="font-size:var(--fs-sm);">No service tickets on this show.</div>';
+
+    // ---- Missing item resolutions ----
+    const serialsOnShow = (PCG.inventorySerials||[]).filter(s=>s.currentShowId===code && (s.status==='Lost' || s.status==='Missing'));
+    document.getElementById('missDisp').innerHTML = serialsOnShow.length ? serialsOnShow.map(s=>{
+      const r = (rec.missingItemResolutions||[]).find(x=>x.serialId===s.id);
+      return `<div class="co-field">
+        <label><strong class="mono" style="font-size:11px;">${s.serial}</strong></label>
+        <div>
+          <select data-serial="${s.id}" class="miss-res">
+            <option value="">— resolution —</option>
+            <option ${r&&r.resolution==='FoundReturned'?'selected':''}>Found & Returned</option>
+            <option ${r&&r.resolution==='WrittenOff'?'selected':''}>Written Off</option>
+            <option ${r&&r.resolution==='InsuranceClaim'?'selected':''}>Insurance Claim</option>
+            <option ${r&&r.resolution==='ClientBillable'?'selected':''}>Client Billable</option>
+          </select>
+        </div>
+      </div>`;
+    }).join('') : '<div class="muted" style="font-size:var(--fs-sm);">No missing items on this show.</div>';
+
+    // ---- Finance Handoff preview ----
+    if(rec.financeHandoffGeneratedAt){
+      try {
+        const packet = PCG.api.generateQBHandoff(code);
+        document.getElementById('finHandoff').innerHTML = `
+          <div class="pill blue" style="margin-bottom:8px;">GENERATED</div>
+          <div style="font-size:11px;">Generated ${PCG.fmtDate(rec.financeHandoffGeneratedAt,{time:true})}</div>
+          <div class="divider"></div>
+          <div class="kv-grid">
+            <div class="k">Total Revenue</div><div class="v mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(packet.financials.totalRevenue):'🔒'}</div>
+            <div class="k">Labor Actual</div><div class="v mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(packet.financials.laborCostActual):'🔒'}</div>
+            <div class="k">Sub-Rental</div><div class="v mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(packet.financials.subRentalCostActual):'🔒'}</div>
+            <div class="k">Est. Margin</div><div class="v mono">${PCG.canSeeTier('T2_MARGINS')?PCG.pct(packet.financials.estimatedMargin):'🔒'}</div>
+          </div>
+          <div class="divider"></div>
+          <a href="finance.html" class="btn sm ghost">Open Finance →</a>
+        `;
+      } catch(e){ document.getElementById('finHandoff').innerHTML = PCG.states.forbidden(); }
+    } else {
+      document.getElementById('finHandoff').innerHTML = `<div class="muted" style="font-size:var(--fs-sm);">Not yet generated. Click "Generate Finance Handoff Packet" below.</div>`;
+    }
+
+    // ---- Wire actions ----
+    window._rec = rec; window._code = code;
+  }
+
+  function collectForm(){
+    const rec = window._rec;
+    if(!rec) return;
+    rec.scopeVsDeliveredReviewed = document.getElementById('scopeReviewed').checked;
+    rec.lessonsLearned = document.getElementById('lessons').value;
+    rec.clientSatisfactionNote = document.getElementById('clientSat').value;
+    rec.techRatings = [];
+    document.querySelectorAll('.tech-rating-sel').forEach(selEl=>{
+      const crewId = selEl.dataset.crew;
+      const rating = parseInt(selEl.value,10);
+      const noteEl = document.querySelector(`.tech-rating-note[data-crew="${crewId}"]`);
+      if(!isNaN(rating)) rec.techRatings.push({ crewMemberId: crewId, rating, notes: noteEl?noteEl.value:'', ratedById:PCG.user.id });
+    });
+    rec.openTicketDispositions = [];
+    document.querySelectorAll('.tix-disp').forEach(selEl=>{
+      if(selEl.value){
+        const tid = selEl.dataset.tid;
+        const noteEl = document.querySelector(`.tix-note[data-tid="${tid}"]`);
+        rec.openTicketDispositions.push({ ticketId: tid, disposition: selEl.value, notes: noteEl?noteEl.value:'' });
+      }
+    });
+    rec.missingItemResolutions = [];
+    document.querySelectorAll('.miss-res').forEach(selEl=>{
+      if(selEl.value){
+        rec.missingItemResolutions.push({ serialId: selEl.dataset.serial, resolution: selEl.value, resolvedById: PCG.user.id });
+      }
+    });
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    collectForm();
+    alert('Draft saved.');
+    render();
+  });
+
+  document.getElementById('signoffBtn').addEventListener('click', ()=>{
+    collectForm();
+    const rec = window._rec;
+    if(!rec.lessonsLearned.trim()){ alert('Lessons Learned is required before sign-off.'); return; }
+    rec.pmSignoffAt = new Date().toISOString();
+    rec.pmSignoffById = PCG.user.id;
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at: rec.pmSignoffAt, actor: PCG.user.id, action: 'closeout.pmSignoff', entityId: window._code });
+    render();
+  });
+
+  document.getElementById('genFinBtn').addEventListener('click', ()=>{
+    try {
+      const packet = PCG.api.generateQBHandoff(window._code);
+      if(packet){
+        window._rec.financeHandoffGeneratedAt = new Date().toISOString();
+        alert('Finance Handoff Packet generated.');
+        render();
+      }
+    } catch(e){ alert('Permission denied: '+e.message); }
+  });
+
+  document.getElementById('archiveBtn').addEventListener('click', ()=>{
+    const check = PCG.api.canCloseoutClose(window._code);
+    if(!check.ok){
+      alert('Cannot archive — gates open:\n• '+check.reasons.join('\n• '));
+      return;
+    }
+    doArchive();
+  });
+
+  window.doArchive = () => {
+    const show = PCG.api.getShow(window._code);
+    const result = PCG.api.transitionShow(window._code, 'Archived');
+    if(result.ok){
+      alert('✓ Show archived. Inventory released. Record locked. Post-show follow-up assigned to AE.');
+      location.reload();
+    } else {
+      alert('Transition blocked: '+(result.reasons||[]).join(', '));
+    }
+  };
+
+  sel.addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

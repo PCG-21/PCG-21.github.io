@@ -6,6 +6,80 @@
 <meta name="theme-color" content="#0F1B2E" />
 <title>PCG Crew</title>
 <link rel="stylesheet" href="crew.css" />
+<style>
+  /* ---- Extended styles for tabs + timesheet entry ---- */
+  .tabbar {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    position: sticky; bottom: 0; z-index: 10;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
+  }
+  .tabbar a {
+    text-align: center; text-decoration: none; color: var(--text3);
+    font-family: var(--display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 6px 2px; border-radius: 6px;
+  }
+  .tabbar a.on { color: var(--blue); }
+  .tabbar a .icon { display: block; font-size: 18px; margin-bottom: 2px; }
+  .screen { padding-bottom: 80px; }
+
+  .ts-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+    margin: 12px 20px;
+  }
+  .ts-card .date {
+    font-family: var(--display); font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.14em; color: var(--text3);
+  }
+  .ts-card h3 {
+    font-family: var(--display); font-size: 20px;
+    font-weight: 700; margin: 4px 0 8px;
+    text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .ts-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 10px;
+  }
+  .ts-grid label {
+    font-family: var(--display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--text3); margin-bottom: 4px; display: block;
+  }
+  .ts-grid input, .ts-grid textarea {
+    width: 100%; background: var(--surface2);
+    color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 10px;
+    font-family: inherit; font-size: 14px;
+  }
+  .ts-grid.single { grid-template-columns: 1fr; }
+  .ts-stat {
+    background: rgba(1,153,253,0.12); border: 1px solid rgba(1,153,253,0.4);
+    border-radius: 8px; padding: 8px 10px;
+    font-family: var(--mono); font-size: 12px; color: var(--blue);
+    margin: 10px 0;
+  }
+  .ts-status {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 999px; font-size: 10px; font-weight: 600;
+  }
+  .ts-status.Draft     { background: rgba(245,183,60,0.18); color: var(--amber); }
+  .ts-status.Submitted { background: rgba(1,153,253,0.18); color: var(--blue); }
+  .ts-status.Approved  { background: rgba(47,191,113,0.18); color: var(--green); }
+  .pill-sm { display:inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10px; }
+  .pill-green { background: rgba(47,191,113,0.18); color: var(--green); }
+  .pill-amber { background: rgba(245,183,60,0.18); color: var(--amber); }
+  .pill-red   { background: rgba(240,78,85,0.18); color: var(--red); }
+
+  .avail-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding: 10px 0; border-bottom: 1px dashed var(--border);
+    font-size: 13px;
+  }
+  .avail-row:last-child { border-bottom: 0; }
+</style>
 </head>
 <body>
 <div class="shell" id="shell"></div>
@@ -14,18 +88,12 @@
 <script src="../assets/data.js"></script>
 <script src="../assets/permissions.js"></script>
 <script src="../assets/seed.js"></script>
-
-<!-- Crew PWA's own API client — does not use PCG.api.* (different surface, different permissions) -->
 <script src="crew-api.js"></script>
 
 <script>
   const shell = document.getElementById('shell');
-
   const me    = CrewApi.getMe();
   const show  = CrewApi.getMyShow();
-  const assns = CrewApi.getMyAssignments();
-  const trav  = CrewApi.getMyTravel();
-  const contacts = CrewApi.getKeyContacts();
 
   if(!me || !show){
     shell.innerHTML = `
@@ -34,117 +102,598 @@
         <p>Your magic link may have expired, or no active show is assigned. Check with the Labor Coordinator.</p>
       </div>`;
   } else {
-    const myNextAssn = assns.find(a=>a.showId===show.code) || assns[0];
-
-    // Pick the next call date
-    const today = new Date(); today.setHours(0,0,0,0);
-    const nextDate = (myNextAssn && (myNextAssn.dates||[]).find(d => new Date(d)>=today)) || (myNextAssn && myNextAssn.dates && myNextAssn.dates[0]);
-
-    const fmtDay = iso => {
-      if(!iso) return '—';
-      const d = new Date(iso);
-      return `${d.toLocaleString('en-US',{weekday:'short'})} ${d.toLocaleString('en-US',{month:'short'})} ${d.getDate()}`;
-    };
-    const statusCls = (myNextAssn && myNextAssn.status==='Confirmed') ? 'confirmed' : 'invited';
-
-    shell.innerHTML = `
-      <header class="hero">
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-          <img src="../assets/pcg-logo.png" onerror="this.onerror=null;this.src='../assets/pcg-logo.svg';" alt="PCG" style="width:32px; height:32px; border-radius:50%;" />
-          <div class="kicker" style="margin:0;">PCG CREW · LIGHTS. CAMERA. SHOWTIME.</div>
-        </div>
-        <h1>${escapeHtml(show.name)}</h1>
-        <span class="status ${statusCls}">${myNextAssn ? escapeHtml(myNextAssn.status.toUpperCase()) : 'PENDING'}</span>
-        <div class="me">
-          <span class="avatar">${escapeHtml(me.initials)}</span>
-          <div>
-            <div class="nm">${escapeHtml(me.name)}</div>
-            <div class="rl">${escapeHtml((myNextAssn && myNextAssn.position && myNextAssn.position.name) || me.role || 'Crew')}</div>
-          </div>
-        </div>
-      </header>
-
-      ${ myNextAssn ? `
-        <div class="callcard">
-          <div class="time">${escapeHtml(myNextAssn.callTime||'—')}</div>
-          <div>
-            <div style="font-family:var(--display); font-size:14px; text-transform:uppercase; letter-spacing:0.04em;">Next call</div>
-            <div>${escapeHtml(fmtDay(nextDate))}</div>
-            <div class="line">${escapeHtml(show.venue ? show.venue.name : '—')}</div>
-          </div>
-        </div>
-
-        ${myNextAssn.status!=='Acknowledged' ? `<a href="javascript:acknowledge()" class="cta spectrum">Acknowledge</a>` : `<div class="cta ghost">✓ Acknowledged</div>`}
-      ` : ''}
-
-      <section class="section">
-        <div class="label">Venue</div>
-        <div class="value"><strong>${escapeHtml(show.venue ? show.venue.name : '—')}</strong></div>
-        <div class="value" style="font-size:13px; color:var(--text2); margin-top:4px;">${escapeHtml(show.venue ? show.venue.address : '')}</div>
-        ${show.venue && show.venue.loadInNotes ? `<div class="value" style="font-size:12px; color:var(--text2); margin-top:8px;">${escapeHtml(show.venue.loadInNotes)}</div>` : ''}
-      </section>
-
-      ${trav ? `
-        <section class="section">
-          <div class="label">Your Travel</div>
-          <div class="value" style="margin-top:4px;"><strong>${escapeHtml(trav.airline||'')} ${escapeHtml(trav.route)}</strong></div>
-          <div class="value" style="font-size:13px; color:var(--text2);">Conf · ${escapeHtml(trav.flightConfirmation||'—')}</div>
-          <div class="value" style="font-size:13px;">${fmtDateTime(trav.departureTime)} → ${fmtDateTime(trav.arrivalTime)}</div>
-          ${trav.hotelName ? `<div class="value" style="font-size:13px; margin-top:8px;"><strong>${escapeHtml(trav.hotelName)}</strong></div>
-            <div class="value" style="font-size:12px; color:var(--text2);">Conf · ${escapeHtml(trav.hotelConfirmation||'—')}</div>` : ''}
-        </section>` : ''}
-
-      ${contacts.length ? `
-        <section class="section">
-          <div class="label">Key Contacts</div>
-          ${contacts.map(c=>`
-            <div class="value" style="margin-top:8px;">
-              <strong>${escapeHtml(c.name)}</strong>
-              <div style="font-size:12px; color:var(--text2);">${escapeHtml(c.role)} · <a href="tel:${escapeHtml(c.phone||'')}">${escapeHtml(c.phone||'')}</a></div>
-            </div>`).join('')}
-        </section>` : ''}
-
-      <section class="section">
-        <div class="label">Crew-Safe Documents</div>
-        <div class="doc-list" style="margin-top:8px;">
-          <div class="d"><span class="icon">❏</span>Show Book (crew-safe) · <a href="../showbook.html?project=${show.code}">View</a></div>
-          <div class="d"><span class="icon">▣</span>Venue Load-In Map</div>
-          <div class="d"><span class="icon">⌘</span>Show Flow (read-only)</div>
-        </div>
-      </section>
-
-      <section class="shows">
-        <div style="font-family:var(--display); text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--text3); margin:8px 0;">Upcoming</div>
-        ${assns.filter(a=>a.showId!==show.code).length ? assns.filter(a=>a.showId!==show.code).map(a => `
-          <div class="item">
-            <div class="day">${(new Date((a.dates||[])[0]||show.dates.showStart)).getDate()}<small>${(new Date((a.dates||[])[0]||show.dates.showStart)).toLocaleString('en-US',{month:'short'}).toUpperCase()}</small></div>
-            <div style="flex:1;">
-              <div class="nm">${escapeHtml(a.showName)}</div>
-              <div class="rl">${escapeHtml((a.position&&a.position.name)||'—')} · Call ${escapeHtml(a.callTime||'—')}</div>
-            </div>
-            <div class="rl" style="font-size:10px; text-transform:uppercase;">${escapeHtml(a.status)}</div>
-          </div>
-        `).join('') : `<div style="font-size:13px; color:var(--text3);">No other upcoming shows.</div>`}
-      </section>
-
-      <footer class="footer">
-        <div>PCG Crew PWA v1.0 · Magic-link scoped session</div>
-        <div style="margin-top:6px;">Issues? Text <a href="tel:+13135550100">PM</a></div>
-      </footer>
-    `;
+    routeTo(parseRoute() || 'schedule');
+    window.addEventListener('hashchange', ()=>routeTo(parseRoute() || 'schedule'));
   }
 
-  function escapeHtml(s){
-    return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function parseRoute(){ return (location.hash||'').replace('#/','').trim(); }
+  function escapeHtml(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtDay(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return `${d.toLocaleString('en-US',{weekday:'short'})} ${d.toLocaleString('en-US',{month:'short'})} ${d.getDate()}`;
   }
   function fmtDateTime(iso){
     if(!iso) return '—';
     const d = new Date(iso);
     return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
   }
-  function acknowledge(){
-    CrewApi.acknowledge(show.code);
-    location.reload();
+
+  function routeTo(key){
+    const views = {
+      home: renderHome, schedule: renderSchedule, shift: renderShiftDetail,
+      time: renderTime, timecards: renderTimeCards,
+      timesheet: renderTimesheet, travel: renderTravel,
+      documents: renderDocuments, availability: renderAvailability,
+      messages: renderMessages, events: renderEvents,
+      tasks: renderTasks
+    };
+    const view = views[key] || renderHome;
+    const showingDetail = key === 'shift';
+    shell.innerHTML = `
+      <header class="hero">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <img src="../assets/pcg-logo.png" onerror="this.onerror=null;this.src='../assets/pcg-logo.svg';" alt="PCG" style="width:32px; height:32px; border-radius:50%;" />
+          <div class="kicker" style="margin:0;">PCG CREW · ${escapeHtml(me.name.split(' ')[0].toUpperCase())}</div>
+        </div>
+        <h1>${escapeHtml(show.name)}</h1>
+      </header>
+
+      <div class="screen" id="screen"></div>
+
+      <nav class="tabbar">
+        <a href="#/home"      class="${key==='home'?'on':''}"><span class="icon">🏠</span>Home</a>
+        <a href="#/events"    class="${key==='events'||key==='schedule'||key==='shift'?'on':''}"><span class="icon">📅</span>Events</a>
+        <a href="#/time"      class="${key==='time'?'on':''}"><span class="icon">⏱</span>Time</a>
+        <a href="#/messages"  class="${key==='messages'?'on':''}"><span class="icon">✉</span>Inbox</a>
+        <a href="#/timesheet" class="${key==='timesheet'?'on':''}"><span class="icon">🗂</span>Sheets</a>
+      </nav>
+    `;
+    view();
+  }
+
+  // ---------- Home (Lasso-parity: Today's shifts, Roster Confirmations, Quick grid) ----------
+  function renderHome(){
+    const assns = CrewApi.getMyAssignments();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().slice(0,10);
+    const todayShifts = [];
+    assns.forEach(a => (a.dates||[]).forEach(d => { if(d === todayStr) todayShifts.push({...a, date:d}); }));
+    const toConfirm = assns.filter(a => a.status === 'Invited' || a.status === 'Applied');
+    const messages = CrewApi.getMyMessages().filter(m => !m.archived).slice(0,3);
+    const tasks = [];  // Lasso-style "My tasks this week"
+
+    const activeClock = CrewApi.getActiveClockEvent();
+    const clockLabel = activeClock
+      ? `On shift — started ${new Date(activeClock.clockIn).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`
+      : 'Not clocked in';
+
+    document.getElementById('screen').innerHTML = `
+      <section class="section">
+        <div class="label">Today · ${new Date().toLocaleString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+        ${todayShifts.length ? todayShifts.map(s=>`
+          <a href="#/shift?showId=${s.showId}&date=${s.date}" style="display:block; text-decoration:none; color:inherit;">
+            <div class="callcard">
+              <div class="time">${escapeHtml(s.callTime||'—')}</div>
+              <div>
+                <div style="font-family:var(--display); font-size:14px; text-transform:uppercase; letter-spacing:0.04em;">${escapeHtml(s.showName)}</div>
+                <div class="line">${escapeHtml((s.position&&s.position.name)||'Crew')} · ${escapeHtml(s.status)}</div>
+              </div>
+            </div>
+          </a>
+        `).join('') : `<div style="color:var(--text2); font-size:13px;">No shifts today.</div>`}
+      </section>
+
+      <section class="section" style="padding-top: 8px;">
+        <div class="label">Clock Status</div>
+        <div class="value" style="font-size:14px;">${escapeHtml(clockLabel)}</div>
+        <a href="#/time" class="cta ${activeClock?'':'spectrum'}" style="margin:8px 0 0; display:inline-block; padding: 10px 18px;">${activeClock?'⏹ Go to Clock Out':'⏱ Clock In'}</a>
+      </section>
+
+      ${toConfirm.length ? `
+        <section class="section">
+          <div class="label">Roster Confirmations (${toConfirm.length})</div>
+          ${toConfirm.slice(0,3).map(a=>`
+            <div class="callcard">
+              <div style="flex:1;">
+                <div style="font-family:var(--display); font-size:13px; text-transform:uppercase; letter-spacing:0.04em;">${escapeHtml(a.showName)}</div>
+                <div class="line">${(a.dates||[]).length} day${(a.dates||[]).length===1?'':'s'} · ${escapeHtml((a.position&&a.position.name)||'Crew')}</div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <a href="#/shift?showId=${a.showId}" class="pill-sm pill-green" style="text-decoration:none; padding:4px 10px;">Confirm</a>
+                <span class="pill-sm pill-red" style="padding:4px 10px; cursor:pointer;">Decline</span>
+              </div>
+            </div>`).join('')}
+        </section>` : ''}
+
+      ${messages.length ? `
+        <section class="section">
+          <div class="label">Recent Messages · <a href="#/messages" style="font-size:11px; color:var(--blue); text-decoration:none;">All →</a></div>
+          ${messages.map(m=>`
+            <div style="padding:8px 0; border-bottom: 1px dashed var(--border); font-size:13px;">
+              <div style="font-weight:600;">${escapeHtml(m.subject)}</div>
+              <div style="color:var(--text2); font-size:11px; margin-top:2px;">${escapeHtml(m.preview.slice(0,80))}…</div>
+            </div>`).join('')}
+        </section>` : ''}
+
+      <section class="section">
+        <div class="label">Quick Actions</div>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:8px;">
+          <a href="#/schedule"    style="text-decoration:none; color:inherit; text-align:center; padding:14px 6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <div style="font-size:22px;">📅</div><div style="font-size:11px; color:var(--text2); margin-top:4px;">Schedule</div>
+          </a>
+          <a href="#/timecards"   style="text-decoration:none; color:inherit; text-align:center; padding:14px 6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <div style="font-size:22px;">🗂</div><div style="font-size:11px; color:var(--text2); margin-top:4px;">Time Cards</div>
+          </a>
+          <a href="#/events"      style="text-decoration:none; color:inherit; text-align:center; padding:14px 6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <div style="font-size:22px;">📋</div><div style="font-size:11px; color:var(--text2); margin-top:4px;">Event List</div>
+          </a>
+          <a href="#/tasks"       style="text-decoration:none; color:inherit; text-align:center; padding:14px 6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <div style="font-size:22px;">✓</div><div style="font-size:11px; color:var(--text2); margin-top:4px;">Tasks</div>
+          </a>
+          <a href="#/travel"      style="text-decoration:none; color:inherit; text-align:center; padding:14px 6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <div style="font-size:22px;">✈</div><div style="font-size:11px; color:var(--text2); margin-top:4px;">Travel</div>
+          </a>
+          <a href="#/availability" style="text-decoration:none; color:inherit; text-align:center; padding:14px 6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <div style="font-size:22px;">⊘</div><div style="font-size:11px; color:var(--text2); margin-top:4px;">Availability</div>
+          </a>
+        </div>
+      </section>
+    `;
+  }
+
+  // ---------- Time (Clock In/Out — Lasso parity) ----------
+  function renderTime(){
+    const active = CrewApi.getActiveClockEvent();
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit', hour12:true}).toLowerCase();
+    const canClockIn = !active;
+    const canClockOut = !!active;
+
+    let elapsedStr = '';
+    if(active){
+      const mins = Math.floor((now - new Date(active.clockIn)) / 60000);
+      const h = Math.floor(mins/60); const m = mins % 60;
+      elapsedStr = `On shift · ${h}h ${m}m`;
+    }
+
+    document.getElementById('screen').innerHTML = `
+      <div style="background:white; color:#111; padding: 40px 20px; border-radius: 12px; margin: 20px; text-align:center;">
+        <div style="font-family: var(--body); font-size: 48px; color:#111; font-weight: 300; letter-spacing: -0.02em;">
+          ${escapeHtml(timeStr)}
+        </div>
+        ${elapsedStr ? `<div style="font-family: var(--mono); font-size: 13px; color:#666; margin-top: 8px;">${escapeHtml(elapsedStr)}</div>`:''}
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 28px;">
+          <button
+            ${canClockIn ? '' : 'disabled'}
+            onclick="clockInNow()"
+            style="padding: 18px 8px; background: ${canClockIn?'#111':'#eee'}; color: ${canClockIn?'white':'#aaa'}; border: 1px solid #111; border-radius: 8px; font-family: var(--display); font-size: 15px; text-transform: uppercase; letter-spacing: 0.14em; cursor: ${canClockIn?'pointer':'not-allowed'};">
+            CLOCK IN
+          </button>
+          <button
+            ${canClockOut ? '' : 'disabled'}
+            onclick="clockOutNow()"
+            style="padding: 18px 8px; background: ${canClockOut?'#D92FB4':'#eee'}; color: ${canClockOut?'white':'#aaa'}; border: 1px solid ${canClockOut?'#D92FB4':'#ccc'}; border-radius: 8px; font-family: var(--display); font-size: 15px; text-transform: uppercase; letter-spacing: 0.14em; cursor: ${canClockOut?'pointer':'not-allowed'};">
+            CLOCK OUT
+          </button>
+        </div>
+        ${active ? `<div style="color:#888; font-size: 11px; margin-top: 14px;">Clocked in at ${new Date(active.clockIn).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · ${escapeHtml(active.shift)}</div>`:''}
+      </div>
+
+      <section class="section">
+        <div class="label">About Clock Events</div>
+        <div style="color:var(--text2); font-size:12px; margin-top:4px;">
+          Clock in/out events feed your timesheet for the day. Labor Coordinator approves before payroll export.
+          OT calculation uses your PayRule (Lasso parity).
+        </div>
+      </section>
+
+      <a href="#/timecards" class="cta ghost">View My Time Cards →</a>
+    `;
+  }
+
+  window.clockInNow = () => { CrewApi.clockIn(); routeTo('time'); };
+  window.clockOutNow = () => { CrewApi.clockOut(); routeTo('time'); };
+
+  // ---------- Time Cards (list — Lasso parity) ----------
+  function renderTimeCards(){
+    const cards = CrewApi.getMyTimeCards();
+    document.getElementById('screen').innerHTML = `
+      <section class="section" style="padding: 14px 20px; border-bottom: 1px solid var(--border);">
+        <div style="display:flex; align-items:center; gap: 10px;">
+          <div style="font-family: var(--display); font-size: 14px;"><span style="color:var(--blue);">⏱</span> Time Cards</div>
+          <select style="margin-left:auto; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding: 4px 8px; font-size: 12px;">
+            <option>Most Recent</option>
+            <option>This Week</option>
+            <option>This Month</option>
+            <option>All</option>
+          </select>
+        </div>
+      </section>
+
+      <section style="padding: 0 20px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 80px; gap: 10px; padding: 10px 0; font-family: var(--display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); border-bottom: 1px solid var(--border);">
+          <div>Begin</div><div>End</div><div>Account</div><div style="text-align:right;">Hrs</div>
+        </div>
+        ${cards.length ? cards.map(c=>{
+          const begin = new Date(c.begin);
+          const end = c.end ? new Date(c.end) : null;
+          return `
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 80px; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 12px;">
+              <div>${escapeHtml(begin.toLocaleDateString('en-US',{month:'short',day:'numeric'}))}<br><span style="color:var(--text3); font-family:var(--mono); font-size:11px;">${escapeHtml(begin.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}))}</span></div>
+              <div>${end ? escapeHtml(end.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+'<br><span style="color:var(--text3); font-family:var(--mono); font-size:11px;">'+escapeHtml(end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}))+'</span>' : '<span style="color:var(--amber);">— Active —</span>'}</div>
+              <div class="mono" style="font-size:11px;">${escapeHtml(c.account)}</div>
+              <div style="text-align:right; font-family:var(--mono); font-weight:600;">${escapeHtml(c.hours)}</div>
+            </div>`;
+        }).join('') : `<div style="padding: 40px 0; text-align:center; color:var(--text3); font-size:13px;">No time cards for this date range</div>`}
+      </section>
+
+      <section class="section" style="padding-top: 20px;">
+        <a href="#/time" class="cta ghost">← Back to Clock</a>
+      </section>
+    `;
+  }
+
+  // ---------- Messages (Inbox — Lasso parity) ----------
+  function renderMessages(){
+    const all = CrewApi.getMyMessages();
+    const inbox = all.filter(m => !m.archived);
+    const archived = all.filter(m => m.archived);
+    const params = new URLSearchParams(location.hash.split('?')[1] || '');
+    const tab = params.get('tab') || 'inbox';
+    const list = tab === 'archived' ? archived : inbox;
+
+    document.getElementById('screen').innerHTML = `
+      <section style="padding: 14px 20px 0;">
+        <div style="display:flex; gap: 20px; border-bottom: 1px solid var(--border);">
+          <a href="#/messages?tab=inbox" style="padding: 10px 0; text-decoration:none; font-family: var(--display); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: ${tab==='inbox'?'var(--amber)':'var(--text3)'}; border-bottom: 2px solid ${tab==='inbox'?'var(--amber)':'transparent'};">My Inbox</a>
+          <a href="#/messages?tab=archived" style="padding: 10px 0; text-decoration:none; font-family: var(--display); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: ${tab==='archived'?'var(--amber)':'var(--text3)'}; border-bottom: 2px solid ${tab==='archived'?'var(--amber)':'transparent'};">Archived</a>
+        </div>
+      </section>
+
+      <section style="padding: 12px 20px 0;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; color: var(--text3); font-size: 13px;">
+          🔍 Search
+        </div>
+      </section>
+
+      <section style="padding: 8px 20px;">
+        ${list.length ? list.map(m=>{
+          const from = (window.PCG.people||[]).find(p=>p.id===m.from);
+          return `
+            <div style="padding: 14px 0; border-bottom: 1px solid var(--border);">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--amber); font-size:16px;">✉</span>
+                <div style="flex:1;">
+                  <div style="font-weight:600; font-size: 14px;">${escapeHtml(m.subject)}</div>
+                  <div style="color: var(--text2); font-size: 12px; margin-top: 2px;">${escapeHtml(m.preview)}</div>
+                </div>
+                <div style="color: var(--text3); font-size: 11px; font-family: var(--mono);">${escapeHtml(new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}))}</div>
+              </div>
+            </div>`;
+        }).join('') : `<div style="padding: 40px 0; text-align:center; color:var(--text3); font-size:13px;">No ${tab==='archived'?'archived':'new'} messages</div>`}
+      </section>
+    `;
+  }
+
+  // ---------- Events (list of all my assigned shows) ----------
+  function renderEvents(){
+    const events = CrewApi.getMyUpcomingEvents();
+    const today = new Date();
+    document.getElementById('screen').innerHTML = `
+      <section style="padding: 14px 20px 6px;">
+        <div style="display:inline-block; padding: 4px 14px; border: 1px solid var(--amber); border-radius: 999px; font-family: var(--display); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--amber);">
+          ${escapeHtml(today.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}))} — All future events
+        </div>
+      </section>
+
+      <section style="padding: 0 20px;">
+        ${events.length ? events.map(e=>{
+          const start = new Date(e.loadIn);
+          const end = new Date(e.allDates[e.allDates.length-1] || e.loadOut);
+          return `
+            <a href="#/shift?showId=${e.showId}" style="text-decoration:none; color:inherit; display:block;">
+              <div style="display:grid; grid-template-columns: auto 1fr; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 10px;">
+                <img src="../assets/pcg-logo.png" onerror="this.onerror=null;this.src='../assets/pcg-logo.svg';" alt="" style="width: 40px; height: 40px; border-radius: 8px;" />
+                <div>
+                  <div style="font-weight:600;">${escapeHtml(e.showName)}</div>
+                  <div style="color: var(--text2); font-size: 12px; margin-top:2px;">${escapeHtml(e.venueName||'—')}</div>
+                  <div style="margin-top: 10px;">
+                    <span style="display:inline-block; padding: 4px 10px; background: rgba(245,183,60,0.15); color: var(--amber); border-radius: 6px; font-size: 11px; font-family: var(--mono);">
+                      ${start.toLocaleString('en-US',{weekday:'short'})} ${escapeHtml(start.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'}))}
+                    </span>
+                    <span style="margin: 0 6px; color: var(--text3);">→</span>
+                    <span style="display:inline-block; padding: 4px 10px; background: rgba(245,183,60,0.15); color: var(--amber); border-radius: 6px; font-size: 11px; font-family: var(--mono);">
+                      ${end.toLocaleString('en-US',{weekday:'short'})} ${escapeHtml(end.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'}))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </a>`;
+        }).join('') : `<div style="padding: 40px 0; text-align:center; color:var(--text3); font-size:13px;">No upcoming events</div>`}
+      </section>
+    `;
+  }
+
+  // ---------- Tasks ----------
+  function renderTasks(){
+    document.getElementById('screen').innerHTML = `
+      <section class="section" style="padding: 14px 20px;">
+        <div class="label">Tasks This Week</div>
+        <div style="text-align:center; padding: 60px 20px; color: var(--text3);">
+          <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+          <div style="font-size: 13px;">No tasks</div>
+        </div>
+      </section>
+    `;
+  }
+
+  // ---------- My Schedule ----------
+  function renderSchedule(){
+    const assns = CrewApi.getMyAssignments();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const rows = [];
+
+    assns.forEach(a => {
+      (a.dates||[]).forEach(d => {
+        rows.push({ showId:a.showId, showName:a.showName, date:d, callTime:a.callTime, status:a.status, position:a.position });
+      });
+    });
+    rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+    const upcoming = rows.filter(r => new Date(r.date) >= today);
+    const past = rows.filter(r => new Date(r.date) < today);
+
+    document.getElementById('screen').innerHTML = `
+      ${upcoming.length ? `
+        <section class="section">
+          <div class="label">Upcoming</div>
+        </section>
+        ${upcoming.slice(0,6).map(r=>`
+          <a href="#/shift?showId=${r.showId}&date=${r.date}" style="text-decoration:none; color:inherit; display:block;">
+            <div class="callcard">
+              <div class="time">${escapeHtml(r.callTime||'—')}</div>
+              <div style="flex:1;">
+                <div style="font-family:var(--display); font-size:14px; text-transform:uppercase; letter-spacing:0.04em;">${escapeHtml(fmtDay(r.date))}</div>
+                <div>${escapeHtml(r.showName)}</div>
+                <div class="line">${escapeHtml((r.position && r.position.name) || '—')} · ${escapeHtml(r.status)}</div>
+              </div>
+            </div>
+          </a>`).join('')}
+      ` : `<div class="section"><div class="label">Upcoming</div><div style="color:var(--text2); font-size:13px;">No upcoming shifts.</div></div>`}
+
+      ${past.length ? `
+        <section class="section">
+          <div class="label">Past (this show)</div>
+          ${past.map(r=>`
+            <div class="avail-row" style="border:0;">
+              <div>${escapeHtml(fmtDay(r.date))}<div style="font-size:11px; color:var(--text3);">${escapeHtml((r.position&&r.position.name)||'')}</div></div>
+              <div class="pill-sm ${r.status==='Completed'?'pill-green':'pill-amber'}">${escapeHtml(r.status.toUpperCase())}</div>
+            </div>`).join('')}
+        </section>
+      ` : ''}
+    `;
+  }
+
+  // ---------- Shift Detail ----------
+  function renderShiftDetail(){
+    const params = new URLSearchParams(location.hash.split('?')[1] || '');
+    const showId = params.get('showId') || show.code;
+    const date   = params.get('date');
+    const assn = (CrewApi.getMyAssignments()||[]).find(a => a.showId === showId);
+    if(!assn){ document.getElementById('screen').innerHTML = `<div class="section"><div class="label">Shift</div>Not found.</div>`; return; }
+    const venue = show.venue;
+    const contacts = CrewApi.getKeyContacts();
+
+    document.getElementById('screen').innerHTML = `
+      <section class="section">
+        <div class="label">Shift</div>
+        <div class="value"><strong>${escapeHtml(fmtDay(date||assn.dates[0]))}</strong></div>
+        <div class="value" style="margin-top:4px;">Call <strong>${escapeHtml(assn.callTime||'—')}</strong> · ${escapeHtml((assn.position&&assn.position.name)||'Crew')}</div>
+      </section>
+
+      <section class="section">
+        <div class="label">Venue · Report Location</div>
+        <div class="value"><strong>${escapeHtml(venue ? venue.name : '—')}</strong></div>
+        <div class="value" style="font-size:13px; color:var(--text2); margin-top:4px;">${escapeHtml(venue ? venue.address : '')}</div>
+        ${venue && venue.loadInNotes ? `<div class="value" style="font-size:12px; color:var(--text2); margin-top:8px;">${escapeHtml(venue.loadInNotes)}</div>`:''}
+        ${venue && venue.address ? `<a href="https://maps.apple.com/?q=${encodeURIComponent(venue.address)}" target="_blank" class="cta ghost" style="margin-top:10px; margin-left:0; margin-right:0;">🗺 Open Maps</a>` : ''}
+      </section>
+
+      ${contacts.length ? `
+        <section class="section">
+          <div class="label">Key Contacts (PM · TSM)</div>
+          ${contacts.map(c=>`
+            <div style="padding: 10px 0; border-bottom: 1px dashed var(--border); display:flex; justify-content:space-between; align-items:center;">
+              <div><strong>${escapeHtml(c.name)}</strong><div style="font-size:11px; color:var(--text2);">${escapeHtml(c.role)}</div></div>
+              <a href="tel:${escapeHtml(c.phone||'')}" class="pill-sm pill-amber" style="text-decoration:none; padding:4px 10px;">📞 Call</a>
+            </div>`).join('')}
+        </section>`:''}
+
+      ${assn.status !== 'Acknowledged' ? `
+        <a href="javascript:acknowledge()" class="cta spectrum">Acknowledge Call Time</a>
+      ` : `<div class="cta ghost">✓ Acknowledged</div>`}
+    `;
+
+    window.acknowledge = () => { CrewApi.acknowledge(showId); routeTo('shift'); };
+  }
+
+  // ---------- My Timesheet ----------
+  function renderTimesheet(){
+    const sheets = CrewApi.getMyTimesheets();
+    const screen = document.getElementById('screen');
+
+    if(!sheets.length){
+      screen.innerHTML = `<div class="section"><div class="label">Timesheets</div>
+        <div style="color:var(--text2); font-size:13px;">No timesheets yet. Timesheets appear once the Labor Coordinator opens your shift.</div></div>`;
+      return;
+    }
+
+    const blocks = sheets.map(t=>{
+      const editable = t.status === 'Draft';
+      const stMap = { Draft:'Draft', Submitted:'Submitted', Approved:'Approved', Exported:'Approved' };
+      const clockInVal  = t.clockIn  ? t.clockIn.slice(0,16)  : '';
+      const clockOutVal = t.clockOut ? t.clockOut.slice(0,16) : '';
+      const workedHours = t.workedHours || 0;
+      const ot = t.otHours || 0;
+      const dt = t.dtHours || 0;
+      const reg = Math.max(0, workedHours - ot - dt);
+
+      return `
+        <div class="ts-card">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="date">${escapeHtml(fmtDay(t.workDate))}</div>
+            <span class="ts-status ${stMap[t.status]}" style="margin-left:auto;">${escapeHtml(t.status.toUpperCase())}</span>
+          </div>
+          <h3>${editable ? 'Enter Your Hours' : 'Submitted Hours'}</h3>
+
+          <div class="ts-grid">
+            <div>
+              <label>Clock In</label>
+              <input type="datetime-local" ${editable?'':'disabled'} value="${clockInVal}" onchange="updateTs('${t.id}','clockIn', this.value)" />
+            </div>
+            <div>
+              <label>Clock Out</label>
+              <input type="datetime-local" ${editable?'':'disabled'} value="${clockOutVal}" onchange="updateTs('${t.id}','clockOut', this.value)" />
+            </div>
+            <div>
+              <label>Meal Break (min)</label>
+              <input type="number" min="0" ${editable?'':'disabled'} value="${t.mealBreakMinutes||0}" onchange="updateTs('${t.id}','mealBreakMinutes', parseInt(this.value,10))" />
+            </div>
+            <div>
+              <label>Travel Hours</label>
+              <input type="number" min="0" step="0.25" ${editable?'':'disabled'} value="${t.travelHours||0}" onchange="updateTs('${t.id}','travelHours', parseFloat(this.value))" />
+            </div>
+          </div>
+
+          <div class="ts-grid single">
+            <div>
+              <label>Notes</label>
+              <textarea rows="2" ${editable?'':'disabled'} placeholder="Any explanations (OT reasons, delays, handoff notes)…" onchange="updateTs('${t.id}','notes', this.value)">${escapeHtml(t.notes||'')}</textarea>
+            </div>
+          </div>
+
+          ${workedHours > 0 ? `
+            <div class="ts-stat">
+              Regular <strong>${reg}h</strong> · OT <strong style="color:var(--amber);">${ot}h</strong> · DT <strong style="color:var(--red);">${dt}h</strong> · Total <strong>${workedHours}h</strong>
+              ${ot > 2 ? '<div style="margin-top:4px; color:var(--amber);">⚠ OT &gt; 2h — add approval note in Notes.</div>' : ''}
+            </div>`:''}
+
+          ${editable ? `
+            <button class="cta spectrum" style="margin:10px 0 0; width:100%;" onclick="submitTs('${t.id}')"
+              ${(!t.clockIn || !t.clockOut) ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+              Submit for Approval
+            </button>`
+          : `<div style="color:var(--text2); font-size:12px; margin-top:10px;">Submitted ${t.submittedAt ? fmtDateTime(t.submittedAt) : ''} — contact Labor Coord for corrections.</div>`}
+        </div>`;
+    }).join('');
+
+    screen.innerHTML = `
+      <section class="section">
+        <div class="label">My Timesheets — ${escapeHtml(show.code)}</div>
+        <div class="value" style="font-size:13px; color:var(--text2); margin-top:2px;">
+          Fill in your actual clock-in / clock-out for each day. OT calculated automatically. Submit by 24 hrs after shift end.
+        </div>
+      </section>
+      ${blocks}
+    `;
+  }
+
+  window.updateTs = (id, field, value) => {
+    const update = {}; update[field] = field.includes('clock') && value ? new Date(value).toISOString() : value;
+    CrewApi.updateTimesheetField(id, update);
+    routeTo('timesheet');
+  };
+  window.submitTs = (id) => {
+    CrewApi.submitTimesheet(id);
+    alert('Submitted. Labor Coordinator will review.');
+    routeTo('timesheet');
+  };
+
+  // ---------- Travel ----------
+  function renderTravel(){
+    const trav = CrewApi.getMyTravel();
+    document.getElementById('screen').innerHTML = trav ? `
+      <section class="section">
+        <div class="label">Outbound Flight</div>
+        <div class="value"><strong>${escapeHtml(trav.airline||'')} ${escapeHtml(trav.route||'')}</strong></div>
+        <div class="value" style="font-size:13px; color:var(--text2);">Conf <span style="font-family:var(--mono);">${escapeHtml(trav.flightConfirmation||'—')}</span></div>
+        <div class="value" style="font-size:13px;">Depart <strong>${escapeHtml(fmtDateTime(trav.departureTime))}</strong></div>
+        <div class="value" style="font-size:13px;">Arrive <strong>${escapeHtml(fmtDateTime(trav.arrivalTime))}</strong></div>
+      </section>
+      ${trav.hotelName ? `
+        <section class="section">
+          <div class="label">Hotel</div>
+          <div class="value"><strong>${escapeHtml(trav.hotelName)}</strong></div>
+          <div class="value" style="font-size:13px; color:var(--text2);">Conf <span style="font-family:var(--mono);">${escapeHtml(trav.hotelConfirmation||'—')}</span></div>
+        </section>`:''}
+      <section class="section">
+        <div class="label">Need to make a change?</div>
+        <a href="tel:+13135550100" class="cta ghost">📞 Call Labor Coord</a>
+      </section>
+    ` : `<div class="section"><div class="label">Travel</div><div style="color:var(--text2); font-size:13px;">No travel is booked for this show yet. You'll see it here when Labor Coord books.</div></div>`;
+  }
+
+  // ---------- Documents ----------
+  function renderDocuments(){
+    document.getElementById('screen').innerHTML = `
+      <section class="section">
+        <div class="label">Crew-Safe Documents — ${escapeHtml(show.code)}</div>
+        <div class="doc-list" style="margin-top:8px;">
+          <div class="d"><span class="icon">❏</span>Show Book (crew-safe) · <a href="../showbook.html?project=${show.code}">View</a></div>
+          <div class="d"><span class="icon">🗺</span>Venue Load-In Map</div>
+          <div class="d"><span class="icon">⌘</span>Show Flow (read-only)</div>
+          <div class="d"><span class="icon">👷</span>Your Crew Letter (PDF)</div>
+          <div class="d"><span class="icon">🆘</span>Emergency Protocols</div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="label">Call Schedule</div>
+        <div style="font-size:13px; color:var(--text2);">Printable per-day sheet — available once letter is issued.</div>
+      </section>
+    `;
+  }
+
+  // ---------- Availability ----------
+  function renderAvailability(){
+    const blocks = CrewApi.getMyAvailabilityBlocks();
+    document.getElementById('screen').innerHTML = `
+      <section class="section">
+        <div class="label">Declare Unavailability</div>
+        <div class="value" style="font-size:13px; color:var(--text2);">Tell scheduling you're not available so you don't get invited on those days.</div>
+        <div class="ts-grid" style="margin-top:10px;">
+          <div><label>From</label><input type="date" id="avFrom" /></div>
+          <div><label>To</label><input type="date" id="avTo" /></div>
+        </div>
+        <div class="ts-grid single">
+          <div><label>Reason</label><input type="text" id="avReason" placeholder="Vacation · Another job · Personal" /></div>
+        </div>
+        <button class="cta spectrum" style="margin:10px 0 0; width:100%;" onclick="addAvail()">Declare Unavailable</button>
+      </section>
+
+      <section class="section">
+        <div class="label">My Blocks</div>
+        ${blocks.length ? blocks.map(b=>`
+          <div class="avail-row">
+            <div><strong>${escapeHtml(fmtDay(b.fromDate))} → ${escapeHtml(fmtDay(b.toDate))}</strong><div style="font-size:11px; color:var(--text2);">${escapeHtml(b.reason||'—')}</div></div>
+            <div class="pill-sm pill-amber">${escapeHtml(b.type)}</div>
+          </div>`).join('') : `<div style="color:var(--text2); font-size:13px;">No blocks declared.</div>`}
+      </section>
+    `;
+  }
+  window.addAvail = () => {
+    const f = document.getElementById('avFrom').value;
+    const t = document.getElementById('avTo').value;
+    const r = document.getElementById('avReason').value;
+    if(!f || !t){ alert('Pick a date range.'); return; }
+    CrewApi.addAvailabilityBlock(f, t, r);
+    routeTo('availability');
+  };
+
+  // ---------- Notifications (future) ----------
+  function renderNotifications(){
+    document.getElementById('screen').innerHTML = `<div class="section"><div class="label">Notifications</div>
+      <div style="color:var(--text2); font-size:13px;">Notifications appear here when scheduling changes affect you. (Phase 3 wires Web Push.)</div></div>`;
   }
 </script>
 </body>

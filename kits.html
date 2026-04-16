@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · System Builder</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .rule-row {
+    padding: 10px 12px; border-radius: var(--r-sm); margin-bottom: 6px;
+    font-size: var(--fs-sm); border-left: 3px solid var(--border-strong);
+  }
+  .rule-row.autoInclude  { background: rgba(1,153,253,0.06); border-left-color: var(--pcg-bright-blue); }
+  .rule-row.error        { background: rgba(240,78,85,0.06); border-left-color: var(--status-red); }
+  .rule-row.warning      { background: rgba(245,183,60,0.06); border-left-color: var(--status-amber); }
+  .rule-row.substitute   { background: rgba(122,65,229,0.06); border-left-color: var(--pcg-spotlight-purple); }
+  .rule-row .tag { font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-right: 6px; }
+  .comp-grid {
+    display: grid; grid-template-columns: 60px 1fr 80px 140px;
+    gap: var(--sp-3); align-items: center;
+    padding: 8px 10px; border-bottom: 1px dashed var(--border);
+    font-size: var(--fs-sm);
+  }
+  .comp-grid .role { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">System Builder · Kit Intelligence Engine</div>
+          <h1>System Definitions</h1>
+          <div class="muted">§7 — kits are <strong>system definitions</strong>, not grouped items. Drive quoting accuracy, pull completeness, pre-show validation.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <input id="q" placeholder="Search kits…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 12px; border-radius:var(--r-pill); width:220px; font-size:var(--fs-sm);" />
+          <button class="btn sm">＋ New System Definition</button>
+        </div>
+      </div>
+
+      <div class="split-3">
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Kit Library</div></div>
+            <div id="list"></div>
+          </div>
+        </aside>
+
+        <div>
+          <div id="detail"></div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Rule Types (§7.2)</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              <div class="rule-row autoInclude" style="font-size:11px;"><span class="tag">AUTO-INCLUDE</span>e.g. if qty J8 ≥ 12, add dAMP10</div>
+              <div class="rule-row error" style="font-size:11px;"><span class="tag">COMPATIBILITY · ERROR</span>blocks finalization</div>
+              <div class="rule-row warning" style="font-size:11px;"><span class="tag">COMPATIBILITY · WARNING</span>review recommended</div>
+              <div class="rule-row substitute" style="font-size:11px;"><span class="tag">SUBSTITUTION</span>approval required by role</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Version Control</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              Kit BOM changes create a new version. Existing QuoteRevisions reference their versionId and are never affected. Pull sheets generated after a change use the current version.
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'warehouse', crumbs:[{label:'System Builder'}]});
+
+  const kits = PCG.api.getSystemDefinitions();
+  let currentId = kits[0] ? kits[0].id : null;
+
+  function renderList(){
+    const q = (document.getElementById('q').value||'').toLowerCase();
+    const filtered = kits.filter(k => !q || k.name.toLowerCase().includes(q) || (k.category||'').toLowerCase().includes(q));
+    document.getElementById('list').innerHTML = filtered.map(k => {
+      const owner = PCG.findPerson(k.managedById);
+      const active = k.id===currentId;
+      return `<div class="pinned" style="margin:0; border-radius:0; border-left:${active?'3px solid var(--pcg-bright-blue)':'1px solid var(--border)'}; ${active?'background:rgba(1,153,253,0.08);':''} cursor:pointer;" onclick="setKit('${k.id}')">
+        <span class="icon">◆</span>
+        <div><strong>${PCG.escapeHtml(k.name)}</strong>
+          <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(k.category)} · Owner ${owner?PCG.escapeHtml(owner.name):'—'}</div>
+        </div>
+      </div>`;
+    }).join('') || PCG.states.empty('No kits.');
+  }
+
+  function renderDetail(){
+    const k = PCG.api.getSystemDefinition(currentId);
+    if(!k){ document.getElementById('detail').innerHTML = PCG.states.empty('Select a kit.'); return; }
+    const owner = PCG.findPerson(k.managedById);
+
+    const compRow = (c, kind) => {
+      const m = PCG.api.getInventoryItem(c.modelId);
+      return `<div class="comp-grid">
+        <div class="mono">${c.qty}</div>
+        <div>${m?PCG.escapeHtml(m.name):PCG.escapeHtml(c.modelId)}<div class="muted" style="font-size:11px;">${m?`${PCG.escapeHtml(m.manufacturer||'')} · ${PCG.escapeHtml(m.model||'')}`:''}</div></div>
+        <div class="role">${kind}</div>
+        <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(c.role||c.condition||c.reason||'')}</div>
+      </div>`;
+    };
+
+    document.getElementById('detail').innerHTML = `
+      <section class="proj-header">
+        <div class="motif"></div>
+        <div class="eyebrow">${PCG.escapeHtml(k.category)} · System Definition</div>
+        <h1>${PCG.escapeHtml(k.name)}</h1>
+        <div class="meta">
+          <div class="i"><span class="k">Owner</span><span class="v">${owner?PCG.escapeHtml(owner.name):'—'}</span></div>
+          <div class="i"><span class="k">Day Rate</span><span class="v mono">${PCG.canSeeTier('T3_BILL_RATES')?PCG.money(k.dayRate):'🔒'}</span></div>
+          <div class="i"><span class="k">Last Modified</span><span class="v mono">${PCG.fmtShort(k.lastModifiedAt)}</span></div>
+          <div class="i"><span class="k">Storage</span><span class="v">${PCG.escapeHtml((k.storageRequirements&&k.storageRequirements.location)||'—')}</span></div>
+        </div>
+      </section>
+
+      <div class="grid-2" style="margin-top:var(--sp-4);">
+        <div class="card">
+          <div class="card-header"><div class="title">Required Components</div></div>
+          <div class="card-body">${(k.requiredComponents||[]).map(c=>compRow(c,'REQUIRED')).join('') || PCG.states.empty('None')}</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="title">Optional · Suggested · Pack List</div></div>
+          <div class="card-body">
+            ${(k.optionalComponents||[]).map(c=>compRow(c,'OPTIONAL')).join('')}
+            ${(k.suggestedComponents||[]).map(c=>compRow(c,'SUGGESTED')).join('')}
+            ${(k.standardPackList||[]).map(c=>compRow(c,'PACK')).join('')}
+            ${!(k.optionalComponents||k.suggestedComponents||k.standardPackList||[]).length ? PCG.states.empty('No optional / pack items') : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:var(--sp-5);">
+        <div class="card-header"><div class="title">Rules · Compatibility · Auto-Include · Substitution</div></div>
+        <div class="card-body">
+          ${(k.autoIncludeRules||[]).map(r=>`
+            <div class="rule-row autoInclude"><span class="tag">AUTO-INCLUDE</span>${PCG.escapeHtml(r.trigger)} → add <strong>${r.addQty}</strong> × <span class="mono">${r.addModelId}</span></div>
+          `).join('')}
+          ${(k.compatibilityRules||[]).map(r=>`
+            <div class="rule-row ${r.severity==='error'?'error':'warning'}"><span class="tag">${r.severity==='error'?'COMPATIBILITY · BLOCKS':'COMPATIBILITY · WARN'}</span>${PCG.escapeHtml(r.description)}</div>
+          `).join('')}
+          ${(k.substitutionRules||[]).map(r=>`
+            <div class="rule-row substitute"><span class="tag">SUBSTITUTION</span><span class="mono">${r.originalModelId}</span> → <span class="mono">${r.substituteModelId}</span> · Approval: <strong>${r.approvalRequired||'—'}</strong> · ${PCG.escapeHtml(r.condition||'')}</div>
+          `).join('')}
+          ${!(k.autoIncludeRules||k.compatibilityRules||k.substitutionRules||[]).length ? PCG.states.empty('No rules defined.') : ''}
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:var(--sp-5);">
+        <div class="card">
+          <div class="card-header"><div class="title">Version History</div></div>
+          <div class="card-body">
+            ${(k.changeHistory||[]).map(h=>`<div class="change-ribbon"><div class="when">${PCG.fmtShort(h.at)}</div><div>${PCG.escapeHtml(h.summary)}<div class="meta">${PCG.escapeHtml(PCG.findPerson(h.by)?.name||h.by)}</div></div></div>`).join('') || PCG.states.empty('No changes logged.')}
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="title">Pre-Show Validation (§7.4)</div></div>
+          <div class="card-body" style="font-size:var(--fs-sm);">
+            When a show moves to <strong>In Prep</strong>, this system definition is checked against the show's pull sheets. Missing required components or failed compatibility rules create an action queue item for TSM and Dept Lead. Walk-the-Pile authorization requires acknowledgement of any outstanding warnings.
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  window.setKit = (id) => { currentId = id; renderList(); renderDetail(); };
+  document.getElementById('q').addEventListener('input', renderList);
+  renderList(); renderDetail();
+</script>
+</body>
+</html>

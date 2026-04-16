@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Reports</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .kpi-hero {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+  }
+  .kpi-hero .card {
+    padding: var(--sp-5);
+    background: linear-gradient(135deg, var(--surface-1), var(--surface-2));
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    position: relative; overflow: hidden;
+  }
+  .kpi-hero .card::after {
+    content:""; position:absolute; right:-30px; bottom:-30px;
+    width:140px; height:140px; border-radius:50%;
+    background: var(--grad-show-light-purple); opacity: 0.12;
+  }
+  .kpi-hero .big {
+    font-family: var(--font-display); font-weight:700;
+    font-size: 44px; line-height:1;
+    background: var(--grad-spectrum-text); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .kpi-hero .lbl {
+    font-family:var(--font-display); font-size:11px;
+    text-transform:uppercase; letter-spacing:0.14em;
+    color: var(--text-tertiary);
+  }
+  .kpi-hero .sub { font-size: var(--fs-xs); color: var(--text-secondary); margin-top:4px; }
+
+  .bar-h {
+    display:grid; grid-template-columns: 140px 1fr 80px;
+    gap: var(--sp-3); align-items: center;
+    font-size: var(--fs-sm); padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .bar-h .tr { height: 10px; background: var(--surface-3); border-radius: 5px; overflow: hidden; }
+  .bar-h .fi { height:100%; background: var(--grad-show-light-blue); }
+  .bar-h .fi.amber { background: linear-gradient(90deg, var(--status-amber), var(--pcg-bright-blue)); }
+  .bar-h .fi.green { background: linear-gradient(90deg, var(--status-green), var(--pcg-bright-blue)); }
+  .bar-h .n { text-align:right; font-family: var(--font-mono); }
+
+  .open-pos-card {
+    background: var(--surface-1); border:1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-4);
+    display: grid; grid-template-columns: 1fr auto; gap: var(--sp-3);
+    align-items: center;
+  }
+  .open-pos-card.red { border-left: 3px solid var(--status-red); }
+  .open-pos-card.amber { border-left: 3px solid var(--status-amber); }
+  .open-pos-card .donut-num {
+    font-family: var(--font-display); font-weight:700;
+    font-size: 34px; line-height:1;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Reports · Leadership</div>
+          <h1>Portfolio &amp; Performance</h1>
+          <div class="muted">Pipeline · Utilization · Margin · Open positions (7/14/30-day buckets) · Client revenue history.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <select id="window" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+            <option value="ytd">Year to Date</option>
+            <option value="q">This Quarter</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </select>
+          <button class="btn sm ghost">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Hero KPIs -->
+      <div class="kpi-hero" id="hero"></div>
+
+      <div class="split">
+        <div>
+          <!-- Margin by show type -->
+          <div class="card">
+            <div class="card-header"><div class="title">Margin by Show Type</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Quoted projects</span></div>
+            <div class="card-body" id="marginByType"></div>
+          </div>
+
+          <!-- Revenue by client -->
+          <div class="card" style="margin-top: var(--sp-5);">
+            <div class="card-header"><div class="title">Revenue by Client</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">YTD recognized</span></div>
+            <div class="card-body" id="revByClient"></div>
+          </div>
+
+          <!-- Top crew utilization -->
+          <div class="card" style="margin-top: var(--sp-5);">
+            <div class="card-header"><div class="title">Top Crew Utilization</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Hours worked / target</span></div>
+            <div class="card-body" id="crewUtil"></div>
+          </div>
+
+          <!-- Shows by Lifecycle State -->
+          <div class="card" style="margin-top: var(--sp-5);">
+            <div class="card-header"><div class="title">Portfolio by Lifecycle State</div></div>
+            <div class="card-body" id="byState"></div>
+          </div>
+        </div>
+
+        <aside>
+          <!-- Open Positions 7/14/30-day (Lasso parity) -->
+          <div class="card">
+            <div class="card-header"><div class="title">Open Positions to Fill</div></div>
+            <div class="card-body">
+              <div style="display:grid; gap: 8px;" id="openPos"></div>
+            </div>
+          </div>
+
+          <!-- Crew stats -->
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Crew Stats</div></div>
+            <div class="card-body" id="crewStats"></div>
+          </div>
+
+          <!-- Inventory Utilization -->
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Inventory Hot List (Top 8)</div></div>
+            <div class="card-body" id="invHot"></div>
+          </div>
+
+          <!-- Recurring failures -->
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Recurring Failures</div></div>
+            <div class="card-body" id="recurring"></div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Reports'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.AE)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    render();
+  }
+
+  function render(){
+    const projects = PCG.api.getProjects();
+    const quotes = (PCG.quotes||[]);
+    const clients = PCG.api.getClients();
+
+    // ---- Hero KPIs ----
+    const totalBooked = quotes.reduce((s,q)=>s+(q.totalRevenue||0),0);
+    const avgMargin = quotes.length ? (quotes.reduce((s,q)=>s+((q.margin||0)),0)/quotes.length) : 0;
+    const activeShows = projects.filter(p=>p.show && !['Archived'].includes(p.show.lifecycleState)).length;
+    const liveShows = projects.filter(p=>p.show && p.show.lifecycleState==='OnShow').length;
+
+    document.getElementById('hero').innerHTML = `
+      <div class="card">
+        <div class="lbl">Portfolio Booked (YTD)</div>
+        <div class="big">${PCG.canSeeTier('T2_MARGINS') ? PCG.money(totalBooked) : '🔒'}</div>
+        <div class="sub">${quotes.length} quotes · weighted by revision status</div>
+      </div>
+      <div class="card">
+        <div class="lbl">Avg Margin</div>
+        <div class="big">${PCG.canSeeTier('T2_MARGINS') ? PCG.pct(avgMargin) : '🔒'}</div>
+        <div class="sub">Across all quoted projects</div>
+      </div>
+      <div class="card">
+        <div class="lbl">Active Shows</div>
+        <div class="big">${activeShows}</div>
+        <div class="sub">${liveShows} currently on show</div>
+      </div>
+      <div class="card">
+        <div class="lbl">Pipeline (Weighted)</div>
+        <div class="big">${PCG.canSeeTier('T2_MARGINS') ? PCG.money((PCG.opportunities||[]).reduce((s,o)=>s+((o.estimatedValue||0)*(o.probability||0)),0)) : '🔒'}</div>
+        <div class="sub">${(PCG.opportunities||[]).length} open opportunities</div>
+      </div>
+    `;
+
+    // ---- Margin by Show Type ----
+    const byType = {};
+    projects.forEach(p=>{
+      const t = p.showType || 'other';
+      const q = quotes.find(x=>x.projectCode===p.code);
+      if(!q || !q.totalRevenue) return;
+      if(!byType[t]) byType[t] = { revenue:0, cost:0, count:0 };
+      byType[t].revenue += q.totalRevenue || 0;
+      byType[t].cost += q.totalCost || 0;
+      byType[t].count++;
+    });
+    const maxTypeRev = Math.max(1, ...Object.values(byType).map(v=>v.revenue));
+    document.getElementById('marginByType').innerHTML = Object.keys(byType).length ? Object.entries(byType).map(([type, v])=>{
+      const margin = v.revenue ? ((v.revenue-v.cost)/v.revenue) : 0;
+      const tone = margin > 0.35 ? 'green' : margin > 0.2 ? 'amber' : '';
+      return `<div class="bar-h">
+        <div><strong>${PCG.escapeHtml(type)}</strong><div class="muted" style="font-size:11px;">${v.count} project${v.count===1?'':'s'}</div></div>
+        <div class="tr"><div class="fi ${tone}" style="width:${Math.round(v.revenue/maxTypeRev*100)}%;"></div></div>
+        <div class="n">
+          ${PCG.canSeeTier('T2_MARGINS') ? PCG.money(v.revenue) : '🔒'}
+          <div style="color:${margin>0.35?'var(--status-green)':margin>0.2?'var(--status-amber)':'var(--text-tertiary)'}; font-size:11px;">${PCG.canSeeTier('T2_MARGINS') ? PCG.pct(margin)+' margin' : ''}</div>
+        </div>
+      </div>`;
+    }).join('') : PCG.states.empty('No quotes yet.');
+
+    // ---- Revenue by Client ----
+    const byClient = {};
+    clients.forEach(c=>{
+      byClient[c.id] = { client: c, projects:[], total: 0 };
+      projects.filter(p=>p.clientId===c.id).forEach(p=>{
+        const q = quotes.find(x=>x.projectCode===p.code);
+        byClient[c.id].projects.push(p);
+        byClient[c.id].total += (q && q.totalRevenue) || 0;
+      });
+    });
+    const sortedClients = Object.values(byClient).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+    const maxClientRev = Math.max(1, ...sortedClients.map(x=>x.total));
+    document.getElementById('revByClient').innerHTML = sortedClients.length ? sortedClients.slice(0,8).map(x=>`
+      <div class="bar-h">
+        <div><strong><a href="clients.html" style="color:inherit; text-decoration:none;">${PCG.escapeHtml(x.client.name)}</a></strong><div class="muted" style="font-size:11px;">${x.projects.length} project${x.projects.length===1?'':'s'}</div></div>
+        <div class="tr"><div class="fi" style="width:${Math.round(x.total/maxClientRev*100)}%;"></div></div>
+        <div class="n">${PCG.canSeeTier('T2_MARGINS') ? PCG.money(x.total) : '🔒'}</div>
+      </div>
+    `).join('') : PCG.states.empty('—');
+
+    // ---- Crew Utilization (hours worked) ----
+    const byCrew = {};
+    (PCG.timesheets||[]).forEach(t=>{
+      if(!byCrew[t.crewMemberId]) byCrew[t.crewMemberId] = { hours: 0, shifts: 0 };
+      byCrew[t.crewMemberId].hours += t.workedHours || 0;
+      byCrew[t.crewMemberId].shifts++;
+    });
+    const TARGET_HOURS = 1800; // FTE-equivalent target
+    const crewRows = Object.entries(byCrew).map(([id, s])=>{
+      const person = PCG.findPerson(id);
+      return { name: person ? person.name : id, hours: s.hours, shifts: s.shifts, id };
+    }).sort((a,b)=>b.hours-a.hours).slice(0,8);
+    const maxHours = Math.max(TARGET_HOURS, ...crewRows.map(x=>x.hours));
+    document.getElementById('crewUtil').innerHTML = crewRows.length ? crewRows.map(c=>`
+      <div class="bar-h">
+        <div>
+          <a href="crew-profile.html?id=${c.id}" style="color:inherit; text-decoration:none; font-weight:600;">${PCG.escapeHtml(c.name)}</a>
+          <div class="muted" style="font-size:11px;">${c.shifts} shift${c.shifts===1?'':'s'}</div>
+        </div>
+        <div class="tr"><div class="fi green" style="width:${Math.round(c.hours/maxHours*100)}%;"></div></div>
+        <div class="n">${c.hours.toFixed(1)}h</div>
+      </div>
+    `).join('') : PCG.states.empty('No timesheets yet.');
+
+    // ---- Shows by Lifecycle State ----
+    const byState = {};
+    projects.forEach(p=>{
+      const s = (p.show && p.show.lifecycleState) || '—';
+      byState[s] = (byState[s]||0) + 1;
+    });
+    const maxState = Math.max(1, ...Object.values(byState));
+    const stateOrder = ['Opportunity','Quoted','Awarded','InPrep','OnShow','Striking','Returning','Closing','Archived'];
+    document.getElementById('byState').innerHTML = stateOrder.filter(s=>byState[s]).map(s=>`
+      <div class="bar-h">
+        <div><strong>${PCG.escapeHtml(s)}</strong></div>
+        <div class="tr"><div class="fi amber" style="width:${Math.round(byState[s]/maxState*100)}%;"></div></div>
+        <div class="n">${byState[s]}</div>
+      </div>
+    `).join('');
+
+    // ---- Open Positions to Fill (Lasso-parity 7 / 14 / 30-day) ----
+    const today = new Date();
+    const days = [7, 14, 30];
+    const openPosHtml = days.map(d=>{
+      const horizon = new Date(today); horizon.setDate(today.getDate()+d);
+      const matchingShows = projects.filter(p=>{
+        if(!p.show) return false;
+        if(!['Awarded','InPrep','OnShow'].includes(p.show.lifecycleState)) return false;
+        const li = new Date(p.dates.loadIn);
+        return li >= today && li <= horizon;
+      });
+      let unfilled = 0;
+      matchingShows.forEach(p=>{
+        const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===p.code);
+        unfilled += assns.filter(a=>!a.crewMemberId || a.status==='Placeholder' || a.status==='Invited').length;
+      });
+      const cls = d===7 && unfilled>3 ? 'red' : unfilled>5 ? 'amber' : '';
+      return `<div class="open-pos-card ${cls}">
+        <div>
+          <div class="donut-num" style="color:${unfilled>0?'var(--status-amber)':'var(--status-green)'};">${unfilled}</div>
+          <div class="muted" style="font-size:var(--fs-xs);">Next ${d} days</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="mono" style="font-size:11px;">${matchingShows.length} show${matchingShows.length===1?'':'s'}</div>
+          <a href="labor-home.html" class="btn sm" style="margin-top:4px;">Fill →</a>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('openPos').innerHTML = openPosHtml;
+
+    // ---- Crew Stats ----
+    const allCrew = PCG.api.getCrewRoster();
+    const confirmed = (PCG.shiftAssignments||[]).filter(a=>['Confirmed','Acknowledged','Completed'].includes(a.status)).length;
+    const pending = (PCG.shiftAssignments||[]).filter(a=>['Invited','Applied','Approved','Placeholder'].includes(a.status)).length;
+    document.getElementById('crewStats').innerHTML = `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); text-align:center;">
+        <div>
+          <div style="font-family:var(--font-display); font-size:34px; color:var(--status-green); font-weight:700;">${confirmed}</div>
+          <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em;">Approved</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-display); font-size:34px; color:var(--status-amber); font-weight:700;">${pending}</div>
+          <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em;">Pending</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="kv-grid" style="font-size:var(--fs-sm);">
+        <div class="k">Total roster</div><div class="v mono">${allCrew.length}</div>
+        <div class="k">Payroll-ready</div><div class="v mono">${allCrew.filter(c=>c.payrollReadiness).length}</div>
+        <div class="k">Do-not-use</div><div class="v mono">${allCrew.filter(c=>c.doNotUse).length}</div>
+      </div>
+    `;
+
+    // ---- Inventory Hot List ----
+    const inv = PCG.api.getInventory();
+    const hotInv = inv.map(i=>{
+      const b = PCG.api.getInventoryBalance(i.id);
+      return { item:i, balance:b, utilized: b ? (b.allocated + b.onShow) / (b.owned || 1) : 0 };
+    }).sort((a,b)=>b.utilized-a.utilized).slice(0,8);
+    document.getElementById('invHot').innerHTML = hotInv.map(h=>{
+      const pct = Math.round(h.utilized*100);
+      const tone = pct > 80 ? 'red' : pct > 50 ? 'amber' : '';
+      return `<div class="bar-h" style="grid-template-columns: 1fr 100px 60px;">
+        <div><a href="inventory.html" style="color:inherit; text-decoration:none; font-weight:600; font-size:12px;">${PCG.escapeHtml(h.item.name.slice(0,32))}${h.item.name.length>32?'…':''}</a></div>
+        <div class="tr"><div class="fi ${tone==='red'?'':'green'}" style="width:${Math.min(100,pct)}%; ${tone==='red'?'background:linear-gradient(90deg,var(--status-red),var(--status-amber));':''}"></div></div>
+        <div class="n" style="font-size:11px;">${pct}%</div>
+      </div>`;
+    }).join('') || PCG.states.empty('—');
+
+    // ---- Recurring Failures ----
+    const recur = (PCG.serviceTickets||[]).filter(t=>t.recurringFailure);
+    document.getElementById('recurring').innerHTML = recur.length ? recur.map(t=>`
+      <div class="attn-item red" style="margin-bottom:6px;">
+        <div><div class="ttl">${PCG.escapeHtml(t.serialId||t.id)} — ${PCG.escapeHtml((t.description||'').slice(0,50))}</div>
+        <div class="meta">3+ tickets / 12mo · retirement review recommended</div></div>
+      </div>
+    `).join('') : PCG.states.empty('None flagged.');
+  }
+</script>
+</body>
+</html>
