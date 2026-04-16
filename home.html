@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Routing…</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:var(--sp-4); text-align:center;">
+  <img src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" style="width:56px; height:56px; border-radius:50%;" />
+  <div class="eyebrow">PCG Stage · Role-Based Landing</div>
+  <h1 id="msg">Routing you to your dashboard…</h1>
+  <div id="sub" class="muted" style="font-size:var(--fs-sm);"></div>
+  <div id="fallback" style="margin-top:var(--sp-4); display:none;">
+    <a class="btn primary" href="index.html">Go to Portfolio</a>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const u = PCG.user;
+  const dest = PCG.api.getLandingUrl();
+  document.getElementById('sub').textContent = `Signed in as ${u.name} (${u.role}) → ${dest}`;
+  setTimeout(()=>{
+    try { location.replace(dest); }
+    catch(e){ document.getElementById('fallback').style.display='block'; }
+  }, 600);
+</script>
+</body>
+</html>

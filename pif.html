@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Project Intake Form</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .pif-grid { display:grid; grid-template-columns: 200px 1fr; gap: 12px var(--sp-4); align-items:center; }
+  .pif-grid .lbl { font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); text-align:right; }
+  .pif-grid input, .pif-grid select, .pif-grid textarea {
+    background: var(--surface-2); color: var(--text-primary); border:1px solid var(--border);
+    border-radius: var(--r-sm); padding: 7px 10px; font-size: var(--fs-sm); font-family: inherit;
+    width: 100%;
+  }
+  .pif-grid textarea { min-height: 72px; }
+  .pif-bar {
+    height:10px; background: var(--surface-2); border-radius: 5px; overflow:hidden;
+    position:relative;
+  }
+  .pif-bar > div { height:100%; background: var(--grad-show-light-spectrum); transition: width 0.25s; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Project Intake Form · Upstream Lifecycle Trigger</div>
+          <h1 id="hdr">—</h1>
+          <div class="muted">The PIF is the seed record for every project. Weak PIFs produce weak projects.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="pifSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+          <button class="btn sm">＋ New PIF</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">PIF Fields</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="pifStatus"></span>
+            </div>
+            <div class="card-body">
+              <div class="pif-grid" id="form"></div>
+              <div style="margin-top:var(--sp-5); display:flex; gap:var(--sp-2);">
+                <button class="btn ghost">Save Draft</button>
+                <button class="btn primary" id="submitBtn">Submit PIF → Convert to Project</button>
+                <span class="muted" style="margin-left:auto; align-self:center; font-size:var(--fs-xs);" id="submitNote"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Handoff Readiness</div></div>
+            <div class="card-body">
+              <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:var(--sp-3);">
+                <div id="scoreBig" style="font-family:var(--font-display); font-size:48px; font-weight:700; line-height:1; background:var(--grad-spectrum-text); -webkit-background-clip:text; background-clip:text; color:transparent;">—</div>
+                <div class="muted" style="font-size:var(--fs-xs);">/ 100</div>
+                <div style="margin-left:auto;" id="gateBadge"></div>
+              </div>
+              <div class="pif-bar"><div id="scoreBar" style="width:0%"></div></div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:8px;" id="threshold">Score ≥ 60 required before a PM can be formally assigned (spec §4.2).</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">On Submission, STAGE Will:</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              <ul style="margin:0; padding-left:18px;">
+                <li>Create the Project record + assign projectCode</li>
+                <li>Build a Quote skeleton (cloned from prior year if referenced)</li>
+                <li>Seed workback schedule from the show-type template</li>
+                <li>Route to each listed department's Director for review</li>
+                <li>Surface venue warning flags if prior shows exist there</li>
+                <li>Notify Labor Coordinator to begin staffing planning</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Missing Fields</div></div>
+            <div class="card-body" id="missing"></div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'PIF'}]});
+
+  const pifs = PCG.api.getPIFs();
+  const sel = document.getElementById('pifSel');
+  sel.innerHTML = pifs.map(p=>`<option value="${p.id}">${p.projectCode||'DRAFT'} — ${p.projectName||'Untitled'} · ${p.status}</option>`).join('');
+
+  function render(){
+    const pif = PCG.api.getPIF(sel.value);
+    if(!pif){ document.getElementById('form').innerHTML = PCG.states.empty('No PIF'); return; }
+    document.getElementById('hdr').textContent = pif.projectName || 'New Project';
+    document.getElementById('pifStatus').innerHTML = `<span class="pill ${pif.status==='Converted'?'green':pif.status==='Approved'?'blue':'amber'}">${pif.status.toUpperCase()}</span>`;
+
+    const ro = pif.status==='Converted'; // read-only after conversion
+    const venues = (PCG.venues||[]);
+    const people = (PCG.people||[]);
+    const priors = (PCG.projects||[]).filter(p=>p.show && p.show.lifecycleState==='Archived');
+
+    document.getElementById('form').innerHTML = `
+      <div class="lbl">Project Name</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.projectName||'')}"/></div>
+      <div class="lbl">Project Code</div><div><input readonly value="${PCG.escapeHtml(pif.projectCode||'auto-generate on submit')}"/></div>
+      <div class="lbl">Client</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.clientId||'')}"/></div>
+      <div class="lbl">AE</div><div><select ${ro?'disabled':''}>${people.map(p=>`<option ${p.id===pif.aeId?'selected':''}>${PCG.escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="lbl">PM</div><div><select ${ro?'disabled':''}><option value="">— Unassigned —</option>${people.map(p=>`<option ${p.id===pif.pmId?'selected':''}>${PCG.escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="lbl">Venue</div><div><select ${ro?'disabled':''}><option value="">— Select —</option>${venues.map(v=>`<option ${v.id===pif.venueId?'selected':''}>${PCG.escapeHtml(v.name)}</option>`).join('')}</select></div>
+      <div class="lbl">Show Type</div><div><select ${ro?'disabled':''}>${['GeneralSession','BreakoutConference','Expo','Arena','Hybrid','Other'].map(t=>`<option ${t===pif.showType?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="lbl">Load-In</div><div><input type="datetime-local" ${ro?'readonly':''} value="${(pif.dates&&pif.dates.estimatedLoadIn)||''}"/></div>
+      <div class="lbl">Show Start</div><div><input type="datetime-local" ${ro?'readonly':''} value="${(pif.dates&&pif.dates.estimatedShowStart)||''}"/></div>
+      <div class="lbl">Show End</div><div><input type="datetime-local" ${ro?'readonly':''} value="${(pif.dates&&pif.dates.estimatedShowEnd)||''}"/></div>
+      <div class="lbl">Est. Budget</div><div><input ${ro?'readonly':''} value="${pif.estimatedBudget||''}"/></div>
+      <div class="lbl">Est. Attendance</div><div><input ${ro?'readonly':''} value="${pif.estimatedAttendance||''}"/></div>
+      <div class="lbl">Departments</div><div>${['Audio','Video','Lighting','Rigging','Scenic','Creative','Labor','Other'].map(d=>`
+        <label style="margin-right:12px; font-size:var(--fs-sm);"><input type="checkbox" ${ro?'disabled':''} ${(pif.departments||[]).includes(d)?'checked':''}/> ${d}</label>`).join('')}</div>
+      <div class="lbl">Headcount Est.</div><div><input ${ro?'readonly':''} value="${pif.estimatedHeadcount||''}"/></div>
+      <div class="lbl">Breakout Rooms</div><div><input ${ro?'readonly':''} value="${pif.breakoutRoomCount||0}"/></div>
+      <div class="lbl">Travel Required</div><div><label style="font-size:var(--fs-sm);"><input type="checkbox" ${ro?'disabled':''} ${pif.travelRequired?'checked':''}/> Yes</label></div>
+      <div class="lbl">Sub-Rentals Anticipated</div><div><label style="font-size:var(--fs-sm);"><input type="checkbox" ${ro?'disabled':''} ${pif.subRentalAnticipated?'checked':''}/> Yes</label></div>
+      <div class="lbl">Client Contact</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.clientContactName||'')}" placeholder="Name"/></div>
+      <div class="lbl">Client Email</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.clientContactEmail||'')}" placeholder="email@client.com"/></div>
+      <div class="lbl">Prior Project Ref</div><div><select ${ro?'disabled':''}><option value="">— None —</option>${priors.map(p=>`<option ${p.code===pif.priorProjectRef?'selected':''}>${PCG.escapeHtml(p.code)} — ${PCG.escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="lbl">Notes</div><div><textarea ${ro?'readonly':''} placeholder="Anything important…">${PCG.escapeHtml(pif.notes||'')}</textarea></div>
+    `;
+
+    // Readiness
+    const r = PCG.api.getPIFReadiness(pif.id);
+    document.getElementById('scoreBig').textContent = r.score;
+    document.getElementById('scoreBar').style.width = `${r.score}%`;
+    document.getElementById('gateBadge').innerHTML = r.canAssignPM
+      ? '<span class="pill green">✓ READY FOR PM</span>'
+      : '<span class="pill amber">BELOW GATE (60)</span>';
+    document.getElementById('missing').innerHTML = r.missing.length ? r.missing.map(m=>`
+      <div class="attn-item amber" style="margin-bottom:6px;"><div><div class="ttl">${PCG.escapeHtml(m)}</div></div></div>
+    `).join('') : PCG.states.empty('All fields present.');
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = ro || r.score < 60;
+    document.getElementById('submitNote').textContent = ro
+      ? 'PIF already converted to project.'
+      : r.score < 60
+        ? 'PIF Conversion Gate: score must reach 60 before submission (§4.3).'
+        : 'Ready to convert to project record.';
+  }
+
+  sel.addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

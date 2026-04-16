@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Producer</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .ros-now {
+    background: var(--grad-hero); border:1px solid var(--border-accent); border-radius:var(--r-lg);
+    padding: var(--sp-5) var(--sp-6); position:relative; overflow:hidden; margin-bottom: var(--sp-5);
+  }
+  .ros-now::before {
+    content:""; position:absolute; right:-40px; top:-40px; width:240px; height:240px;
+    background: var(--grad-show-light-spectrum); opacity:0.15; border-radius:50%;
+  }
+  .ros-now .now-order {
+    font-family: var(--font-display); font-weight:700; font-size:64px; line-height:1;
+    background: var(--grad-spectrum-text); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .ros-row {
+    display:grid; grid-template-columns: 40px 1fr 110px 110px 90px;
+    gap: var(--sp-3); align-items:center;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); font-size:var(--fs-sm);
+  }
+  .ros-row.complete   { opacity:0.5; }
+  .ros-row.inprogress { background: rgba(122,65,229,0.12); border-left: 3px solid var(--pcg-spotlight-purple); }
+  .ros-row.blocked    { background: rgba(240,78,85,0.10); border-left: 3px solid var(--status-red); }
+  .ros-row .order { font-family: var(--font-mono); text-align:right; color: var(--text-secondary); }
+  .ros-row .est   { font-family: var(--font-mono); text-align:right; color: var(--text-tertiary); }
+  .ros-row .type  { font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); }
+  .seg-sm { display:inline-flex; background: var(--surface-2); border-radius: var(--r-pill); padding:2px; font-size:11px; }
+  .seg-sm button { padding: 3px 10px; border:0; background: transparent; color: var(--text-secondary); font-family: var(--font-display); letter-spacing: 0.08em; font-size:10px; text-transform:uppercase; cursor:pointer; border-radius: var(--r-pill); }
+  .seg-sm button.on { background: var(--pcg-bright-blue); color:#001a2a; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Producer · Run of Show</div>
+          <h1 id="hdr">—</h1>
+          <div class="muted" id="subt">—</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size:10px;">MODE</span>
+          <div class="seg-sm" id="modeSeg">
+            <button class="on" data-m="plan">Plan</button>
+            <button data-m="live">Live</button>
+          </div>
+          <a class="btn sm ghost" href="ros.html">Full ROS</a>
+        </div>
+      </div>
+
+      <div class="ros-now" id="nowCard"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Run of Show</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="rosStatus"></span>
+            </div>
+            <div id="rosList"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Live Signals</div></div>
+            <div class="card-body" id="liveSignals"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Departments Ready</div></div>
+            <div class="card-body" id="deptReady"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Blocked Items</div></div>
+            <div class="card-body" id="blockedItems"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              ROS = truth for <strong>live execution only</strong>. It is NOT used to judge readiness of shows that are not yet live.
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Producer'}]});
+
+  // Pick the show: either ?project= or the first OnShow
+  const q = PCG.qs('project');
+  const onshow = (PCG.api.getProjects()||[]).find(p=>p.show && p.show.lifecycleState==='OnShow');
+  const p = q ? PCG.api.getProject(q) : onshow || PCG.api.getProjects()[0];
+  const show = p && p.show;
+  const ros = PCG.api.getRunOfShow(p.code);
+  const state = PCG.api.getLiveROSState(p.code);
+
+  document.getElementById('hdr').textContent = `${p.code} — ${p.name}`;
+  document.getElementById('subt').innerHTML = `
+    ${PCG.lifecyclePill(show.lifecycleState)} · ${PCG.escapeHtml(p.venueName||'')} ·
+    Show <span class="mono">${PCG.fmtShort(show.dates.showStart)}</span>`;
+
+  if(!ros){
+    document.getElementById('nowCard').innerHTML = PCG.states.empty('No RunOfShow on this show. Build one from a template.');
+    document.getElementById('rosList').innerHTML = '';
+    document.getElementById('rosStatus').textContent = '';
+  } else {
+    const cur = state.currentItem;
+    const next = state.nextItem;
+    document.getElementById('rosStatus').innerHTML = `<span class="pill ${ros.status==='Approved'?'green':'amber'}">${ros.status.toUpperCase()}</span> · ${state.completedCount}/${state.totalCount} items`;
+
+    document.getElementById('nowCard').innerHTML = cur ? `
+      <div class="eyebrow" style="color:#B3D3F5;">NOW PLAYING${cur.overrunMin? ` · OVERRUN ${cur.overrunMin}m`:''}</div>
+      <div style="display:grid; grid-template-columns: auto 1fr; gap: var(--sp-5); align-items:center; margin-top:var(--sp-3);">
+        <div class="now-order">${String(cur.order).padStart(2,'0')}</div>
+        <div>
+          <h2 style="font-size:34px; margin:0;">${PCG.escapeHtml(cur.title)}</h2>
+          <div class="muted" style="font-size:var(--fs-sm); margin-top:4px;">${PCG.escapeHtml(cur.type)} · Est ${cur.estDurationMin} min ${cur.overrunMin?`· <span style="color:var(--status-amber);">+${cur.overrunMin}m over</span>`:''}</div>
+          ${next? `<div style="margin-top:var(--sp-3); font-size:var(--fs-sm); color:var(--text-secondary);">NEXT · <strong>${PCG.escapeHtml(next.title)}</strong> (${next.type})</div>`:''}
+        </div>
+      </div>
+      <div style="margin-top:var(--sp-4); display:flex; gap:var(--sp-2);">
+        <button class="btn primary">➤ Advance</button>
+        <button class="btn">⏸ Hold</button>
+        <button class="btn ghost">Mark Blocked</button>
+      </div>
+    ` : `<div class="muted">No item in progress.</div>`;
+
+    document.getElementById('rosList').innerHTML = (ros.items||[]).map(i=>{
+      const cls = i.status==='Complete' ? 'complete'
+                : i.status==='InProgress' ? 'inprogress'
+                : i.confidenceStatus==='Red' ? 'blocked' : '';
+      const conf = i.confidenceStatus==='Green'?'🟢': i.confidenceStatus==='Yellow'?'🟡':'🔴';
+      return `<div class="ros-row ${cls}">
+        <div class="order">${i.order}</div>
+        <div>
+          <div><strong>${PCG.escapeHtml(i.title)}</strong> ${conf}</div>
+          <div class="type">${PCG.escapeHtml(i.type)}${i.notes?' · '+PCG.escapeHtml(i.notes):''}</div>
+        </div>
+        <div class="est">${i.estDurationMin} min</div>
+        <div><span class="pill ${i.status==='Complete'?'green':i.status==='InProgress'?'purple':i.confidenceStatus==='Red'?'red':'gray'}" style="font-size:10px;">${i.status.toUpperCase()}</span></div>
+        <div>${i.globalElementId?'<span class="pill blue plain" style="font-size:10px;">GE</span>':''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Live signals
+  const r = PCG.api.getReadiness(p.code);
+  const banners = PCG.api.getActiveBanners(p.code);
+  document.getElementById('liveSignals').innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; align-items:center; gap:8px;">${PCG.readinessBadge(r,{compact:true})}<strong>Overall</strong></div>
+      ${banners.length ? banners.slice(0,3).map(b=>`
+        <div class="attn-item ${b.level==='red'?'red':''}" style="margin-bottom:0;">
+          <div><div class="ttl">${PCG.escapeHtml(b.title)}</div><div class="meta">${PCG.escapeHtml(b.detail||'')}</div></div>
+        </div>`).join('') : `<div class="muted" style="font-size:var(--fs-sm);">No active banners.</div>`}
+    </div>
+  `;
+
+  // Departments ready (from labor readiness)
+  const labor = r && r.components && r.components.labor;
+  const depts = ['Audio','Video','Lighting','Scenic','Labor'];
+  document.getElementById('deptReady').innerHTML = depts.map(d=>{
+    const okish = labor && labor.status==='Green';
+    return `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:var(--fs-sm);">
+      <span class="pill ${okish?'green':'amber'} plain" style="font-size:10px;">${okish?'READY':'CHECK'}</span>
+      <span>${d}</span>
+    </div>`;
+  }).join('');
+
+  // Blocked items (ROS items w/ confidenceStatus=Red)
+  const blocked = ros ? (ros.items||[]).filter(i=>i.confidenceStatus==='Red') : [];
+  document.getElementById('blockedItems').innerHTML = blocked.length ? blocked.map(i=>`
+    <div class="attn-item red" style="margin-bottom:6px;">
+      <div><div class="ttl">#${i.order} ${PCG.escapeHtml(i.title)}</div>
+      <div class="meta">${PCG.escapeHtml(i.notes||'')}</div></div>
+    </div>
+  `).join('') : PCG.states.empty('No blocked items.');
+
+  // Mode toggle
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click', e=>{
+    document.querySelectorAll('#modeSeg button').forEach(x=>x.classList.toggle('on', x===e.target));
+  }));
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Sign In</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  body { background: var(--surface-0); }
+  .ms-btn {
+    width:100%; display:flex; align-items:center; gap:12px; justify-content:center;
+    padding: 12px 16px; background: white; color: #0A1220;
+    border-radius: var(--r-sm); border: 0; font-weight: 600; font-size: var(--fs-md);
+    cursor:pointer;
+  }
+  .ms-btn:hover { background: #F7F8FA; }
+  .ms-logo { display:grid; grid-template-columns: 1fr 1fr; gap:1px; width:18px; height:18px; }
+  .ms-logo span { display:block; }
+  .ms-logo span:nth-child(1){ background:#F25022; }
+  .ms-logo span:nth-child(2){ background:#7FBA00; }
+  .ms-logo span:nth-child(3){ background:#00A4EF; }
+  .ms-logo span:nth-child(4){ background:#FFB900; }
+  .field { margin-bottom: 12px; }
+  .field label { display:block; font-size: var(--fs-xs); color: var(--text-tertiary); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
+  .field input { width:100%; padding: 9px 12px; background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--r-sm); outline:0; font-size: var(--fs-sm); font-family: inherit; }
+  .field input:focus { border-color: var(--border-accent); }
+  .divline { display:flex; align-items:center; gap:10px; margin: 16px 0; color: var(--text-tertiary); font-size: var(--fs-xs); }
+  .divline::before, .divline::after { content:""; flex:1; height:1px; background: var(--border); }
+  .hero-bottom { position:relative; color: var(--text-tertiary); font-size: var(--fs-xs); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="login-shell">
+  <div class="login-hero">
+    <div>
+      <img src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" style="width:64px; height:64px; border-radius:50%; display:block; margin-bottom:18px; position:relative;" />
+      <div class="tag">Born Backstage · Built for the Spotlight</div>
+      <h1 class="spectrum">PCG STAGE</h1>
+      <p>The production operations platform for Premier Creative Group. Project playbooks, show books, and cross-show coordination — Microsoft 365 native, secured by Entra ID.</p>
+    </div>
+    <div class="hero-bottom">© 2026 Premier Creative Group · Internal Platform</div>
+  </div>
+
+  <div class="login-form">
+    <div class="inner">
+      <div class="eyebrow">Sign In</div>
+      <h2 style="margin:6px 0 20px;">Welcome back.</h2>
+
+      <button class="ms-btn" onclick="location.href='home.html'">
+        <span class="ms-logo"><span></span><span></span><span></span><span></span></span>
+        Sign in with Microsoft 365
+      </button>
+
+      <div class="divline">OR USE A GUEST LINK</div>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" placeholder="you@premiercreativegroup.com" />
+      </div>
+      <div class="field">
+        <label>Guest Access Code</label>
+        <input type="text" placeholder="Provided by your project PM" />
+      </div>
+      <button class="btn primary" style="width:100%; justify-content:center; padding:11px;" onclick="location.href='playbook.html?project=LCE-2026'">Continue as Guest →</button>
+
+      <div class="muted" style="margin-top:20px; font-size:var(--fs-xs);">
+        Internal users authenticate via Entra ID (SSO). Guest / freelancer access is limited to the crew-safe Playbook and Show Book for projects you've been assigned to.
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

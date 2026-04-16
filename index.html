@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Portfolio</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-4); margin-bottom: var(--sp-4);">
+        <div>
+          <div class="eyebrow">Portfolio</div>
+          <h1>ALL ACTIVE SHOWS</h1>
+          <div class="muted" style="margin-top:6px;" id="today-line"></div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="all">All</button>
+          <button class="chip" data-f="mine">Mine</button>
+          <button class="chip" data-f="inprep">In Prep</button>
+          <button class="chip" data-f="onshow">On Show</button>
+          <button class="chip" data-f="atrisk">At Risk</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="timeline-wrap">
+            <div class="timeline-head">
+              <h3>Portfolio Timeline</h3>
+              <div class="muted" style="font-size:var(--fs-xs); margin-left:auto;">Apr 1 → May 12 · Today highlighted</div>
+            </div>
+            <div id="timeline"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Active Projects</div>
+              <div class="actions">
+                <button class="btn sm ghost">Export CSV</button>
+                <button class="btn sm">New</button>
+              </div>
+            </div>
+            <div style="overflow:auto;">
+              <table class="pcg-table" id="proj-table">
+                <thead>
+                  <tr>
+                    <th>Code</th><th>Project</th><th>Client</th>
+                    <th>Venue</th><th>Load-In</th><th>Show</th>
+                    <th>PM</th><th>Lifecycle</th><th>Readiness</th><th>Health</th><th>Flags</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title" style="color:var(--status-red);">⚠ Cross-Show Conflicts</div>
+              <span class="muted" id="conflict-count" style="margin-left:auto; font-size:var(--fs-xs);"></span>
+            </div>
+            <div class="card-body" id="conflicts"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Action Queue (My Role)</div></div>
+            <div class="card-body" id="attention"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Portfolio Activity</div></div>
+            <div class="card-body activity" id="activity"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:"portfolio", pageTitle:"Portfolio"});
+  document.getElementById("today-line").textContent = `${PCG.today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})} · Next 6 weeks`;
+
+  const all = PCG.api.getProjects();
+  const renderTable = (rows)=>{
+    const tbody = document.querySelector("#proj-table tbody");
+    tbody.innerHTML = rows.map(p=>{
+      const pm = PCG.findPerson(p.pmId || p.primaryPM);
+      const flags = [];
+      if((p.attention||[]).length) flags.push(`<span class="pill amber">${p.attention.length} ATTN</span>`);
+      if((p.risks||[]).some(r=>r.sev==="high" && r.status==="open")) flags.push(`<span class="pill red">RISK</span>`);
+      if((p.approvals||[]).some(a=>a.status==="pending")) flags.push(`<span class="pill blue">${(p.approvals||[]).filter(a=>a.status==="pending").length} APPR</span>`);
+      if(p.status==="live" || (p.show && p.show.lifecycleState==='OnShow')) flags.push(`<span class="pill purple">LIVE</span>`);
+      const r = PCG.api.getReadiness(p.code);
+      return `
+        <tr class="health-${p.health}" onclick="location.href='playbook.html?project=${p.code}'">
+          <td class="mono">${p.code}</td>
+          <td><strong>${PCG.escapeHtml(p.name)}</strong><br><span class="muted" style="font-size:11px;">${PCG.escapeHtml(p.oneLiner||"")}</span></td>
+          <td>${PCG.escapeHtml(p.client||"—")}</td>
+          <td>${PCG.escapeHtml(p.venueName||"—")}</td>
+          <td class="mono">${PCG.fmtShort(p.dates.loadIn)}</td>
+          <td class="mono">${PCG.fmtShort(p.dates.showStart)} → ${PCG.fmtShort(p.dates.showEnd)}</td>
+          <td>${pm?PCG.escapeHtml(pm.name):"—"}</td>
+          <td>${PCG.lifecyclePill(p.show && p.show.lifecycleState)}</td>
+          <td>${PCG.readinessBadge(r,{compact:true})}</td>
+          <td>${PCG.statusPill(p.health)}</td>
+          <td><div class="flags">${flags.join(" ")}</div></td>
+        </tr>`;
+    }).join("") || '<tr><td colspan="10" class="empty">No projects match this filter.</td></tr>';
+  };
+
+  renderTable(all);
+
+  // KPIs (uses lifecycle state)
+  const byState = s => all.filter(p=>p.show && p.show.lifecycleState===s);
+  const atRisk  = all.filter(p=>p.health==="red" || p.health==="amber");
+  const li7     = all.filter(p=>{
+    const d = new Date(p.dates.loadIn);
+    const diff = (d - PCG.today)/(1000*60*60*24);
+    return diff > -1 && diff < 7;
+  });
+  const conflictsList = PCG.api.getInventoryConflicts();
+
+  document.getElementById("kpis").innerHTML = `
+    <div class="kpi"><div class="label">Active</div><div class="value">${all.length}</div><div class="sub">projects across portfolio</div></div>
+    <div class="kpi purple"><div class="label">On Show</div><div class="value">${byState('OnShow').length}</div><div class="sub">live right now</div></div>
+    <div class="kpi amber"><div class="label">In Prep</div><div class="value">${byState('InPrep').length}</div><div class="sub">loading in &lt; 7 days</div></div>
+    <div class="kpi red"><div class="label">Inventory Conflicts</div><div class="value">${conflictsList.length}</div><div class="sub">unresolved (EQLPC)</div></div>
+    <div class="kpi"><div class="label">At-Risk Shows</div><div class="value">${atRisk.length}</div><div class="sub">amber or red health</div></div>
+    <div class="kpi blue"><div class="label">Load-in &lt; 7d</div><div class="value">${li7.length}</div><div class="sub">this week</div></div>
+  `;
+
+  PCG.renderTimeline(document.getElementById("timeline"), { start:"2026-04-01", days:42 });
+
+  // Conflict rail (bridges the seed-level conflicts + live engine conflicts)
+  const unresolved = (PCG.conflicts||[]).filter(c=>!c.resolved);
+  document.getElementById("conflict-count").textContent = `${unresolved.length + conflictsList.length} unresolved`;
+  document.getElementById("conflicts").innerHTML = [
+    ...conflictsList.map(c=>`
+      <div class="conflict">
+        <div class="icon">⚠</div>
+        <div class="body">
+          <strong>${PCG.escapeHtml(c.itemName)} — ${c.deficit} over supply</strong>
+          <div class="meta">Owned ${c.owned} + RPO ${c.confirmedRPOs} vs allocated ${c.totalAllocated} · ${PCG.escapeHtml(c.overlappingDates.from)}→${PCG.escapeHtml(c.overlappingDates.to)}</div>
+          <div class="meta"><a href="eqlpc.html">Open in EQLPC →</a></div>
+        </div>
+      </div>
+    `),
+    ...(PCG.conflicts||[]).map(c=>`
+      <div class="conflict" style="${c.resolved?'opacity:0.55;':''}">
+        <div class="icon">${c.resolved?"✓":"⚠"}</div>
+        <div class="body">
+          <div><strong>${PCG.escapeHtml(c.title)}</strong></div>
+          <div class="meta">${PCG.escapeHtml(c.detail)} ${c.resolved?"· <span style='color:var(--status-green)'>RESOLVED</span>":""}</div>
+        </div>
+      </div>`)
+  ].join('') || PCG.states.empty('No conflicts.');
+
+  // Attention queue — role-filtered via API
+  const me = PCG.api.getActionQueue().slice(0,5);
+  document.getElementById("attention").innerHTML = me.length ? me.map(q=>`
+    <div class="attn-item ${q.priority==='high'?'red':(q.priority==='medium'?'':'blue')}">
+      <div>
+        <div class="ttl">${PCG.escapeHtml(q.title)}</div>
+        <div class="meta"><span class="mono">${q.proj}</span> · Waiting on ${PCG.escapeHtml(q.waitOn)} · ${q.stale}</div>
+      </div>
+      <div class="act"><a class="btn sm" href="playbook.html?project=${q.proj}">Open</a></div>
+    </div>
+  `).join("") : PCG.states.empty('All clear — nothing needs you right now.');
+
+  const activity = all.flatMap(p => (p.activity||[]).map(a=>({...a, code:p.code})))
+    .sort((a,b)=>new Date(b.ts)-new Date(a.ts))
+    .slice(0,8);
+  document.getElementById("activity").innerHTML = activity.map(a=>`
+    <div class="item">
+      <div class="ts"><span class="mono">${a.code}</span> · ${PCG.ago(a.ts)}</div>
+      <div><span class="actor">${PCG.escapeHtml(a.actor)}</span> — ${PCG.escapeHtml(a.text)}</div>
+    </div>
+  `).join("");
+
+  // Chips
+  document.querySelectorAll(".chip[data-f]").forEach(c => c.addEventListener('click', e=>{
+    document.querySelectorAll(".chip[data-f]").forEach(x=>x.classList.toggle('on', x===e.target));
+    const f = e.target.dataset.f;
+    const filtered = f==='all'?all
+      : f==='mine'  ? all.filter(p=>p.pmId===PCG.user.id || p.aeId===PCG.user.id || p.primaryPM===PCG.user.id)
+      : f==='inprep'? all.filter(p=>p.show && p.show.lifecycleState==='InPrep')
+      : f==='onshow'? all.filter(p=>p.show && p.show.lifecycleState==='OnShow')
+      : f==='atrisk'? all.filter(p=>p.health==='red' || p.health==='amber')
+      : all;
+    renderTable(filtered);
+  }));
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Venue Detail</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container" id="body"></div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const id = PCG.qs('id','v.huntington');
+  const v = PCG.api.getVenueRecord(id);
+  PCG.mountShell({active:'portfolio', crumbs:[
+    {label:'Venues', href:'venue.html'},
+    {label:v?v.name:'Not Found'}
+  ]});
+
+  if(!v){
+    document.getElementById('body').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.empty('Venue not found.')}</div>`;
+  } else {
+    const surveys = PCG.api.getSiteSurveys(v.id);
+    const priors  = PCG.api.getPriorShowsAtVenue(v.id);
+    const unionRequired = (v.union && v.union.required===true) || v.union===true;
+
+    const kv = (k,val) => val ? `<div class="k">${PCG.escapeHtml(k)}</div><div class="v">${val}</div>` : '';
+    const section = (title, inner) => `
+      <div class="card" style="margin-bottom:var(--sp-4);">
+        <div class="card-header"><div class="title">${title}</div></div>
+        <div class="card-body">${inner}</div>
+      </div>`;
+
+    document.getElementById('body').innerHTML = `
+      <section class="proj-header">
+        <div class="motif"></div>
+        <div class="eyebrow">${PCG.escapeHtml(v.venueType||'Venue')}${v.status?` · ${v.status.toUpperCase()}`:''}</div>
+        <h1>${PCG.escapeHtml(v.name)}</h1>
+        <div class="meta">
+          <div class="i"><span class="k">Address</span><span class="v">${PCG.escapeHtml(v.address||'—')}</span></div>
+          <div class="i"><span class="k">Aka</span><span class="v">${PCG.escapeHtml((v.aka||[]).join(', ')||'—')}</span></div>
+          <div class="i"><span class="k">Union</span><span class="v">${unionRequired?`<span class="pill red">${v.union&&v.union.local?v.union.local:'UNION'}</span>`:`<span class="pill gray plain">Non-Union</span>`}</span></div>
+          <div class="i"><span class="k">Prior Shows</span><span class="v mono">${priors.length + ((v.priorShowIds||[]).length)}</span></div>
+          <div class="i"><span class="k">Site Surveys</span><span class="v mono">${surveys.length}</span></div>
+        </div>
+      </section>
+
+      ${(v.warningFlags||[]).length ? `
+        <div class="card" style="margin-bottom:var(--sp-4); border-color: rgba(245,183,60,0.5);">
+          <div class="card-header"><div class="title" style="color: var(--status-amber);">⚠ Warning Flags (surfaced on all shows at this venue)</div></div>
+          <div class="card-body">
+            ${(v.warningFlags||[]).map(f=>`<div class="attn-item" style="margin-bottom:6px;"><div><div class="ttl">${PCG.escapeHtml(f)}</div></div></div>`).join('')}
+          </div>
+        </div>` : ''}
+
+      <div class="split">
+        <div>
+
+          ${section('Dock & Loading', v.dock ? `
+            <div class="kv-grid">
+              ${kv('Dock #', v.dock.dockNumber)}
+              ${kv('Dock Address', v.dock.dockAddress)}
+              ${kv('Access Hours', v.dock.accessHours)}
+              ${kv('Badge Required', v.dock.badgeRequired ? '<span class="pill red">YES</span>' : '<span class="pill gray plain">No</span>')}
+              ${kv('Max Truck', v.dock.maxTruckLength ? v.dock.maxTruckLength+"'" : '—')}
+              ${kv('# Docks', v.dock.loadingDockCount)}
+            </div>
+            ${v.dock.notes ? `<div style="margin-top:var(--sp-3); padding:10px; background:var(--surface-2); border-radius:var(--r-sm); font-size:var(--fs-sm);">${PCG.escapeHtml(v.dock.notes)}</div>` : ''}
+          ` : 'No dock info on file.')}
+
+          ${section('Union & Labor', unionRequired ? `
+            <div class="kv-grid">
+              ${kv('Local', v.union.local)}
+              ${kv('Steward', v.union.stewardContact)}
+              ${kv('Minimum Call', v.union.minimumCallHours?v.union.minimumCallHours+'h':'—')}
+            </div>
+            ${v.union.jurisdictionNotes ? `<div style="margin-top:var(--sp-3); font-size:var(--fs-sm); color:var(--text-secondary);">${PCG.escapeHtml(v.union.jurisdictionNotes)}</div>`:''}
+          ` : '<div class="muted">Non-union house.</div>')}
+
+          ${section('Power', v.power ? `
+            <div class="kv-grid">
+              ${kv('Available Amps', v.power.availableAmps)}
+              ${kv('Distro Type', v.power.distroType)}
+            </div>
+            ${v.power.powerNotes ? `<div style="margin-top:var(--sp-3); font-size:var(--fs-sm); color:var(--text-secondary);">${PCG.escapeHtml(v.power.powerNotes)}</div>`:''}
+          ` : '<div class="muted">No power specs on file.</div>')}
+
+          ${section('Rigging', v.rigging ? `
+            <div class="kv-grid">
+              ${kv('Rigging Allowed', v.rigging.riggingAllowed ? '<span class="pill green">Yes</span>' : '<span class="pill red">No</span>')}
+              ${kv('Point Load Limit', v.rigging.pointLoadLimit ? v.rigging.pointLoadLimit + ' lbs' : '—')}
+              ${kv('Ceiling Height', v.rigging.ceilingHeight)}
+              ${kv('Approval Required', v.rigging.riggingApprovalRequired ? '<span class="pill amber">Yes</span>' : 'No')}
+            </div>
+            ${v.rigging.notes ? `<div style="margin-top:var(--sp-3); font-size:var(--fs-sm); color:var(--text-secondary);">${PCG.escapeHtml(v.rigging.notes)}</div>`:''}
+          ` : '<div class="muted">No rigging specs.</div>')}
+
+          ${surveys.length ? section('Site Surveys', surveys.map(s=>`
+            <div class="pinned" style="margin-bottom:6px;">
+              <span class="icon">📋</span>
+              <div><strong>Survey ${PCG.fmtShort(s.surveyDate)}</strong> · for <span class="mono">${PCG.escapeHtml(s.projectId)}</span>
+                <div class="muted" style="font-size:var(--fs-xs);">${(s.recommendations||[]).length} recommendation(s) · ${s.publishedToVenueRecord ? 'Published to venue record' : 'Draft'}</div>
+              </div>
+              <span class="sz">Open ↗</span>
+            </div>
+          `).join('')) : ''}
+
+        </div>
+
+        <aside>
+          <div class="card" style="margin-bottom:var(--sp-4);">
+            <div class="card-header"><div class="title">Prior Shows</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              ${(v.priorShowIds||[]).length ? (v.priorShowIds||[]).map(id=>`
+                <div style="padding:6px 0; border-bottom:1px dashed var(--border);">
+                  <strong class="mono">${PCG.escapeHtml(id)}</strong>
+                </div>`).join('') : '<div class="muted">No prior shows recorded.</div>'}
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:var(--sp-4);">
+            <div class="card-header"><div class="title">Floorplans & Photos</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="muted" style="font-size:var(--fs-xs);">SharePoint document library links. [Phase 2 wires Graph API.]</div>
+              <div style="margin-top:8px;">
+                <a href="#" class="btn sm ghost" style="display:block; margin-bottom:6px;">📄 Floorplan — Ballroom A</a>
+                <a href="#" class="btn sm ghost" style="display:block; margin-bottom:6px;">📄 Rigging Plot Template</a>
+                <a href="#" class="btn sm ghost" style="display:block;">📷 Venue Photo Library</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              VenueRecord is authoritative for dock, union, power, rigging, and operational warning flags. Published site-survey findings merge into this record.
+            </div>
+          </div>
+        </aside>
+      </div>
+    `;
+  }
+</script>
+</body>
+</html>

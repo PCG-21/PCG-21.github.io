@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Venues</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Venue Records · Institutional Knowledge</div>
+          <h1>Venues</h1>
+          <div class="muted">Dock, union, power, rigging, and warning flags — source-of-truth for every show.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <input id="search" placeholder="Search venues…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-pill); padding:6px 14px; width:220px;" />
+          <button class="btn sm">＋ New Venue</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="title">Venue Library</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+        <div style="overflow-x:auto;">
+          <table class="pcg-table">
+            <thead><tr><th>Name</th><th>Type</th><th>City</th><th>Union</th><th>Dock</th><th>Prior Shows</th><th>Warning Flags</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Venues'}]});
+
+  const venues = (PCG.venues||[]);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Total Venues</div><div class="value">${venues.length}</div><div class="sub">in library</div></div>
+    <div class="kpi red"><div class="label">Union Venues</div><div class="value">${venues.filter(v=>v.union && v.union.required===true || v.union===true).length}</div><div class="sub">IATSE/Teamster</div></div>
+    <div class="kpi amber"><div class="label">With Warning Flags</div><div class="value">${venues.filter(v=>(v.warningFlags||[]).length).length}</div><div class="sub">institutional notes</div></div>
+    <div class="kpi blue"><div class="label">Site Surveys</div><div class="value">${(PCG.siteSurveys||[]).length}</div><div class="sub">on file</div></div>
+    <div class="kpi"><div class="label">Types Covered</div><div class="value">${new Set(venues.map(v=>v.venueType).filter(Boolean)).size}</div><div class="sub">categories</div></div>
+    <div class="kpi"><div class="label">Active Shows</div><div class="value">${(PCG.api.getProjects()||[]).filter(p=>p.show && p.show.lifecycleState!=='Archived').length}</div><div class="sub">using venue lib</div></div>
+  `;
+
+  const input = document.getElementById('search');
+  function render(){
+    const q = (input.value||'').toLowerCase();
+    const filtered = venues.filter(v => !q || (v.name||'').toLowerCase().includes(q) ||
+      (v.city||'').toLowerCase().includes(q) || (v.state||'').toLowerCase().includes(q));
+    document.getElementById('count').textContent = `${filtered.length} of ${venues.length}`;
+    document.getElementById('rows').innerHTML = filtered.map(v=>{
+      const unionRequired = (v.union && (v.union.required===true)) || v.union===true;
+      const priors = (v.priorShowIds||[]).length;
+      const flags = (v.warningFlags||[]).length;
+      return `<tr onclick="location.href='venue-detail.html?id=${v.id}'">
+        <td><strong>${PCG.escapeHtml(v.name)}</strong>${(v.aka||[]).length?`<br><span class="muted" style="font-size:11px;">aka ${PCG.escapeHtml((v.aka||[]).join(', '))}</span>`:''}</td>
+        <td><span class="pill gray plain">${PCG.escapeHtml(v.venueType||'—')}</span></td>
+        <td>${PCG.escapeHtml(v.city||'—')}${v.state?', '+v.state:''}</td>
+        <td>${unionRequired ? `<span class="pill red">${v.union&&v.union.local?v.union.local:'UNION'}</span>` : `<span class="pill gray plain">Non-Union</span>`}</td>
+        <td class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml((v.dock&&v.dock.notes)||v.loadInNotes||'—').slice(0,60)}…</td>
+        <td class="mono">${priors}</td>
+        <td>${flags ? `<span class="pill amber">⚠ ${flags}</span>` : '—'}</td>
+        <td><a class="btn sm ghost" href="venue-detail.html?id=${v.id}">Open</a></td>
+      </tr>`;
+    }).join('');
+  }
+  input.addEventListener('input', render);
+  render();
+</script>
+</body>
+</html>

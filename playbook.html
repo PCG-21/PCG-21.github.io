@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Playbook</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div id="pb-header"></div>
+
+      <div class="split-3">
+        <!-- Left: section nav -->
+        <aside>
+          <div class="playbook-nav" id="pb-nav">
+            <div class="eyebrow" style="padding:6px 10px;">Playbook</div>
+            <a href="#brief" class="on">5-Minute Brief</a>
+            <a href="#attn">Needs Attention Now</a>
+            <a href="#changed">What Changed Recently</a>
+            <a href="#scope">Scope — Sold vs Current</a>
+            <a href="#contacts">Key Contacts</a>
+            <a href="#venue">Venue & Rooms</a>
+            <a href="#labor">Crew & Labor</a>
+            <a href="#gear">Gear Snapshot</a>
+            <a href="#procurement">Procurement</a>
+            <a href="#docs">Documents That Matter</a>
+            <a href="#risks">Risks & Issues</a>
+            <a href="#financials">Financials</a>
+            <a href="#pmnotes">PM Notes / Tribal Knowledge</a>
+          </div>
+        </aside>
+
+        <!-- Center: content -->
+        <div id="pb-content"></div>
+
+        <!-- Right: context rail -->
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Readiness</div><span id="pb-ready-badge" style="margin-left:auto;"></span></div>
+            <div class="card-body" id="pb-readiness"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Activity</div></div>
+            <div class="card-body activity" id="pb-activity"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Cross-Refs</div></div>
+            <div class="card-body" id="pb-refs"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const code = PCG.qs("project","LCE-2026");
+  const p = PCG.findProject(code) || PCG.projects[0];
+  const pm = PCG.findPerson(p.primaryPM);
+  const td = PCG.findPerson(p.td);
+  const creative = PCG.findPerson(p.creativeLead);
+  const venue = PCG.findVenue(p.venueId);
+
+  PCG.mountShell({
+    active: "playbook",
+    crumbs: [
+      {label:"Portfolio", href:"index.html"},
+      {label:p.code, href:`project.html?project=${p.code}`},
+      {label:"Playbook"}
+    ],
+    pageActions: `
+      <a class="btn" href="project.html?project=${p.code}">Command Center</a>
+      <a class="btn primary" href="showbook.html?project=${p.code}">Generate Show Book</a>
+    `
+  });
+
+  document.getElementById("pb-header").innerHTML = PCG.projectHeader(p) + PCG.bannerRail(p.code);
+
+  // --- Brief hero section ---
+  const topRisks = (p.risks||[]).filter(r=>r.status==="open").sort((a,b)=> (b.sev==="high"?1:0) - (a.sev==="high"?1:0)).slice(0,3);
+  const briefHTML = `
+  <section id="brief" class="section-anchor brief-hero">
+    <div class="eyebrow">5-Minute Brief</div>
+    <h2>What you need to know, in five minutes.</h2>
+    <div class="brief-grid">
+      <div class="k">What</div>
+      <div class="v">${PCG.escapeHtml(p.oneLiner)}</div>
+      <div class="k">When</div>
+      <div class="v mono">
+        Prep ${PCG.fmtShort(p.dates.prep)} ·
+        Load-In ${PCG.fmtShort(p.dates.loadIn)} ${PCG.fmtTime(p.dates.loadIn)} ·
+        Show ${PCG.fmtShort(p.dates.showStart)}–${PCG.fmtShort(p.dates.showEnd)} ·
+        Load-Out ${PCG.fmtShort(p.dates.loadOut)} ${PCG.fmtTime(p.dates.loadOut)} ·
+        Return ${PCG.fmtShort(p.dates.ret)}
+      </div>
+      <div class="k">Where</div>
+      <div class="v">${PCG.escapeHtml(p.venueName)}${venue?` — <span class="muted">${PCG.escapeHtml(venue.address)}</span>`:""}</div>
+      <div class="k">Who Owns</div>
+      <div class="v">PM <strong>${pm?pm.name:"—"}</strong> · TD <strong>${td?td.name:"—"}</strong>${creative?` · Creative <strong>${creative.name}</strong>`:""}</div>
+      <div class="k">State</div>
+      <div class="v">${PCG.statusPill(p.health)} &nbsp; ${p.health==="amber"?"Attention required — open items below.":p.health==="red"?"At-risk — see risks below.":"On track."}</div>
+      <div class="k">Top 3</div>
+      <div class="v">
+        <ol style="margin:0; padding-left:18px;">
+          ${topRisks.length?topRisks.map(r=>`<li><strong>${PCG.escapeHtml(r.title)}</strong> <span class="muted">— ${PCG.escapeHtml(r.mitigation||"")}</span></li>`).join(""):`<li class="muted">No top risks.</li>`}
+        </ol>
+      </div>
+    </div>
+  </section>`;
+
+  // --- Attention ---
+  const attnHTML = `
+  <section id="attn" class="pb-section section-anchor">
+    <header>
+      <div class="num">01</div>
+      <div class="title">Needs Attention Now</div>
+      <div class="freshness">${(p.attention||[]).length} open</div>
+    </header>
+    ${(p.attention||[]).map(a=>{
+      const owner = PCG.findPerson(a.owner);
+      const tone = a.kind==="red"?"red":(a.kind==="blue"?"blue":"");
+      return `
+      <div class="attn-item ${tone}">
+        <div>
+          <div class="ttl">${PCG.escapeHtml(a.title)}</div>
+          <div class="meta">Owner: ${owner?PCG.escapeHtml(owner.name):"Unassigned"} · Due ${PCG.fmtDate(a.due,{time:true})}</div>
+        </div>
+        <div class="act">
+          <button class="btn sm">Action</button>
+          <button class="btn sm ghost">Reassign</button>
+        </div>
+      </div>`;
+    }).join("")}
+    ${(p.attention||[]).length===0?`<div class="empty">Nothing demanding attention right now.</div>`:""}
+  </section>`;
+
+  // --- Recently changed ---
+  const changedHTML = `
+  <section id="changed" class="pb-section section-anchor">
+    <header>
+      <div class="num">02</div>
+      <div class="title">What Changed Recently</div>
+      <div class="freshness">Last 7 days</div>
+    </header>
+    ${(p.changes||[]).map(c=>`
+      <div class="change-ribbon">
+        <div class="when">${PCG.fmtShort(c.date)}</div>
+        <div>
+          <strong>${PCG.escapeHtml(c.title)}</strong> <span class="muted">— by ${PCG.escapeHtml(c.by)}</span>
+          <div class="meta" style="color:var(--text-secondary); font-size:var(--fs-xs);">${PCG.escapeHtml(c.impact)}</div>
+        </div>
+      </div>
+    `).join("")}
+  </section>`;
+
+  // --- Scope diff ---
+  const renderLi = (items, cur=false) => items.map(s=>{
+    if(!cur) return `<li>${PCG.escapeHtml(s)}</li>`;
+    // mark added if not in sold
+    const sold = new Set((p.scopeSold||[]));
+    const cls = sold.has(s) ? "" : "added";
+    return `<li class="${cls}">${PCG.escapeHtml(s)}${cls==="added"?' <span class="pill green plain" style="font-size:9px;">ADDED</span>':""}</li>`;
+  }).join("");
+  const scopeHTML = `
+  <section id="scope" class="pb-section section-anchor">
+    <header>
+      <div class="num">03</div>
+      <div class="title">Scope — Sold vs Current</div>
+      <div class="freshness">Redlined</div>
+    </header>
+    <div class="scope-diff">
+      <div class="scope-col sold">
+        <h4>Sold Scope</h4>
+        <ul>${renderLi(p.scopeSold||[])}</ul>
+      </div>
+      <div class="scope-col current">
+        <h4>Current Scope</h4>
+        <ul>${renderLi(p.scopeCurrent||[], true)}</ul>
+      </div>
+    </div>
+  </section>`;
+
+  // --- Key Contacts ---
+  const projContacts = (PCG.contacts||[]).filter(c=>c.project===p.code);
+  const grpClient = projContacts.filter(c=>c.category==="client");
+  const grpVenue  = projContacts.filter(c=>c.category==="venue");
+  const renderContacts = list => list.map(c=>`
+    <div class="contact">
+      <div class="av">${c.name.split(" ").map(s=>s[0]).join("").slice(0,2).toUpperCase()}</div>
+      <div style="flex:1;">
+        <div class="nm">${PCG.escapeHtml(c.name)} ${c.onsite?'<span class="pill green plain" style="font-size:9px;">ONSITE</span>':""}</div>
+        <div class="role">${PCG.escapeHtml(c.role)}</div>
+        <div class="muted mono" style="font-size:11px;">${c.phone||""} ${c.email?`· ${c.email}`:""}</div>
+      </div>
+    </div>
+  `).join("");
+
+  const contactsHTML = `
+  <section id="contacts" class="pb-section section-anchor">
+    <header>
+      <div class="num">04</div>
+      <div class="title">Key Contacts</div>
+    </header>
+    <div class="grid-2">
+      <div>
+        <div class="eyebrow" style="margin-bottom:8px;">Client</div>
+        <div style="display:grid; gap:8px;">${renderContacts(grpClient)||'<div class="empty">No client contacts linked.</div>'}</div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:8px;">Venue</div>
+        <div style="display:grid; gap:8px;">${renderContacts(grpVenue)||'<div class="empty">No venue contacts linked.</div>'}</div>
+      </div>
+    </div>
+    <div style="margin-top:var(--sp-4);">
+      <div class="eyebrow" style="margin-bottom:8px;">Internal (PCG)</div>
+      <div class="grid-3">
+        ${[pm,td,creative].filter(Boolean).map(x=>`
+          <div class="contact">
+            <div class="av">${x.initials}</div>
+            <div><div class="nm">${PCG.escapeHtml(x.name)}</div><div class="role">${PCG.escapeHtml(x.role)}</div></div>
+          </div>`).join("")}
+      </div>
+    </div>
+  </section>`;
+
+  // --- Venue & Rooms ---
+  const venueHTML = `
+  <section id="venue" class="pb-section section-anchor">
+    <header>
+      <div class="num">05</div>
+      <div class="title">Venue & Rooms</div>
+    </header>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-pad">
+          <div class="eyebrow">Primary Venue</div>
+          <h3 style="margin-top:4px;">${PCG.escapeHtml(venue?venue.name:p.venueName)}</h3>
+          <div class="muted mono" style="font-size:12px;">${venue?PCG.escapeHtml(venue.address):""}</div>
+          <div class="divider"></div>
+          <div class="kv-grid">
+            <div class="k">Union</div>
+            <div class="v">${venue && venue.union ? "Yes" : "No"}</div>
+            <div class="k">Dock Hours</div>
+            <div class="v">${venue?PCG.escapeHtml(venue.dockHours||"—"):"—"}</div>
+          </div>
+          <div style="margin-top:var(--sp-3);">
+            <div class="eyebrow" style="margin-bottom:4px;">Load-In Note</div>
+            <div class="muted" style="font-size:var(--fs-sm);">${venue?PCG.escapeHtml(venue.loadInNotes||""):""}</div>
+          </div>
+          ${venue && venue.knownQuirks && venue.knownQuirks.length ? `
+          <div style="margin-top:var(--sp-3);">
+            <div class="eyebrow" style="margin-bottom:4px;">Known Quirks</div>
+            <ul style="margin:0; padding-left:18px; font-size:var(--fs-sm); color:var(--text-secondary);">
+              ${venue.knownQuirks.map(q=>`<li>${PCG.escapeHtml(q)}</li>`).join("")}
+            </ul>
+          </div>`:""}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-pad">
+          <div class="eyebrow">Rooms & Spaces</div>
+          ${p.code==="SAE-WCX-2026" ? `
+            <div style="margin-top:8px;">30+ active rooms across Huntington Place. See <a href="breakouts.html?project=${p.code}">full breakout grid →</a></div>
+            <ul style="font-size:var(--fs-sm); padding-left:18px; margin-top:8px;">
+              <li><strong>140 Wing</strong> — 11 active rooms (standard technical sessions)</li>
+              <li><strong>250 Wing</strong> — 8 active + 3 house-audio-only</li>
+              <li><strong>300 Level</strong> — 330A/B large tech sessions, 320/321 intimate, plus show office (312A)</li>
+              <li><strong>400 Level</strong> — 6 house-audio rooms</li>
+            </ul>` : `
+            <ul style="font-size:var(--fs-sm); padding-left:18px; margin-top:8px;">
+              <li><strong>Forum Ballroom</strong> — GS + Awards</li>
+              <li><strong>Forum Ballroom South Foyer</strong> — Welcome reception (Tues)</li>
+              <li><strong>Theater 330B</strong> — Battery Tech Theater</li>
+              <li><strong>Awards Ready Room</strong> — Added 4/14 (pending Flex)</li>
+            </ul>`}
+        </div>
+      </div>
+    </div>
+  </section>`;
+
+  // --- Crew & Labor ---
+  const laborRoster = p.code==="LCE-2026" ? [
+    ["Creative Director / AM","Keith Oliver","KO",true],
+    ["TD — Ballroom GS","Chris Taylor","CT",true],
+    ["Show Caller","Jason Gerber","JG",true],
+    ["Audio A1","Priya Shah (reassigned from Mike Chen)","PS",true],
+    ["Audio A2","— TBD","??",false],
+    ["Video Director","— TBD","??",false],
+    ["Video V1","Dana Kim","DK",true],
+    ["Lighting LD","Elliot Reyes","ER",true],
+    ["Lighting ME","— TBD","??",false],
+    ["LED Lead / Cam 1","Renée Benoit","RB",true],
+    ["Scenic Lead / Cam 2","Dan Marino","DM",true],
+    ["AV Tech 1–4","— 4 TBD","??",false],
+    ["ShoFlo / Schedules","Chelsea Oliver","CO",true]
+  ] : [
+    ["Mini GS / Breakouts Lead","Tyler Scheff","TS",true],
+    ["TD","Chris Taylor","CT",true],
+    ["Floor Leads","140s: Kim, 250s: Ramos, 300s: Taylor, 400s: Scheff","—",true],
+    ["Sweep Crew","6 rotating techs, 7am/12pm/5pm","—",false],
+    ["ShoFlo","Chelsea Oliver","CO",true]
+  ];
+  const laborHTML = `
+  <section id="labor" class="pb-section section-anchor">
+    <header>
+      <div class="num">06</div>
+      <div class="title">Crew & Labor Snapshot</div>
+      <div class="freshness">Lasso · synced 2h ago</div>
+    </header>
+    <div class="card">
+      <table class="pcg-table">
+        <thead><tr><th>Role</th><th>Name</th><th>Confirmed</th><th></th></tr></thead>
+        <tbody>
+          ${laborRoster.map(r=>`
+            <tr>
+              <td style="font-family:var(--font-display); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-secondary);">${r[0]}</td>
+              <td>${PCG.escapeHtml(r[1])}</td>
+              <td>${r[3]?'<span class="pill green">CONFIRMED</span>':'<span class="pill amber">TBD</span>'}</td>
+              <td style="text-align:right;"><a href="#" class="btn sm ghost">Lasso ↗</a></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  </section>`;
+
+  // --- Gear ---
+  const renderGearTree = (group) => {
+    const rows = Object.entries(group).filter(([,arr])=>arr && arr.length);
+    return rows.map(([cat, arr])=>`
+      <div class="cat">${cat.toUpperCase()}</div>
+      ${arr.map(g=>`
+        <div class="group"><span class="ttl">${PCG.escapeHtml(g.group)}</span></div>
+        <div class="items">${PCG.escapeHtml(g.items)}</div>
+      `).join("")}
+    `).join("");
+  };
+
+  const amounts = p.amountsApprox || {};
+  const totalAmount = Object.values(amounts).reduce((a,b)=>a+(b||0),0);
+  const gearHTML = `
+  <section id="gear" class="pb-section section-anchor">
+    <header>
+      <div class="num">07</div>
+      <div class="title">Gear Snapshot</div>
+      <div class="freshness">Flex pull sheet · ${p.pullSheetNo||"—"}</div>
+    </header>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="title">Functional Groups (from Flex)</div>
+          <a class="btn sm ghost" href="#">Full Pull Sheet ↗</a>
+        </div>
+        <div class="card-body tree">
+          ${Object.values(p.gearSummary||{}).some(x=>x && x.length) ? renderGearTree(p.gearSummary) : '<div class="empty">No gear summary available.</div>'}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="title">Gear by Department (from Quote)</div></div>
+        <div class="card-body">
+          ${Object.keys(amounts).length ? `
+          <table class="pcg-table">
+            <thead><tr><th>Department</th><th style="text-align:right">Approx</th></tr></thead>
+            <tbody>
+              ${Object.entries(amounts).map(([k,v])=>`
+                <tr><td style="text-transform:uppercase; font-family:var(--font-display); letter-spacing:0.06em; font-size:12px;">${k}</td><td class="mono" style="text-align:right">${PCG.money(v)}</td></tr>
+              `).join("")}
+              <tr><td><strong>Total</strong></td><td class="mono" style="text-align:right"><strong>${PCG.money(totalAmount)}</strong></td></tr>
+            </tbody>
+          </table>`:`<div class="empty">Quote totals not available.</div>`}
+          <div style="margin-top:var(--sp-3); font-size:var(--fs-xs); color:var(--text-tertiary);">
+            Quote No. <span class="mono">${p.quoteNo||"—"}</span> · Manifest <span class="mono">${p.manifestNo||"—"}</span> · Pull Sheet <span class="mono">${p.pullSheetNo||"—"}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+
+  // --- Procurement ---
+  const procHTML = `
+  <section id="procurement" class="pb-section section-anchor">
+    <header>
+      <div class="num">08</div>
+      <div class="title">Procurement Snapshot</div>
+      <div class="freshness">Power App · live</div>
+    </header>
+    <div class="card">
+      <table class="pcg-table">
+        <thead><tr><th>Request</th><th>Status</th><th>ETA</th><th>Blocker</th><th></th></tr></thead>
+        <tbody>
+          ${p.code==="LCE-2026" ? `
+            <tr><td>6× CyberPower rackmount UPS (replacement units)</td><td><span class="pill green">APPROVED</span></td><td class="mono">Apr 12 ✓</td><td class="muted">None</td><td><a class="btn sm ghost" href="#">Open ↗</a></td></tr>
+            <tr><td>Case labels + cable bundles (Marquee set)</td><td><span class="pill green">DELIVERED</span></td><td class="mono">Apr 9 ✓</td><td class="muted">None</td><td><a class="btn sm ghost" href="#">Open ↗</a></td></tr>
+            <tr><td>Sub-rental — 2× d&b JSub (Solotech)</td><td><span class="pill amber">PENDING APPR</span></td><td class="mono">Apr 15 EOD</td><td class="muted">Approval CO#3</td><td><a class="btn sm ghost" href="#">Open ↗</a></td></tr>
+          ` : p.code==="SAE-WCX-2026" ? `
+            <tr><td>Consumables — 300× AA batteries</td><td><span class="pill green">DELIVERED</span></td><td class="mono">Apr 8 ✓</td><td class="muted">None</td><td></td></tr>
+            <tr><td>Printed room signage (31 rooms)</td><td><span class="pill blue">IN TRANSIT</span></td><td class="mono">Apr 13 AM</td><td class="muted">None</td><td></td></tr>
+            <tr><td>Badging supplies — show office</td><td><span class="pill green">DELIVERED</span></td><td class="mono">Apr 10 ✓</td><td class="muted">None</td><td></td></tr>
+          ` : `<tr><td colspan="5" class="empty">No active procurement.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </section>`;
+
+  // --- Documents ---
+  const docsHTML = `
+  <section id="docs" class="pb-section section-anchor">
+    <header>
+      <div class="num">09</div>
+      <div class="title">Documents That Matter</div>
+      <div class="freshness">Pinned only</div>
+    </header>
+    <div class="grid-2">
+      ${(p.docs||[]).filter(d=>d.pinned).map(d=>`
+        <div class="pinned">
+          <span class="icon">${d.cat==="Flex"?"⧈": d.cat==="Venue"?"▣": d.cat==="Quote"?"§": d.cat==="Script"?"⌘": d.cat==="Creative"?"◆": "◫"}</span>
+          <div>
+            <div><strong>${PCG.escapeHtml(d.title)}</strong></div>
+            <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(d.cat)} · ${PCG.escapeHtml(d.sz)}</div>
+          </div>
+          <span class="sz">Open ↗</span>
+        </div>
+      `).join("")}
+    </div>
+  </section>`;
+
+  // --- Risks ---
+  const riskHTML = `
+  <section id="risks" class="pb-section section-anchor">
+    <header>
+      <div class="num">10</div>
+      <div class="title">Risks & Unresolved Issues</div>
+      <div class="freshness">${(p.risks||[]).filter(r=>r.status==="open").length} open</div>
+    </header>
+    <div class="card">
+      <table class="pcg-table">
+        <thead><tr><th>Severity</th><th>Title</th><th>Owner</th><th>Mitigation</th><th>Status</th></tr></thead>
+        <tbody>
+          ${(p.risks||[]).map(r=>{
+            const own = PCG.findPerson(r.owner);
+            const sevPill = r.sev==="high"?'<span class="pill red">HIGH</span>':r.sev==="medium"?'<span class="pill amber">MED</span>':'<span class="pill gray">LOW</span>';
+            return `<tr>
+              <td>${sevPill}</td>
+              <td><strong>${PCG.escapeHtml(r.title)}</strong></td>
+              <td>${own?PCG.escapeHtml(own.name):"—"}</td>
+              <td class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(r.mitigation||"")}</td>
+              <td>${r.status==="open"?'<span class="pill amber">OPEN</span>':'<span class="pill green">RESOLVED</span>'}</td>
+            </tr>`;
+          }).join("")}
+          ${(p.risks||[]).length===0?`<tr><td colspan="5" class="empty">No risks on record.</td></tr>`:""}
+        </tbody>
+      </table>
+    </div>
+  </section>`;
+
+  // --- Financials ---
+  const finHTML = `
+  <section id="financials" class="pb-section section-anchor">
+    <header>
+      <div class="num">11</div>
+      <div class="title">Financials (Rollup)</div>
+      <div class="freshness">QuickBooks · rollup only</div>
+    </header>
+    <div class="grid-3">
+      <div class="card card-pad">
+        <div class="eyebrow">Quote Total (approx)</div>
+        <div style="font-family:var(--font-display); font-size:28px; margin-top:4px;">${PCG.money(totalAmount) || "—"}</div>
+        <div class="muted" style="font-size:var(--fs-xs);">Before tax, across depts</div>
+      </div>
+      <div class="card card-pad">
+        <div class="eyebrow">Open Change Orders</div>
+        <div style="font-family:var(--font-display); font-size:28px; margin-top:4px;">${(p.approvals||[]).length}</div>
+        <div class="muted" style="font-size:var(--fs-xs);">Awaiting approval</div>
+      </div>
+      <div class="card card-pad">
+        <div class="eyebrow">Terms</div>
+        <div style="font-family:var(--font-display); font-size:18px; margin-top:4px;">${PCG.escapeHtml(p.terms||"—")}</div>
+        <div class="muted" style="font-size:var(--fs-xs);">Customer PO <span class="mono">${p.customerPO||"—"}</span></div>
+      </div>
+    </div>
+  </section>`;
+
+  // --- PM Notes ---
+  const notesHTML = `
+  <section id="pmnotes" class="pb-section section-anchor">
+    <header>
+      <div class="num">12</div>
+      <div class="title">PM Notes / Tribal Knowledge</div>
+      <div class="freshness">Editable · last saved ${PCG.ago("2026-04-14T22:18")}</div>
+    </header>
+    <div class="card card-pad" style="font-size:var(--fs-md); line-height:1.7; white-space:pre-wrap;">${(p.pmNotes||"—").replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div>
+    <div style="margin-top:var(--sp-3); display:flex; gap:var(--sp-2);">
+      <button class="btn sm">✏ Edit</button>
+      <button class="btn sm ghost">Add prompt: "What's weird about this venue?"</button>
+      <button class="btn sm ghost">Add prompt: "What would you tell your replacement?"</button>
+    </div>
+  </section>`;
+
+  document.getElementById("pb-content").innerHTML = briefHTML + attnHTML + changedHTML + scopeHTML + contactsHTML + venueHTML + laborHTML + gearHTML + procHTML + docsHTML + riskHTML + finHTML + notesHTML;
+
+  // --- Readiness breakdown ---
+  const readiness = PCG.api.getReadiness(p.code);
+  document.getElementById("pb-ready-badge").innerHTML = PCG.readinessBadge(readiness,{compact:true});
+  document.getElementById("pb-readiness").innerHTML = PCG.readinessDetail(readiness);
+
+  // --- Activity rail ---
+  document.getElementById("pb-activity").innerHTML = (p.activity||[]).slice(0,8).map(a=>`
+    <div class="item">
+      <div class="ts">${PCG.ago(a.ts)}</div>
+      <div><span class="actor">${PCG.escapeHtml(a.actor)}</span> — ${PCG.escapeHtml(a.text)}</div>
+    </div>
+  `).join("");
+
+  // --- Cross-refs ---
+  document.getElementById("pb-refs").innerHTML = `
+    <div class="kv-grid">
+      <div class="k">Quote</div><div class="v mono">${p.quoteNo||"—"}</div>
+      <div class="k">Manifest</div><div class="v mono">${p.manifestNo||"—"}</div>
+      <div class="k">Pull Sheet</div><div class="v mono">${p.pullSheetNo||"—"}</div>
+      <div class="k">PO</div><div class="v mono">${p.customerPO||"—"}</div>
+      <div class="k">Stage Set</div><div class="v">${PCG.escapeHtml(p.stageSet||"—")}</div>
+      <div class="k">Rate Days</div><div class="v mono">${p.rateDays||"—"}</div>
+    </div>
+    <div class="divider"></div>
+    <div style="display:grid; gap:6px;">
+      <a class="btn sm" href="#">Flex · Order ${p.manifestNo||"—"} ↗</a>
+      <a class="btn sm" href="#">Lasso · Project ${p.code} ↗</a>
+      <a class="btn sm" href="#">QuickBooks · ${p.customerPO||"—"} ↗</a>
+      <a class="btn sm" href="#">ShoFlo · Show Flow ↗</a>
+      <a class="btn sm ghost" href="#">SharePoint Project Folder ↗</a>
+    </div>
+  `;
+
+  // --- Nav highlight on scroll ---
+  const navLinks = document.querySelectorAll("#pb-nav a");
+  const sections = Array.from(navLinks).map(a=>document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  window.addEventListener("scroll", ()=>{
+    const y = window.scrollY + 140;
+    let cur = sections[0];
+    sections.forEach(s=>{ if(s.offsetTop<=y) cur = s; });
+    navLinks.forEach(a=>{
+      a.classList.toggle("on", a.getAttribute("href")==="#"+(cur&&cur.id));
+    });
+  }, {passive:true});
+</script>
+</body>
+</html>

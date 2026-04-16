@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Leadership</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Leadership · Portfolio Readiness</div>
+          <h1>PORTFOLIO AT A GLANCE</h1>
+          <div class="muted">Confidence signals across every active project. Sorted by urgency.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn sm ghost" href="index.html">Portfolio Detail</a>
+          <a class="btn sm ghost" href="finance.html">Finance</a>
+          <a class="btn sm ghost" href="eqlpc.html">EQLPC</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Readiness Board</div></div>
+            <div id="board"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Shows Currently Live</div></div>
+            <div class="card-body" id="live"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Blocked Transitions</div></div>
+            <div class="card-body" id="blocked"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Financial Roll-Up</div></div>
+            <div class="card-body" id="fin"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs);">
+              <div class="muted">The overall readiness signal is synthesized from 5 authoritative sources; no one types it in. Click any show to see the breakdown.</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Leadership'}]});
+
+  const all = PCG.api.getPortfolioReadiness();
+  const tone = s => ({ Green:'green', Yellow:'amber', Red:'red', Blocked:'red' }[s] || 'gray');
+  const score = s => ({ Blocked:0, Red:1, Yellow:2, Green:3 }[s] ?? 4);
+  all.sort((a,b) => score(a.readiness && a.readiness.overall) - score(b.readiness && b.readiness.overall));
+
+  const byState = {};
+  (PCG.api.getProjects()||[]).forEach(p=>{
+    const s = (p.show && p.show.lifecycleState) || '—';
+    byState[s] = (byState[s]||0)+1;
+  });
+  const count = state => all.filter(x=>x.readiness && x.readiness.overall===state).length;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi red"><div class="label">Blocked</div><div class="value">${count('Blocked')}</div><div class="sub">cannot advance</div></div>
+    <div class="kpi red"><div class="label">Red</div><div class="value">${count('Red')}</div><div class="sub">intervention needed</div></div>
+    <div class="kpi amber"><div class="label">Yellow</div><div class="value">${count('Yellow')}</div><div class="sub">monitored</div></div>
+    <div class="kpi"><div class="label">Green</div><div class="value" style="color:var(--status-green);">${count('Green')}</div><div class="sub">on track</div></div>
+    <div class="kpi blue"><div class="label">On Show</div><div class="value">${byState['OnShow']||0}</div><div class="sub">live</div></div>
+    <div class="kpi"><div class="label">In Prep</div><div class="value">${byState['InPrep']||0}</div><div class="sub">loading in soon</div></div>
+  `;
+
+  document.getElementById('board').innerHTML = all.map(({code,name,readiness})=>{
+    const p = PCG.api.getProject(code);
+    const top = readiness && Object.values(readiness.components).flatMap(c=>(c.blockers||[]).concat(c.warnings||[]))[0];
+    return `
+      <div class="conflict-row" style="grid-template-columns: 120px 1fr 90px 90px 90px 90px 90px 140px; cursor:pointer;"
+           onclick="location.href='playbook.html?project=${code}'">
+        <div>${PCG.readinessBadge(readiness,{compact:true})}</div>
+        <div>
+          <strong>${PCG.escapeHtml(code)}</strong> — ${PCG.escapeHtml(name.split('—')[0].trim())}
+          <div class="muted" style="font-size:11px;">${PCG.escapeHtml(top||'All components Green')}</div>
+        </div>
+        ${['warehouse','labor','ros','checklist','finance'].map(k=>{
+          const c = (readiness && readiness.components[k])||{};
+          return `<div style="text-align:center;"><span class="pill plain ${tone(c.status)}" title="${PCG.escapeHtml((c.blockers||[]).concat(c.warnings||[]).join(' · ')||'OK')}" style="font-size:10px;">${k.slice(0,3).toUpperCase()}</span></div>`;
+        }).join('')}
+        <div class="muted mono" style="text-align:right; font-size:11px;">${p?PCG.fmtShort(p.dates.loadIn):''}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Shows on show
+  const live = (PCG.api.getProjects()||[]).filter(p=>p.show && p.show.lifecycleState==='OnShow');
+  document.getElementById('live').innerHTML = live.length ? live.map(p=>{
+    const r = PCG.api.getReadiness(p.code);
+    const ros = PCG.api.getLiveROSState(p.code);
+    return `
+      <div class="attn-item ${r && r.overall!=='Green'?'':'blue'}" style="margin-bottom:6px;">
+        <div>
+          <div class="ttl">${PCG.escapeHtml(p.name)} ${PCG.readinessBadge(r,{compact:true})}</div>
+          <div class="meta">${ros?`ROS: ${ros.completedCount}/${ros.totalCount} items · Current: ${ros.currentItem?PCG.escapeHtml(ros.currentItem.title):'—'}`:'No ROS'}</div>
+        </div>
+        <div class="act"><a class="btn sm" href="producer-home.html?project=${p.code}">Watch Live</a></div>
+      </div>`;
+  }).join('') : PCG.states.empty('No shows currently on show.');
+
+  // Blocked transitions
+  const blocked = (PCG.api.getProjects()||[]).filter(p=>{
+    const gate = PCG.api.canAdvanceToState(p.code, nextState(p.show && p.show.lifecycleState));
+    return gate && !gate.allowed;
+  });
+  function nextState(s){
+    return { Opportunity:'Quoted',Quoted:'Awarded',Awarded:'InPrep',InPrep:'OnShow',OnShow:'Striking',
+             Striking:'Returning',Returning:'Closing',Closing:'Archived' }[s] || null;
+  }
+  document.getElementById('blocked').innerHTML = blocked.length ? blocked.map(p=>{
+    const gate = PCG.api.canAdvanceToState(p.code, nextState(p.show.lifecycleState));
+    return `<div class="attn-item red" style="margin-bottom:6px;">
+      <div><div class="ttl">${PCG.escapeHtml(p.code)} → ${nextState(p.show.lifecycleState)}</div>
+      <div class="meta">${(gate.blockedBy||[]).length} blocking item(s)</div></div>
+    </div>`;
+  }).join('') : PCG.states.empty('All projects can advance.');
+
+  // Financial roll-up (leadership-level)
+  const totalQuoted = (PCG.quotes||[]).reduce((s,q)=>s+(q.totalRevenue||0),0);
+  document.getElementById('fin').innerHTML = PCG.canSeeTier('T2_MARGINS') ? `
+    <div class="kv-grid">
+      <div class="k">Portfolio</div><div class="v mono"><strong>${PCG.money(totalQuoted)}</strong></div>
+      <div class="k">Active Projects</div><div class="v">${(PCG.api.getProjects()||[]).filter(p=>p.show&&p.show.lifecycleState!=='Archived').length}</div>
+      <div class="k">Open COs</div><div class="v">${(PCG.changeOrders||[]).filter(c=>c.status==='Pending'||c.status==='Approved').length}</div>
+    </div>
+  ` : '<div class="muted">Financial view requires Finance/Director/Accounting role.</div>';
+</script>
+</body>
+</html>

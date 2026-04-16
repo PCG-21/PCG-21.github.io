@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · PM Home</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">PM Home · Project Dashboard</div>
+          <h1 id="hello">—</h1>
+          <div class="muted">Readiness at a glance · blockers first · your active shows sorted by upcoming date.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn sm" href="pif.html">＋ New PIF</a>
+          <a class="btn sm ghost" href="checklist.html">Open Checklists</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <!-- My Shows with readiness -->
+          <div class="card" style="margin-bottom:var(--sp-5);">
+            <div class="card-header"><div class="title">My Active Shows · Readiness</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="myCount"></span></div>
+            <div id="myShows"></div>
+          </div>
+
+          <!-- Active checklists (blocking items first) -->
+          <div class="card" style="margin-bottom:var(--sp-5);">
+            <div class="card-header"><div class="title">Blocking Checklist Items (Current Phase)</div></div>
+            <div class="card-body" id="blockingList"></div>
+          </div>
+
+          <!-- Add Orders in flight -->
+          <div class="card">
+            <div class="card-header"><div class="title">Add Orders (Field)</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>AO#</th><th>Show</th><th>Description</th><th>Urgency</th><th>Status</th><th>Billable?</th></tr></thead>
+              <tbody id="aoRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside>
+          <!-- Exception banners at the top of the rail -->
+          <div id="banners"></div>
+
+          <!-- Action queue -->
+          <div class="card">
+            <div class="card-header"><div class="title">Action Queue</div></div>
+            <div class="card-body" id="actionQ"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth Cheat Sheet</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs);" id="sot"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'PM Home'}]});
+  document.getElementById('hello').textContent = `Good day, ${PCG.user.name.split(' ')[0]}`;
+
+  // My shows — project.pmId or aeId = me, sorted by upcoming loadIn
+  const me = PCG.user;
+  const mine = (PCG.api.getProjects()||[])
+    .filter(p => p.pmId===me.id || p.primaryPM===me.id || p.aeId===me.id
+              || (PCG.api.hasPermission(PCG.GROUPS.ADMIN) || PCG.api.hasPermission(PCG.GROUPS.DIRECTORS)))
+    .filter(p => p.show && p.show.lifecycleState!=='Archived')
+    .sort((a,b)=>new Date(a.dates.loadIn)-new Date(b.dates.loadIn));
+
+  document.getElementById('myCount').textContent = `${mine.length} show${mine.length===1?'':'s'}`;
+
+  const showsWithR = mine.map(p => ({ p, r: PCG.api.getReadiness(p.code) }));
+  const totBlocked = showsWithR.filter(x=>x.r && x.r.overall==='Blocked').length;
+  const totRed     = showsWithR.filter(x=>x.r && x.r.overall==='Red').length;
+  const totYellow  = showsWithR.filter(x=>x.r && x.r.overall==='Yellow').length;
+  const totGreen   = showsWithR.filter(x=>x.r && x.r.overall==='Green').length;
+
+  // KPIs — readiness first
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi red"><div class="label">Blocked</div><div class="value">${totBlocked}</div><div class="sub">cannot advance</div></div>
+    <div class="kpi red"><div class="label">Red</div><div class="value">${totRed}</div><div class="sub">needs action</div></div>
+    <div class="kpi amber"><div class="label">Yellow</div><div class="value">${totYellow}</div><div class="sub">risk-acknowledged</div></div>
+    <div class="kpi"><div class="label">Green</div><div class="value" style="color:var(--status-green);">${totGreen}</div><div class="sub">on track</div></div>
+    <div class="kpi blue"><div class="label">Active Shows</div><div class="value">${mine.length}</div><div class="sub">across portfolio</div></div>
+    <div class="kpi"><div class="label">Next Load-In</div><div class="value" style="font-size:18px;">${mine.length?PCG.fmtShort(mine[0].dates.loadIn):'—'}</div><div class="sub">${mine.length?mine[0].code:''}</div></div>
+  `;
+
+  // My shows list with readiness component breakdown
+  document.getElementById('myShows').innerHTML = showsWithR.map(({p,r})=>{
+    const bannerCount = PCG.api.getActiveBanners(p.code).length;
+    const comp = r && r.components ? r.components : {};
+    return `
+      <div class="attn-item ${r && (r.overall==='Red'||r.overall==='Blocked') ? 'red' : r && r.overall==='Yellow' ? '' : 'blue'}" style="align-items:flex-start;">
+        <div style="flex:1;">
+          <div class="ttl" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span>${PCG.readinessBadge(r, {compact:true})}</span>
+            <strong>${PCG.escapeHtml(p.code)}</strong> · ${PCG.escapeHtml(p.name)}
+            ${PCG.lifecyclePill(p.show && p.show.lifecycleState)}
+            ${bannerCount?`<span class="pill red" style="font-size:10px;">⚠ ${bannerCount} BANNER${bannerCount===1?'':'S'}</span>`:''}
+          </div>
+          <div class="meta" style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;">
+            <span>🏭 ${PCG.escapeHtml(p.venueName||'—')}</span>
+            <span>📅 Load-In <span class="mono">${PCG.fmtShort(p.dates.loadIn)}</span></span>
+            <span>🎬 Show <span class="mono">${PCG.fmtShort(p.dates.showStart)}</span></span>
+          </div>
+          ${r ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; font-size:11px;">
+            ${['warehouse','labor','ros','checklist','finance'].map(k=>{
+              const c = comp[k]||{};
+              const tone = c.status==='Green'?'green':c.status==='Yellow'?'amber':c.status==='Red'||c.status==='Blocked'?'red':'gray';
+              return `<span class="pill plain ${tone}" title="${PCG.escapeHtml((c.blockers||[]).concat(c.warnings||[]).join(' · ')||'OK')}">${k.toUpperCase()}</span>`;
+            }).join('')}
+          </div>`:''}
+        </div>
+        <div class="act" style="display:flex; gap:4px;">
+          <a class="btn sm primary" href="playbook.html?project=${p.code}">Playbook</a>
+          <a class="btn sm" href="checklist.html?project=${p.code}">Checklist</a>
+        </div>
+      </div>
+    `;
+  }).join('') || PCG.states.empty('No active shows assigned to you.');
+
+  // Blocking checklist items, current phase, across my shows
+  const blocking = [];
+  mine.forEach(p => {
+    const curPhase = PCG.engines.checklistGate.STATE_TO_PHASE[p.show.lifecycleState];
+    PCG.api.getChecklistByPhase(p.code, curPhase)
+      .filter(c=>c.blocking && !['Complete','NA','Overridden'].includes(c.status))
+      .forEach(c => blocking.push({ p, c }));
+  });
+  document.getElementById('blockingList').innerHTML = blocking.length ? blocking.map(({p,c})=>`
+    <div class="attn-item red" style="margin-bottom:6px;">
+      <div>
+        <div class="ttl">${PCG.escapeHtml(c.taskName)}</div>
+        <div class="meta"><span class="mono">${p.code}</span> · ${c.department} · ${c.phase} ${c.dueDate?'· Due '+PCG.fmtShort(c.dueDate):''}</div>
+      </div>
+      <div class="act"><a class="btn sm" href="checklist.html?project=${p.code}">Open</a></div>
+    </div>
+  `).join('') : PCG.states.empty('No blocking items in current phase. ✓');
+
+  // Add Orders
+  const aos = mine.flatMap(p => PCG.api.getAddOrders(p.code));
+  document.getElementById('aoRows').innerHTML = aos.length ? aos.map(a=>`
+    <tr>
+      <td class="mono">${a.aoNumber}</td>
+      <td class="mono">${a.showId}</td>
+      <td>${PCG.escapeHtml(a.description)}</td>
+      <td><span class="pill ${a.urgency==='Emergency'?'red':a.urgency==='Urgent'?'amber':'gray'}">${a.urgency}</span></td>
+      <td><span class="pill ${a.status==='Delivered'?'green':a.status==='Requested'?'amber':'blue'}">${a.status}</span></td>
+      <td>${a.billableDecision==='ClientBillable'?`<span class="pill blue">Client</span> ${PCG.canSeeTier('T2_MARGINS')?PCG.money(a.financialImpact):''}`:a.billableDecision}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty">No add orders in flight.</td></tr>';
+
+  // Banners (aggregated across my shows)
+  const allBanners = mine.flatMap(p => PCG.api.getActiveBanners(p.code).map(b=>({...b, code:p.code})));
+  document.getElementById('banners').innerHTML = allBanners.length ? `
+    <div class="card">
+      <div class="card-header"><div class="title" style="color:var(--status-red);">⚠ Active Banners</div></div>
+      <div class="card-body">
+        ${allBanners.slice(0,6).map(b=>`
+          <div class="attn-item ${b.level==='red'?'red':''}">
+            <div><div class="ttl">${PCG.escapeHtml(b.title)}</div>
+              <div class="meta"><span class="mono">${b.code}</span> — ${PCG.escapeHtml(b.detail||'')}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div style="height:var(--sp-4);"></div>
+  ` : '';
+
+  // Action queue (role-filtered)
+  const q = PCG.api.getActionQueue().slice(0,8);
+  document.getElementById('actionQ').innerHTML = q.length ? q.map(item=>`
+    <div class="attn-item ${item.priority==='high'?'red':''}" style="margin-bottom:6px;">
+      <div><div class="ttl">${PCG.escapeHtml(item.title)}</div>
+      <div class="meta"><span class="mono">${item.proj}</span> · ${item.stale}</div></div>
+      <div class="act"><a class="btn sm" href="playbook.html?project=${item.proj}">Open</a></div>
+    </div>
+  `).join('') : PCG.states.empty('Inbox zero.');
+
+  // SOT cheat sheet (educational callout — drives trust per user's add)
+  const sot = [
+    ['Gear state','inventory state (serial.status + allocation)'],
+    ['Phase advance','checklist completion'],
+    ['Staffing','schedule / shift assignments'],
+    ['Live execution','ROS (only when show is live)'],
+    ['Readiness','synthesized — NOT directly editable']
+  ];
+  document.getElementById('sot').innerHTML = sot.map(([k,v])=>`
+    <div style="margin-bottom:6px;"><strong>${PCG.escapeHtml(k)}</strong><br><span class="muted">${PCG.escapeHtml(v)}</span></div>
+  `).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Checklists</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .phase-bar {
+    display: flex; gap: 8px; margin-bottom: var(--sp-4); flex-wrap: wrap;
+  }
+  .phase-chip {
+    padding: 6px 12px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border);
+    font-family: var(--font-display); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-secondary); display:flex; align-items:center; gap:6px;
+  }
+  .phase-chip.current { border-color: var(--pcg-bright-blue); color: var(--text-primary); background: rgba(1,153,253,0.08); }
+  .phase-chip.done    { border-color: rgba(47,191,113,0.4); color: var(--status-green); }
+  .phase-chip .ct { font-family: var(--font-mono); color: var(--text-tertiary); }
+  .checklist-item {
+    display: grid; grid-template-columns: 24px 1fr 120px 120px 120px;
+    gap: var(--sp-3); align-items: center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .checklist-item:hover { background: var(--surface-2); }
+  .checklist-item.complete { opacity: 0.55; }
+  .checklist-item .cb {
+    width: 20px; height: 20px; border-radius: 4px;
+    border: 1.5px solid var(--border-strong); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--status-green);
+  }
+  .checklist-item.complete .cb { background: rgba(47,191,113,0.2); border-color: var(--status-green); }
+  .checklist-item.overridden .cb { background: rgba(245,183,60,0.2); border-color: var(--status-amber); color: var(--status-amber); }
+  .checklist-item.blocking { border-left: 3px solid var(--status-red); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Checklist · Phase Gate System</div>
+          <h1 id="hdr">—</h1>
+          <div class="muted">Blocking items (red border) must complete — or be overridden with reason — before the show can advance to the next lifecycle state.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+        </div>
+      </div>
+
+      <div id="gateStatus" style="margin-bottom:var(--sp-4);"></div>
+
+      <div class="phase-bar" id="phaseBar"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Checklist Items</div>
+              <div style="margin-left:auto; display:flex; gap:var(--sp-2); font-size:var(--fs-xs);">
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" id="blockingOnly"/> Blocking only</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" id="openOnly"/> Open only</label>
+              </div>
+            </div>
+            <div id="rows"></div>
+          </div>
+        </div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Gate Summary</div></div>
+            <div class="card-body" id="gateSummary"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              Checklist completion is authoritative for phase advancement (§E). The readiness engine reads this directly.
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Override modal -->
+<div class="modal-backdrop" id="bd" onclick="closeModal()"></div>
+<div class="modal-box" id="mbox">
+  <h3>Override Blocking Item</h3>
+  <div id="mbody" style="margin-top:var(--sp-3);"></div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Checklists'}]});
+
+  const projects = PCG.api.getProjects().filter(p=>p.show && p.show.lifecycleState!=='Archived');
+  const sel = document.getElementById('showSel');
+  sel.innerHTML = projects.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('');
+  const qP = PCG.qs('project');
+  if(qP && projects.find(p=>p.code===qP)) sel.value = qP;
+
+  const PHASES = PCG.engines.checklistGate.PHASE_ORDER;
+
+  function render(){
+    const showId = sel.value;
+    const p = PCG.api.getProject(showId);
+    const show = p.show;
+    const curPhase = PCG.engines.checklistGate.STATE_TO_PHASE[show.lifecycleState];
+    document.getElementById('hdr').textContent = `${p.code} — ${p.name}`;
+
+    // Phase bar
+    document.getElementById('phaseBar').innerHTML = PHASES.map(ph => {
+      const items = PCG.api.getChecklistByPhase(showId, ph);
+      const blockersOpen = items.filter(c=>c.blocking && !['Complete','NA','Overridden'].includes(c.status)).length;
+      const done = items.length && items.every(c=>['Complete','NA','Overridden'].includes(c.status));
+      const isCurrent = ph===curPhase;
+      const cls = isCurrent ? 'current' : done && items.length ? 'done' : '';
+      const badge = blockersOpen ? `<span class="pill red" style="font-size:10px;">⛔ ${blockersOpen}</span>` : items.length ? `<span class="ct">${items.filter(c=>c.status==='Complete').length}/${items.length}</span>` : '';
+      return `<div class="phase-chip ${cls}">${PCG.escapeHtml(ph)} ${badge}</div>`;
+    }).join('');
+
+    // Gate
+    const nextMap = { Opportunity:'Quoted',Quoted:'Awarded',Awarded:'InPrep',InPrep:'OnShow',
+                      OnShow:'Striking',Striking:'Returning',Returning:'Closing',Closing:'Archived' };
+    const nextState = nextMap[show.lifecycleState];
+    if(nextState){
+      const gate = PCG.api.canAdvanceToState(showId, nextState);
+      document.getElementById('gateStatus').innerHTML = gate.allowed ? `
+        <div class="attn-item blue"><div><div class="ttl">✓ READY TO ADVANCE: ${show.lifecycleState} → ${nextState}</div>
+          <div class="meta">No blocking items open in required phases.</div></div>
+          <div class="act"><button class="btn sm primary">Advance Now</button></div>
+        </div>
+      ` : `
+        <div class="attn-item red"><div><div class="ttl">⛔ ADVANCE BLOCKED: ${show.lifecycleState} → ${nextState}</div>
+          <div class="meta">${gate.blockedBy.length} blocking item(s) open.</div></div>
+        </div>
+      `;
+    }
+
+    // Items
+    const blockingOnly = document.getElementById('blockingOnly').checked;
+    const openOnly     = document.getElementById('openOnly').checked;
+    let items = PCG.api.getChecklists(showId);
+    if(blockingOnly) items = items.filter(i=>i.blocking);
+    if(openOnly)     items = items.filter(i=>!['Complete','NA','Overridden'].includes(i.status));
+
+    const canComplete = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE, PCG.GROUPS.LEADERSHIP);
+    const canOverride = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS);
+
+    document.getElementById('rows').innerHTML = items.length ? items.map(c=>{
+      const cls = c.status==='Complete' ? 'complete' : c.status==='Overridden' ? 'overridden' : '';
+      const blk = c.blocking ? 'blocking' : '';
+      const icon = c.status==='Complete' ? '✓' : c.status==='Overridden' ? '⚠' : '';
+      return `<div class="checklist-item ${cls} ${blk}" id="row-${c.id}">
+        <div class="cb">${icon}</div>
+        <div>
+          <div><strong>${PCG.escapeHtml(c.taskName)}</strong>${c.blocking?' <span class="pill red plain" style="font-size:9px;">BLOCKING</span>':''}</div>
+          <div class="muted" style="font-size:11px;">${c.department} · ${c.phase}${c.dueDate?' · Due '+PCG.fmtShort(c.dueDate):''}${c.overrideReason?' · Override: '+PCG.escapeHtml(c.overrideReason):''}</div>
+        </div>
+        <div><span class="pill ${c.status==='Complete'?'green':c.status==='Overridden'?'amber':'gray'} plain" style="font-size:10px;">${c.status.toUpperCase()}</span></div>
+        <div class="mono muted" style="font-size:11px;">${c.completedAt?PCG.fmtShort(c.completedAt):c.overriddenAt?PCG.fmtShort(c.overriddenAt):''}</div>
+        <div style="display:flex; gap:4px; justify-content:flex-end;">
+          ${!['Complete','Overridden','NA'].includes(c.status) && canComplete ? `<button class="btn sm primary" onclick="complete('${c.id}')">Complete</button>` : ''}
+          ${c.blocking && !['Complete','NA','Overridden'].includes(c.status) && canOverride ? `<button class="btn sm" onclick="override('${c.id}')">Override</button>` : ''}
+        </div>
+      </div>`;
+    }).join('') : PCG.states.empty('No checklist items yet.');
+
+    // Gate summary side panel
+    const all = PCG.api.getChecklists(showId);
+    const completed = all.filter(c=>c.status==='Complete').length;
+    const overridden = all.filter(c=>c.status==='Overridden').length;
+    const blocking = all.filter(c=>c.blocking && !['Complete','NA','Overridden'].includes(c.status)).length;
+    const pct = all.length ? Math.round(completed/all.length*100) : 0;
+    document.getElementById('gateSummary').innerHTML = `
+      <div style="margin-bottom:var(--sp-3);">
+        <div class="muted" style="font-size:var(--fs-xs);">Completion</div>
+        <div style="height:6px; background:var(--surface-3); border-radius:3px; overflow:hidden; margin-top:4px;">
+          <div style="width:${pct}%; height:100%; background:var(--grad-show-light-blue);"></div>
+        </div>
+        <div class="mono" style="margin-top:4px; font-size:var(--fs-xs);">${pct}% · ${completed}/${all.length} items</div>
+      </div>
+      <div class="kv-grid">
+        <div class="k">Blocking Open</div><div class="v" style="color:${blocking?'var(--status-red)':'var(--status-green)'};">${blocking}</div>
+        <div class="k">Overridden</div><div class="v">${overridden}</div>
+        <div class="k">Current Phase</div><div class="v">${curPhase}</div>
+        <div class="k">Current State</div><div class="v">${PCG.lifecyclePill(show.lifecycleState)}</div>
+      </div>
+    `;
+  }
+
+  window.complete = (id) => {
+    PCG.api.completeChecklistItem(id);
+    render();
+  };
+
+  window.override = (id) => {
+    const item = (PCG.checklistItems||[]).find(c=>c.id===id);
+    document.getElementById('mbody').innerHTML = `
+      <div style="margin-bottom:var(--sp-3);"><strong>${PCG.escapeHtml(item.taskName)}</strong>
+      <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">${item.phase} · ${item.department}</div></div>
+      <label class="eyebrow" style="font-size:10px; display:block; margin-bottom:4px;">Override Reason (required)</label>
+      <textarea id="overReason" style="width:100%; min-height:80px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-sm); padding:8px; font-family:inherit; font-size:var(--fs-sm);" placeholder="Why is this being skipped? Will log to AuditLog and create a visible banner on the show."></textarea>
+      <div style="margin-top:var(--sp-3); display:flex; gap:var(--sp-2);">
+        <button class="btn primary" onclick="doOverride('${id}')">Confirm Override</button>
+        <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      </div>
+      <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3);">Requires TSM or Administrator. Logged. Warning banner remains on show.</div>
+    `;
+    document.getElementById('bd').classList.add('show');
+    document.getElementById('mbox').classList.add('show');
+  };
+
+  window.doOverride = (id) => {
+    const reason = document.getElementById('overReason').value.trim();
+    if(!reason){ alert('Reason required.'); return; }
+    try {
+      PCG.api.overrideChecklistItem(id, reason);
+      closeModal();
+      render();
+    } catch(e){ alert('Override failed: '+e.message); }
+  };
+
+  window.closeModal = () => {
+    document.getElementById('bd').classList.remove('show');
+    document.getElementById('mbox').classList.remove('show');
+  };
+
+  sel.addEventListener('change', render);
+  document.getElementById('blockingOnly').addEventListener('change', render);
+  document.getElementById('openOnly').addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

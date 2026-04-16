@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · AE Home</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Account Executive · Financial View</div>
+          <h1 id="hi">—</h1>
+          <div class="muted">Your pipeline, quotes, COs, and client milestones.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn sm" href="pif.html">＋ New PIF</a>
+          <a class="btn sm ghost" href="quote.html?id=q.LCE-2026.v3">Quote Builder</a>
+          <a class="btn sm ghost" href="finance.html">Finance</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Pipeline · Opportunities</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Client</th><th>Scope</th><th>Est. Value</th><th>Probability</th><th>Status</th><th>Follow-Up</th></tr></thead>
+              <tbody id="oppRows"></tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">My Active Quotes</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Quote #</th><th>Project</th><th>Client</th><th>Rev</th><th>Status</th><th style="text-align:right;">Revenue</th><th style="text-align:right;">Margin</th><th></th></tr></thead>
+              <tbody id="quoteRows"></tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Change Order Queue</div></div>
+            <div class="card-body" id="coList"></div>
+          </div>
+
+        </div>
+
+        <aside>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Invoice Milestones</div></div>
+            <div class="card-body" id="milestones"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">AE Checklist (my shows)</div></div>
+            <div class="card-body" id="aeChecks"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              Sold scope = <strong>ScopeRecord</strong> (frozen at award). Current scope = ScopeRecord + approved COs. AR/cost actuals live in QuickBooks.
+            </div>
+          </div>
+
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'AE Home'}]});
+  document.getElementById('hi').textContent = `Good day, ${PCG.user.name.split(' ')[0]}`;
+
+  // Opportunities
+  const opps = (PCG.opportunities||[]);
+  document.getElementById('oppRows').innerHTML = opps.length ? opps.map(o=>`
+    <tr>
+      <td>${PCG.escapeHtml(o.clientName)}</td>
+      <td>${PCG.escapeHtml(o.estimatedScope)}</td>
+      <td class="mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(o.estimatedValue):'—'}</td>
+      <td class="mono">${Math.round((o.probability||0)*100)}%</td>
+      <td><span class="pill ${o.status==='open'?'blue':o.status==='quoted'?'amber':'gray'}">${o.status.toUpperCase()}</span></td>
+      <td class="mono">${PCG.fmtShort(o.followUpDate)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty">No open opportunities.</td></tr>';
+
+  // My quotes (AE sees all quotes they authored or where AE is assigned)
+  const me = PCG.user;
+  const quotes = (PCG.quotes||[]);
+  const revisionById = Object.fromEntries((PCG.quoteRevisions||[]).map(r=>[r.id,r]));
+  const mine = quotes.filter(q=>{
+    const rev = revisionById[q.activeRevisionId];
+    return (rev && rev.author===me.id) || PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ACCOUNTING);
+  });
+
+  document.getElementById('quoteRows').innerHTML = mine.length ? mine.map(q=>{
+    const rev = revisionById[q.activeRevisionId] || {};
+    const p = PCG.api.getProject(q.projectCode);
+    return `<tr onclick="location.href='quote.html?id=${q.id}'">
+      <td class="mono">${q.quoteNo}</td>
+      <td><strong>${p?PCG.escapeHtml(p.code):q.projectCode}</strong></td>
+      <td>${p?PCG.escapeHtml(p.client):'—'}</td>
+      <td class="mono">v${rev.revisionNumber||''}</td>
+      <td><span class="pill ${q.status==='Awarded'?'green':q.status==='Issued'?'blue':'amber'}">${q.status.toUpperCase()}</span></td>
+      <td class="mono" style="text-align:right;">${PCG.money(q.totalRevenue)}</td>
+      <td class="mono" style="text-align:right;">${PCG.canSeeTier('T2_MARGINS')?PCG.pct(q.margin):'—'}</td>
+      <td><a class="btn sm ghost" href="quote.html?id=${q.id}">Open</a></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" class="empty">No quotes.</td></tr>';
+
+  // CO queue — COs that AE originated or approves
+  const cos = PCG.api.getChangeOrders().filter(c=>c.status==='Pending'||c.status==='PendingApproval');
+  document.getElementById('coList').innerHTML = cos.length ? cos.map(c=>{
+    const typePill = { CO:'blue', AddOrder:'purple', DamageCharge:'red' }[c.type]||'gray';
+    const fi = PCG.canSeeTier('T2_MARGINS') ? PCG.money(c.financialImpact) : '—';
+    return `<div class="attn-item">
+      <div><div class="ttl">${c.type ? `<span class="pill ${typePill}" style="font-size:10px;">${c.type.toUpperCase()}</span> `:''}${PCG.escapeHtml(c.description)}</div>
+      <div class="meta"><span class="mono">${c.projectCode}</span> · Impact ${fi}</div></div>
+      <div class="act"><a class="btn sm" href="project.html?project=${c.projectCode}&tab=changes">Review</a></div>
+    </div>`;
+  }).join('') : PCG.states.empty('No COs pending.');
+
+  // Invoice milestones
+  const ims = (PCG.invoiceMilestones||[]).filter(m=>m.status!=='paid').slice(0,8);
+  document.getElementById('milestones').innerHTML = ims.length ? ims.map(m=>`
+    <div class="attn-item ${m.status==='invoiced'?'':'blue'}" style="margin-bottom:6px;">
+      <div><div class="ttl">${PCG.escapeHtml(m.projectCode)} · ${m.type.toUpperCase()}</div>
+      <div class="meta">${PCG.money(m.amount)} · Due ${PCG.fmtShort(m.dueDate)}</div></div>
+      <div><span class="pill ${m.status==='invoiced'?'blue':'amber'}">${m.status.toUpperCase()}</span></div>
+    </div>
+  `).join('') : PCG.states.empty('All current.');
+
+  // AE checklist view
+  const aeTasks = (PCG.checklistItems||[]).filter(c => c.department==='ProductionServices' && c.assignedToRole==='ProductionServices' && c.status==='Pending').slice(0,6);
+  document.getElementById('aeChecks').innerHTML = aeTasks.length ? aeTasks.map(c=>`
+    <div style="padding:8px 0; border-bottom:1px dashed var(--border); font-size:var(--fs-sm);">
+      <div><strong>${PCG.escapeHtml(c.taskName)}</strong></div>
+      <div class="muted" style="font-size:var(--fs-xs);"><span class="mono">${c.showId}</span> · ${c.phase}${c.dueDate?' · '+PCG.fmtShort(c.dueDate):''}</div>
+    </div>
+  `).join('') : PCG.states.empty('No outstanding items.');
+
+  // KPIs
+  const pipeline = opps.reduce((s,o)=>s+((o.estimatedValue||0)*(o.probability||0)),0);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi blue"><div class="label">Weighted Pipeline</div><div class="value">${PCG.canSeeTier('T2_MARGINS')?PCG.money(pipeline):'—'}</div><div class="sub">probability × value</div></div>
+    <div class="kpi"><div class="label">Active Quotes</div><div class="value">${mine.length}</div><div class="sub">issued + awarded</div></div>
+    <div class="kpi amber"><div class="label">COs Pending</div><div class="value">${cos.length}</div><div class="sub">awaiting approval</div></div>
+    <div class="kpi"><div class="label">Unpaid Milestones</div><div class="value">${ims.length}</div><div class="sub">across portfolio</div></div>
+    <div class="kpi"><div class="label">Won This Month</div><div class="value">${mine.filter(q=>q.status==='Awarded').length}</div><div class="sub">awarded</div></div>
+    <div class="kpi"><div class="label">Follow-ups</div><div class="value">${opps.filter(o=>o.followUpDate && new Date(o.followUpDate)<=new Date()).length}</div><div class="sub">due today</div></div>
+  `;
+</script>
+</body>
+</html>
