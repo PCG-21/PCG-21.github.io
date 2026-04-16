@@ -556,6 +556,603 @@
   };
 
   // ------------------------------------------------------------------
+  // v2.1 — Messages (Labor Coord → Crew broadcast)
+  // ------------------------------------------------------------------
+  PCG.api.getMessages = (filter) => {
+    let list = (PCG.messages||[]).slice().reverse();
+    if(filter && filter.showId) list = list.filter(m=>m.showId===filter.showId);
+    if(filter && filter.fromId) list = list.filter(m=>m.fromId===filter.fromId);
+    return list;
+  };
+  PCG.api.sendMessage = (payload) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM);
+    PCG.messages = PCG.messages || [];
+    const m = {
+      id: 'msg.'+Math.random().toString(36).slice(2,9),
+      fromId: PCG.user.id,
+      showId: payload.showId || null,
+      toCrewIds: payload.toCrewIds || [],
+      toAll: !!payload.toAll,
+      subject: payload.subject || '',
+      body: payload.body || '',
+      sentAt: new Date().toISOString(),
+      channel: payload.channel || 'inapp'  // inapp | email | sms
+    };
+    PCG.messages.push(m);
+    PCG.engines.notify.emit('MessageSent', { id:m.id, to: m.toAll ? 'all-crew' : m.toCrewIds.length+' crew' });
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at: m.sentAt, actor: PCG.user.id, action: 'message.send', entityId: m.id,
+      detail: `"${m.subject}" → ${m.toAll ? 'all crew on '+m.showId : m.toCrewIds.length+' recipients'}` });
+    return m;
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Pitches / Proposals (pre-quote)
+  // ------------------------------------------------------------------
+  PCG.api.getPitches = (filter) => {
+    let list = (PCG.pitches||[]).slice();
+    if(filter && filter.clientId) list = list.filter(p=>p.clientId===filter.clientId);
+    if(filter && filter.status) list = list.filter(p=>p.status===filter.status);
+    return list;
+  };
+  PCG.api.getPitch = (id) => (PCG.pitches||[]).find(p=>p.id===id) || null;
+
+  PCG.api.createPitch = (fields) => {
+    PCG.requireAny(PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN);
+    const p = Object.assign({
+      id:'pitch.'+Math.random().toString(36).slice(2,8),
+      aeId: PCG.user.id, createdAt: new Date().toISOString(),
+      status:'Draft', valueProps:[], deliverables:[],
+      keyDates:{}, acceptedAt:null, convertedQuoteId:null
+    }, fields);
+    PCG.pitches = PCG.pitches || [];
+    PCG.pitches.push(p);
+    return p;
+  };
+
+  PCG.api.convertPitchToQuote = (pitchId) => {
+    PCG.requireAny(PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN);
+    const pitch = PCG.api.getPitch(pitchId);
+    if(!pitch) return { ok:false, reason:'Pitch not found' };
+    if(pitch.convertedQuoteId) return { ok:false, reason:'Already converted', quoteId:pitch.convertedQuoteId };
+    pitch.status = 'Converted';
+    pitch.acceptedAt = pitch.acceptedAt || new Date().toISOString();
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'pitch.convert', entityId:pitchId });
+    return { ok:true };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Creative Requests (§24)
+  // ------------------------------------------------------------------
+  PCG.api.getCreativeRequests = (filter) => {
+    let list = (PCG.creativeRequests||[]).slice();
+    if(filter && filter.projectId) list = list.filter(r=>r.projectId===filter.projectId);
+    if(filter && filter.status) list = list.filter(r=>r.status===filter.status);
+    if(filter && filter.type) list = list.filter(r=>r.type===filter.type);
+    return list;
+  };
+
+  PCG.api.advanceCreativeStatus = (requestId, toStatus) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE);
+    const r = (PCG.creativeRequests||[]).find(x=>x.id===requestId);
+    if(!r) return { ok:false };
+    r.fabricationStatus = toStatus;
+    if(toStatus==='Complete') r.status = 'Complete';
+    return { ok:true, request:r };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Field Notes / Issue Log (§G + §22)
+  // ------------------------------------------------------------------
+  PCG.api.getFieldNotes = (showId) => (PCG.fieldNotes||[]).filter(n=>n.showId===showId);
+  PCG.api.addFieldNote = (showId, text, category) => {
+    const note = {
+      id:'fn.'+Math.random().toString(36).slice(2,8),
+      showId, authorId:PCG.user.id, text,
+      category:category||'operational',
+      attachments:[], timestamp:new Date().toISOString()
+    };
+    PCG.fieldNotes = PCG.fieldNotes || [];
+    PCG.fieldNotes.unshift(note);
+    return note;
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Procurement Requests (§9.1)
+  // ------------------------------------------------------------------
+  PCG.api.getProcurementRequests = (filter) => {
+    let list = (PCG.procurementRequests||[]).slice();
+    if(filter && filter.status) list = list.filter(p=>p.status===filter.status);
+    if(filter && filter.departmentId) list = list.filter(p=>p.departmentId===filter.departmentId);
+    if(!PCG.canSeeTier('T2_MARGINS')) list = list.map(p=>{ const c={...p}; delete c.estimatedCost; return c; });
+    return list;
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Closeout Records (§35)
+  // ------------------------------------------------------------------
+  PCG.api.getCloseoutRecord = (showId) => (PCG.closeoutRecords||[]).find(c=>c.showId===showId) || null;
+  PCG.api.canCloseoutClose = (showId) => {
+    const c = PCG.api.getCloseoutRecord(showId);
+    const show = PCG.api.getShow(showId);
+    const blockers = [];
+    if(!c)                              { return { ok:false, reasons:['No CloseoutRecord exists — show not yet in Closing state.'] }; }
+    if(!c.pmSignoffAt)                  blockers.push('PM closeout sign-off not completed');
+    if(!c.laborActualsConfirmed)        blockers.push('Labor actuals not finalized');
+    const openTix = (PCG.serviceTickets||[]).filter(t=>t.showId===showId && !['Repaired','ReturnToService','Retired','Deferred'].includes(t.status));
+    if(openTix.length)                  blockers.push(`${openTix.length} open service ticket(s) — resolve or defer`);
+    if(!c.financeHandoffGeneratedAt)    blockers.push('Finance handoff packet not generated');
+    const missing = (PCG.serviceTickets||[]).filter(t=>t.showId===showId && t.missing);
+    if(missing.length > (c.missingItemResolutions||[]).length) blockers.push('Unresolved missing items without escalation');
+    if(!c.lessonsLearned || !c.lessonsLearned.trim()) blockers.push('Lessons learned not captured (required field)');
+    return { ok: blockers.length===0, reasons: blockers, record: c };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — WorkItems (§25 full model, distinct from ActionQueue)
+  // ------------------------------------------------------------------
+  PCG.api.getWorkItems = (filter) => {
+    let list = (PCG.workItems||[]).slice();
+    if(filter && filter.ownerId) list = list.filter(w=>w.ownerId===filter.ownerId);
+    if(filter && filter.type)    list = list.filter(w=>w.type===filter.type);
+    if(filter && filter.status)  list = list.filter(w=>w.status===filter.status);
+    if(filter && filter.priority) list = list.filter(w=>w.priority===filter.priority);
+    return list;
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Shop clock-in/out (§12.3 time capture foundation)
+  // ------------------------------------------------------------------
+  PCG.api.getActiveClockEvent = (crewMemberId) => {
+    return (PCG.clockEvents||[]).find(e=>e.crewMemberId===crewMemberId && !e.clockOut) || null;
+  };
+  PCG.api.clockIn = (crewMemberId, warehouseId, shift) => {
+    PCG.clockEvents = PCG.clockEvents || [];
+    const existing = PCG.api.getActiveClockEvent(crewMemberId);
+    if(existing) return { ok:false, reason:'Already clocked in', event:existing };
+    const ev = {
+      id:'ce.'+Math.random().toString(36).slice(2,8),
+      crewMemberId, warehouseId: warehouseId||'wh.troy',
+      clockIn:new Date().toISOString(), clockOut:null,
+      shift: shift||'Day Shift', assignedPullSheets:[], assignedTasks:[]
+    };
+    PCG.clockEvents.push(ev);
+    return { ok:true, event:ev };
+  };
+  PCG.api.clockOut = (crewMemberId) => {
+    const ev = PCG.api.getActiveClockEvent(crewMemberId);
+    if(!ev) return { ok:false, reason:'Not clocked in' };
+    ev.clockOut = new Date().toISOString();
+    return { ok:true, event:ev };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — My (crew PWA) Timesheets
+  // ------------------------------------------------------------------
+  PCG.api.getMyTimesheets = () => (PCG.timesheets||[]).filter(t=>t.crewMemberId===PCG.user.id);
+  PCG.api.submitTimesheet = (timesheetId) => {
+    const t = (PCG.timesheets||[]).find(x=>x.id===timesheetId);
+    if(!t) return { ok:false, reason:'Timesheet not found' };
+    t.status = 'Submitted';
+    t.submittedAt = new Date().toISOString();
+    return { ok:true, timesheet:t };
+  };
+  PCG.api.updateMyTimesheet = (timesheetId, fields) => {
+    const t = (PCG.timesheets||[]).find(x=>x.id===timesheetId);
+    if(!t) return { ok:false, reason:'Timesheet not found' };
+    if(t.status!=='Draft') return { ok:false, reason:'Timesheet already submitted' };
+    Object.assign(t, fields);
+    // Recompute hours if clock times changed
+    if(fields.clockIn || fields.clockOut){
+      const ci = new Date(t.clockIn), co = new Date(t.clockOut);
+      if(t.clockIn && t.clockOut){
+        const hrs = (co - ci)/3600000 - (t.mealBreakMinutes||0)/60;
+        t.workedHours = Math.max(0, Math.round(hrs*10)/10);
+        t.otHours = Math.max(0, Math.min(t.workedHours - 8, 4));
+        t.dtHours = Math.max(0, t.workedHours - 12);
+      }
+    }
+    return { ok:true, timesheet:t };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Add Order submission (§10.6)
+  // ------------------------------------------------------------------
+  PCG.api.submitAddOrder = (showId, description, urgency, items) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS);
+    const ao = {
+      id:'ao.'+Math.random().toString(36).slice(2,8),
+      showId,
+      aoNumber: 'AO-'+String((PCG.addOrders||[]).filter(a=>a.showId===showId).length+1).padStart(3,'0'),
+      type:'AddOrder',
+      requestedById:PCG.user.id, requestedAt:new Date().toISOString(),
+      urgency: urgency||'Standard', description,
+      items: items||[], status:'Requested',
+      returnTracked:true, billableDecision:'Undecided'
+    };
+    PCG.addOrders = PCG.addOrders || [];
+    PCG.addOrders.push(ao);
+    PCG.engines.notify.emit('AddOrderSubmitted', { id:ao.id, showId, urgency });
+    return ao;
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Search (§33)
+  // ------------------------------------------------------------------
+  PCG.api.search = (q) => {
+    const query = (q||'').toLowerCase().trim();
+    if(!query) return { projects:[], venues:[], clients:[], serials:[], quotes:[], crew:[], tickets:[] };
+    const qmatch = s => (s||'').toLowerCase().includes(query);
+    return {
+      projects: (PCG.projects||[]).filter(p => qmatch(p.code) || qmatch(p.name) || qmatch(p.client)),
+      venues:   (PCG.venues||[]).filter(v => qmatch(v.name) || qmatch(v.city) || (v.aka||[]).some(qmatch)),
+      clients:  (PCG.clients||[]).filter(c => qmatch(c.name) || qmatch(c.industry)),
+      serials:  (PCG.inventorySerials||[]).filter(s => qmatch(s.serial) || qmatch(s.barcode)).slice(0,20),
+      quotes:   (PCG.quotes||[]).filter(x => qmatch(x.quoteNo) || qmatch(x.projectCode)),
+      crew:     (PCG.crewMembers||[]).filter(c => qmatch(c.name) || qmatch(c.email)),
+      tickets:  (PCG.serviceTickets||[]).filter(t => qmatch(t.id) || qmatch(t.serialId) || qmatch(t.description)).slice(0,20)
+    };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Clients / Master Data
+  // ------------------------------------------------------------------
+  PCG.api.getClients = () => (PCG.clients||[]).slice();
+  PCG.api.getClient  = (id) => (PCG.clients||[]).find(c=>c.id===id) || null;
+  PCG.api.getClientRevenueRollup = (clientId) => {
+    if(!PCG.canSeeTier('T2_MARGINS')) return null;
+    const client = PCG.api.getClient(clientId);
+    if(!client) return null;
+    const projects = (PCG.projects||[]).filter(p=>p.clientId===clientId);
+    const quoted = projects.reduce((s,p)=>{
+      const q = (PCG.quotes||[]).find(x=>x.projectCode===p.code);
+      return s + ((q&&q.totalRevenue)||0);
+    },0);
+    return { clientId, quoted, ytd: client.revenueYTD, projectCount: projects.length };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — System Definitions (Kits / System Builder)
+  // ------------------------------------------------------------------
+  PCG.api.getSystemDefinitions = () => (PCG.systemDefinitions||[]).slice();
+  PCG.api.getSystemDefinition  = (id) => (PCG.systemDefinitions||[]).find(s=>s.id===id) || null;
+
+  // ------------------------------------------------------------------
+  // v2.1 — Inventory: models + serials + balance per warehouse
+  // ------------------------------------------------------------------
+  PCG.api.getWarehouses = () => (PCG.warehouses||[]).slice();
+  PCG.api.getSerializedItems = (filter) => {
+    let list = (PCG.inventorySerials||[]).slice();
+    if(filter && filter.modelId) list = list.filter(s=>s.itemId===filter.modelId);
+    if(filter && filter.status)  list = list.filter(s=>s.status===filter.status);
+    return list;
+  };
+  PCG.api.getInventoryBalance = (modelId, warehouseId) => {
+    // Computed view (§6.3)
+    const model = PCG.api.getInventoryItem(modelId);
+    if(!model) return null;
+    const serials = (PCG.inventorySerials||[]).filter(s=>s.itemId===modelId);
+    const count = status => serials.filter(s=>s.status===status).length;
+    const confirmedAllocs = (PCG.allocations||[])
+      .filter(a=>a.inventoryItemId===modelId && a.holdType==='confirmed')
+      .reduce((s,a)=>s+(a.qty||0),0);
+    const rpoSupply = (PCG.subRentals||[])
+      .filter(r=>r.itemId===modelId && r.status==='Approved')
+      .reduce((s,r)=>s+(r.qty||0),0);
+    const owned = model.qty||0;
+    const ooc = count('OOC');
+    const missing = count('Lost') + count('Missing');
+    const available = Math.max(0, owned - confirmedAllocs - ooc - missing + rpoSupply);
+    return {
+      modelId, warehouseId: warehouseId||'wh.premier-main',
+      owned, available,
+      reserved: 0, allocated: confirmedAllocs,
+      picked: count('Picked'), onShow: count('OnShow'), returned: count('Returned'),
+      qcHold: count('QCHold'), ooc, missing,
+      onOrder: 0, subrental: rpoSupply
+    };
+  };
+  PCG.api.getReorderRules = () => (PCG.reorderRules||[]).slice();
+  PCG.api.getReorderAlerts = () => {
+    return (PCG.reorderRules||[]).map(r=>{
+      const b = PCG.api.getInventoryBalance(r.modelId, r.warehouseId);
+      const model = PCG.api.getInventoryItem(r.modelId);
+      return { rule:r, balance:b, model, triggered: b && b.available < r.minQty };
+    }).filter(x=>x.triggered);
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Logistics / Manifests / Drivers / Vehicles
+  // ------------------------------------------------------------------
+  PCG.api.getDrivers = () => (PCG.drivers||[]).slice();
+  PCG.api.getVehicles = () => (PCG.vehicles||[]).slice();
+  PCG.api.getContainer = (id) => (PCG.containers||[]).find(c=>c.id===id) || null;
+
+  // ------------------------------------------------------------------
+  // v2.1 — Timesheets + Payroll (§12.3)
+  // ------------------------------------------------------------------
+  PCG.api.getTimesheets = (filter) => {
+    let list = (PCG.timesheets||[]).slice();
+    if(filter && filter.showId)  list = list.filter(t=>t.showId===filter.showId);
+    if(filter && filter.status)  list = list.filter(t=>t.status===filter.status);
+    if(filter && filter.crewId)  list = list.filter(t=>t.crewMemberId===filter.crewId);
+    // Tier-1 redaction: strip payRate-derived grossPay
+    if(!PCG.canSeeTier('T1_CREW_PAY_RATES')){
+      list = list.map(t=>{ const c={...t}; delete c.grossPay; return c; });
+    }
+    return list;
+  };
+  PCG.api.getPayRules = () => (PCG.payRules||[]).slice();
+  PCG.api.generatePayrollExport = (showId) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.ACCOUNTING);
+    const ts = (PCG.timesheets||[]).filter(t=>t.showId===showId && t.status==='Approved');
+    return ts.map(t => {
+      const crew = PCG.findPerson(t.crewMemberId);
+      const assn = (PCG.shiftAssignments||[]).find(a=>a.id===t.shiftAssignmentId);
+      const pos  = assn && (PCG.crewPositions||[]).find(p=>p.id===assn.positionId);
+      const rate = pos && pos.ratesByVersion && pos.ratesByVersion[0];
+      const payRate = (rate && rate.payRate) || 0;
+      const reg = t.workedHours - t.otHours - t.dtHours;
+      const gross = reg*payRate + t.otHours*payRate*1.5 + t.dtHours*payRate*2.0;
+      return {
+        crewMemberId: t.crewMemberId, name: crew ? crew.name : null,
+        employmentType: (PCG.crewMembers||[]).find(c=>c.id===t.crewMemberId)?.employmentType,
+        workDate: t.workDate,
+        regularHours: reg, otHours: t.otHours, dtHours: t.dtHours,
+        grossPay: Math.round(gross*100)/100,
+        payRuleApplied: t.payRuleApplied, mealPenalties: 0
+      };
+    });
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Incidents (§22)
+  // ------------------------------------------------------------------
+  PCG.api.getIncidents = (filter) => {
+    let list = (PCG.incidentReports||[]).slice();
+    if(filter && filter.showId)   list = list.filter(i=>i.showId===filter.showId);
+    if(filter && filter.status)   list = list.filter(i=>i.status===filter.status);
+    if(filter && filter.severity) list = list.filter(i=>i.severity===filter.severity);
+    return list;
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Crew Assignment workflow (§12.2 multi-step confirmation)
+  // ------------------------------------------------------------------
+  PCG.api.getQualifiedCrew = (positionId, filters) => {
+    filters = filters || {};
+    const members = (PCG.crewMembers||[]).slice();
+    return members.map(m => {
+      const qual = (m.qualifications||[]).find(q=>q.positionId===positionId);
+      return { member:m, qualified: !!qual, rating: qual ? qual.rating : null };
+    })
+    .filter(x => {
+      if(filters.qualifiedOnly && !x.qualified) return false;
+      if(filters.market && !(x.member.market||[]).includes(filters.market)) return false;
+      if(filters.employmentType && x.member.employmentType !== filters.employmentType) return false;
+      if(filters.excludeDoNotUse && x.member.doNotUse) return false;
+      if(filters.q){
+        const q = filters.q.toLowerCase();
+        if(!(x.member.name||'').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a,b) => (b.rating||0) - (a.rating||0));
+  };
+
+  PCG.api.inviteCrew = (shiftAssignmentId, crewMemberId) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS);
+    const a = (PCG.shiftAssignments||[]).find(x=>x.id===shiftAssignmentId);
+    if(!a) return { ok:false, reason:'Assignment not found' };
+    const conflict = PCG.engines.scheduling.checkAssignment({
+      crewMemberId, showId:a.showId, dates:a.dates
+    });
+    if(conflict.conflict) return { ok:false, reason:'Conflict', conflicts:conflict.conflicts };
+    a.crewMemberId = crewMemberId;
+    a.status = 'Invited';
+    a.invitedAt = new Date().toISOString();
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:a.invitedAt, actor:PCG.user.id, action:'crew.invite',
+      entityId:a.id, crewMemberId });
+    PCG.engines.notify.emit('CrewInvited', { shiftAssignmentId, crewMemberId });
+    return { ok:true, assignment:a };
+  };
+
+  PCG.api.advanceCrewStatus = (shiftAssignmentId, toStatus, notes) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS);
+    const a = (PCG.shiftAssignments||[]).find(x=>x.id===shiftAssignmentId);
+    if(!a) return { ok:false, reason:'Assignment not found' };
+    const ts = new Date().toISOString();
+    a.status = toStatus;
+    if(toStatus==='Confirmed') a.confirmedAt = ts;
+    if(toStatus==='Acknowledged') a.acknowledgedAt = ts;
+    if(notes) a.note = notes;
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:ts, actor:PCG.user.id, action:'crew.status.'+toStatus.toLowerCase(), entityId:a.id });
+    PCG.engines.notify.emit('CrewStatusChanged', { shiftAssignmentId, to:toStatus });
+    return { ok:true, assignment:a };
+  };
+
+  PCG.api.cancelCrewAssignment = (shiftAssignmentId, reason) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS);
+    const a = (PCG.shiftAssignments||[]).find(x=>x.id===shiftAssignmentId);
+    if(!a) return { ok:false };
+    a.status = 'Cancelled';
+    a.note = reason || a.note;
+    const newSlot = Object.assign({}, a, {
+      id: 'sa.'+Math.random().toString(36).slice(2,8),
+      crewMemberId: null, status:'Placeholder', note:null
+    });
+    PCG.shiftAssignments.push(newSlot);
+    return { ok:true, cancelled:a, newSlot };
+  };
+
+  PCG.api.cloneRosterFromPriorShow = (priorShowId, targetShowId) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING);
+    const priorAssns = (PCG.shiftAssignments||[]).filter(s=>s.showId===priorShowId);
+    const target = PCG.api.getProject(targetShowId);
+    if(!priorAssns.length) return { ok:false, reason:'No prior roster to clone' };
+    const created = priorAssns.map(pa => Object.assign({}, pa, {
+      id:'sa.'+Math.random().toString(36).slice(2,8),
+      showId: targetShowId,
+      status:'Invited',
+      dates: (target.dates && target.dates.loadIn) ? [target.dates.loadIn.slice(0,10)] : pa.dates,
+      invitedAt: new Date().toISOString()
+    }));
+    PCG.shiftAssignments = (PCG.shiftAssignments||[]).concat(created);
+    return { ok:true, cloned: created.length };
+  };
+
+  // Full crew profile — aggregates ShiftAssignments, Timesheets, Travel, Ratings, LaborActuals for one member
+  PCG.api.getCrewProfile = (memberId) => {
+    const m = (PCG.crewMembers||[]).find(x=>x.id===memberId);
+    if(!m) return null;
+    // Pay rates redacted
+    const copy = JSON.parse(JSON.stringify(m));
+    if(!PCG.canSeeTier('T1_CREW_PAY_RATES')){
+      (copy.qualifications||[]).forEach(q => delete q.payRate);
+    }
+    const assns = (PCG.shiftAssignments||[]).filter(s=>s.crewMemberId===memberId);
+    const upcoming = assns.filter(a => {
+      const sh = PCG.api.getShow(a.showId);
+      return sh && sh.lifecycleState !== 'Archived' && a.status !== 'Cancelled';
+    });
+    const past = assns.filter(a => {
+      const sh = PCG.api.getShow(a.showId);
+      return (sh && sh.lifecycleState === 'Archived') || a.status === 'Completed';
+    });
+    const timesheets = (PCG.timesheets||[]).filter(t=>t.crewMemberId===memberId);
+    const totalHoursYTD = timesheets.reduce((s,t)=>s+(t.workedHours||0),0);
+    const totalOTYTD = timesheets.reduce((s,t)=>s+(t.otHours||0),0);
+    const travelRecords = (PCG.travelRecords||[]).filter(t=>t.crewMemberId===memberId);
+    const availabilityBlocks = (PCG.availabilityBlocks||[]).filter(b=>b.crewMemberId===memberId);
+    const avgRating = (m.performanceRatings||[]).length
+      ? (m.performanceRatings||[]).reduce((s,r)=>s+r.rating,0) / (m.performanceRatings||[]).length
+      : null;
+
+    // Qualified for positions
+    const quals = (copy.qualifications||[]).map(q=>{
+      const pos = (PCG.crewPositions||[]).find(p=>p.id===q.positionId);
+      return { positionId:q.positionId, positionName:pos?pos.name:q.positionId, department:pos?pos.department:null, rating:q.rating };
+    });
+
+    return {
+      member: copy,
+      qualifications: quals,
+      upcomingAssignments: upcoming,
+      pastAssignments: past,
+      timesheets,
+      totalHoursYTD,
+      totalOTYTD,
+      travelRecords,
+      availabilityBlocks,
+      avgRating,
+      assignmentCount: assns.length
+    };
+  };
+
+  // Award a quote — seed ShiftAssignment placeholders from quote labor lines
+  PCG.api.awardQuote = (quoteId) => {
+    PCG.requireAny(PCG.GROUPS.AE, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN);
+    const quote = (PCG.quotes||[]).find(q => q.id === quoteId);
+    if(!quote) return { ok:false, reason:'Quote not found' };
+    const rev = (PCG.quoteRevisions||[]).find(r => r.id === quote.activeRevisionId);
+    if(!rev) return { ok:false, reason:'Active revision not found' };
+    if(rev.status === 'Awarded') return { ok:false, reason:'Already awarded' };
+
+    // 1) Mark revision Awarded, create ScopeRecord (frozen baseline)
+    rev.status = 'Awarded';
+    rev.approvedAt = new Date().toISOString();
+    rev.approvedById = PCG.user.id;
+    quote.status = 'Awarded';
+
+    PCG.scopeRecords = PCG.scopeRecords || [];
+    const scopeRec = {
+      id: 'sr.'+quote.projectCode,
+      quoteRevisionId: rev.id,
+      projectCode: quote.projectCode,
+      createdAt: new Date().toISOString()
+    };
+    PCG.scopeRecords.push(scopeRec);
+
+    // 2) Seed ShiftAssignment placeholders from labor lines
+    PCG.shiftAssignments = PCG.shiftAssignments || [];
+    let seeded = 0;
+    const proj = (PCG.projects||[]).find(p => p.code === quote.projectCode);
+    const baseDate = proj && proj.dates ? proj.dates.loadIn : null;
+    (rev.lines||[]).filter(l => l.type === 'Labor' && l.crewPositionId).forEach(line => {
+      const pos = (PCG.crewPositions||[]).find(p => p.id === line.crewPositionId);
+      const qty = line.qty || 1;
+      for(let i = 0; i < qty; i++){
+        PCG.shiftAssignments.push({
+          id:'sa.'+Math.random().toString(36).slice(2,8),
+          showId: quote.projectCode,
+          crewMemberId: null,
+          positionId: line.crewPositionId,
+          positionGroup: pos ? (pos.department || 'Core') : 'Core',
+          dates: baseDate ? [baseDate.slice(0,10)] : [],
+          callTime: line.callTime || '07:00',
+          status: 'Placeholder',
+          invitedAt: null, confirmedAt: null, acknowledgedAt: null,
+          note: 'Seeded from Quote line ' + line.id
+        });
+        seeded++;
+      }
+    });
+
+    // 3) Audit log
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({
+      at: new Date().toISOString(), actor: PCG.user.id,
+      action: 'quote.award', entityId: quoteId,
+      detail: `Seeded ${seeded} Placeholder ShiftAssignment(s); ScopeRecord frozen.`
+    });
+
+    PCG.engines.notify.emit('QuoteAwarded', { quoteId, seeded });
+    return { ok:true, seeded, scopeRecordId: scopeRec.id };
+  };
+
+  PCG.api.getLaborCostPreview = (showId) => {
+    if(!PCG.canSeeTier('T3_BILL_RATES')) return null;
+    const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===showId);
+    let totalBill = 0, totalPay = 0;
+    assns.forEach(a=>{
+      const pos = (PCG.crewPositions||[]).find(p=>p.id===a.positionId);
+      if(!pos) return;
+      const rate = pos.ratesByVersion && pos.ratesByVersion[0];
+      if(!rate) return;
+      const days = (a.dates||[]).length || 1;
+      totalBill += (rate.billRate || 0) * 10 * days;
+      if(PCG.canSeeTier('T1_CREW_PAY_RATES')) totalPay += (rate.payRate || 0) * 10 * days;
+    });
+    return { totalBill, totalPay, positionCount: assns.length };
+  };
+
+  // ------------------------------------------------------------------
+  // v2.1 — Project crew (per-project slice of ShiftAssignments)
+  // ------------------------------------------------------------------
+  PCG.api.getProjectCrew = (showId) => {
+    const assignments = (PCG.shiftAssignments||[]).filter(s=>s.showId===showId);
+    return assignments.map(a => {
+      const crew  = a.crewMemberId ? (PCG.api.getCrewMember(a.crewMemberId) || PCG.findPerson(a.crewMemberId)) : null;
+      const pos   = PCG.api.getCrewPosition(a.positionId);
+      const travel= (PCG.travelRecords||[]).find(t=>t.crewMemberId===a.crewMemberId && t.showId===showId);
+      const ts    = (PCG.timesheets||[]).filter(t=>t.shiftAssignmentId===a.id);
+      return {
+        assignment: a,
+        crew: crew ? { id:crew.id, name:crew.name, employmentType:crew.employmentType,
+                       email:crew.email||null, phone:crew.phone||null } : null,
+        position: pos ? { id:pos.id, name:pos.name, department:pos.department,
+                          union: pos.union, unionLocal: pos.unionLocal } : null,
+        travel: travel || null,
+        timesheets: ts || [],
+        confirmationStatus: a.status
+      };
+    });
+  };
+
+  // ------------------------------------------------------------------
   // Audit Log access
   // ------------------------------------------------------------------
   PCG.api.getAuditLog = (filter) => {
@@ -563,6 +1160,602 @@
     if(filter && filter.entityId) list = list.filter(e=>e.entityId===filter.entityId);
     if(filter && filter.action)   list = list.filter(e=>e.action && e.action.startsWith(filter.action));
     return list;
+  };
+
+  // ==================================================================
+  // v2.X — Quote line mutation (real pickers replace Phase-2 stubs)
+  // Spec §5.3 · §L (System Builder inside quoting)
+  // ==================================================================
+  function _auditQuote(revId, action, detail) {
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id,
+      action:'quote.'+action, entityId:revId, detail });
+  }
+  function _revEditable(rev) {
+    if(!rev) return { ok:false, reason:'Revision not found' };
+    if(rev.status==='Awarded') return { ok:false, reason:'Awarded revision is immutable — use Change Order' };
+    return { ok:true };
+  }
+  function _recomputeRevision(rev) {
+    if(!PCG.engines || !PCG.engines.pricing) return;
+    const t = PCG.engines.pricing.computeRevisionTotals(rev.lines||[]);
+    rev.totalRevenue = t.totalRevenue;
+    rev.totalCost = t.totalCost;
+    rev.margin = t.margin;
+  }
+
+  PCG.api.addQuoteLine = (revId, line) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN, G.SCHEDULING);
+    const rev = (PCG.quoteRevisions||[]).find(r=>r.id===revId);
+    const guard = _revEditable(rev);
+    if(!guard.ok) return { ok:false, reason:guard.reason };
+    const newLine = Object.assign({
+      id: 'qln.'+Math.random().toString(36).slice(2,8),
+      packageName: line.packageName || 'Added Lines',
+      type: line.type || 'Rental',
+      qty: line.qty || 1,
+      rateTier: line.rateTier || 'day',
+      unitPrice: line.unitPrice || 0,
+      days: line.days || 1,
+      cost: line.cost || 0,
+      marginContribution: 0,
+      description: line.description || ''
+    }, line);
+    rev.lines = rev.lines || [];
+    rev.lines.push(newLine);
+    _recomputeRevision(rev);
+    _auditQuote(revId, 'line.add', `+${newLine.description} × ${newLine.qty}`);
+    return { ok:true, line:newLine, rev };
+  };
+
+  PCG.api.removeQuoteLine = (revId, lineId) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN, G.SCHEDULING);
+    const rev = (PCG.quoteRevisions||[]).find(r=>r.id===revId);
+    const guard = _revEditable(rev);
+    if(!guard.ok) return { ok:false, reason:guard.reason };
+    const before = (rev.lines||[]).length;
+    rev.lines = (rev.lines||[]).filter(l=>l.id!==lineId);
+    const removed = before - rev.lines.length;
+    _recomputeRevision(rev);
+    _auditQuote(revId, 'line.remove', `Removed line ${lineId}`);
+    return { ok: removed > 0, removed, rev };
+  };
+
+  PCG.api.updateQuoteLine = (revId, lineId, fields) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN, G.SCHEDULING);
+    const rev = (PCG.quoteRevisions||[]).find(r=>r.id===revId);
+    const guard = _revEditable(rev);
+    if(!guard.ok) return { ok:false, reason:guard.reason };
+    const line = (rev.lines||[]).find(l=>l.id===lineId);
+    if(!line) return { ok:false, reason:'Line not found' };
+    Object.assign(line, fields);
+    _recomputeRevision(rev);
+    return { ok:true, line, rev };
+  };
+
+  // System Builder insert — spec §L "most critical gap" (v2.2)
+  // Expands a SystemDefinition into a grouped block of quote lines.
+  PCG.api.insertSystemDefinitionAsLines = (revId, sysDefId, opts) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    const rev = (PCG.quoteRevisions||[]).find(r=>r.id===revId);
+    const guard = _revEditable(rev);
+    if(!guard.ok) return { ok:false, reason:guard.reason };
+    const sd = (PCG.systemDefinitions||[]).find(s=>s.id===sysDefId);
+    if(!sd) return { ok:false, reason:'System definition not found' };
+    opts = opts || {};
+    const sysQty = opts.sysQty || 1;
+    const pkgName = sd.name;
+    const added = [];
+    const build = (comp, role) => {
+      const inv = (PCG.inventory||[]).find(i=>i.id===comp.modelId);
+      if(!inv) return null;
+      const rate = (inv.rates && (inv.rates.day || inv.rates.week)) || 0;
+      const line = {
+        id: 'qln.'+Math.random().toString(36).slice(2,8),
+        packageName: pkgName,
+        type: 'Rental',
+        inventoryItemId: inv.id,
+        description: inv.name + (comp.role ? ' ('+comp.role+')' : ''),
+        qty: (comp.qty||1) * sysQty,
+        rateTier: 'day',
+        unitPrice: rate,
+        days: 1,
+        cost: (inv.perItemCost || rate * 0.35) || 0,
+        marginContribution: 0,
+        systemDefinitionId: sd.id,
+        componentRole: role,
+        isOptional: role === 'optional'
+      };
+      return line;
+    };
+    (sd.requiredComponents || []).forEach(c => {
+      const l = build(c, 'required'); if(l){ added.push(l); }
+    });
+    const pickedOptionalIds = new Set(opts.includeOptional || []);
+    (sd.optionalComponents || []).forEach((c, idx) => {
+      if (pickedOptionalIds.has(c.modelId) || pickedOptionalIds.has(String(idx))) {
+        const l = build(c, 'optional'); if(l){ added.push(l); }
+      }
+    });
+    rev.lines = rev.lines || [];
+    added.forEach(l => rev.lines.push(l));
+    _recomputeRevision(rev);
+    _auditQuote(revId, 'line.insertSystem', `Inserted system "${sd.name}" × ${sysQty} (${added.length} lines)`);
+    return { ok:true, added: added.length, systemDefinition: sd, rev };
+  };
+
+  // Copy lines from a prior quote revision into this one (replace or append).
+  PCG.api.cloneRevisionLinesFrom = (srcRevId, destRevId, mode) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    const src = (PCG.quoteRevisions||[]).find(r=>r.id===srcRevId);
+    const dest = (PCG.quoteRevisions||[]).find(r=>r.id===destRevId);
+    if(!src) return { ok:false, reason:'Source revision not found' };
+    const guard = _revEditable(dest);
+    if(!guard.ok) return { ok:false, reason:guard.reason };
+    mode = mode || 'replace';
+    const cloned = (src.lines||[]).map(l => Object.assign({}, l, {
+      id: 'qln.'+Math.random().toString(36).slice(2,8),
+      clonedFromLineId: l.id,
+      clonedFromRevisionId: src.id
+    }));
+    if(mode === 'replace') dest.lines = cloned;
+    else dest.lines = (dest.lines||[]).concat(cloned);
+    _recomputeRevision(dest);
+    _auditQuote(destRevId, 'clone', `Cloned ${cloned.length} lines from ${srcRevId} (${mode})`);
+    return { ok:true, cloned: cloned.length, mode };
+  };
+
+  // ==================================================================
+  // v2.X — Client Portal: issue + approvals + invites
+  // Spec §U (Client Experience Engine), §36 (Client Communication Timeline)
+  // ==================================================================
+  PCG.api.issueQuoteToClient = (quoteId) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    const q = (PCG.quotes||[]).find(x=>x.id===quoteId);
+    if(!q) return { ok:false, reason:'Quote not found' };
+    const rev = (PCG.quoteRevisions||[]).find(r=>r.id===q.activeRevisionId);
+    if(!rev) return { ok:false, reason:'Active revision not found' };
+    if(rev.status === 'Awarded') return { ok:false, reason:'Quote already awarded — nothing to issue' };
+    rev.status = 'Issued';
+    rev.issuedAt = new Date().toISOString();
+    q.status = 'Issued';
+    const proj = (PCG.projects||[]).find(p=>p.code===q.projectCode);
+    const clientId = proj ? proj.clientId : null;
+    const tokenPayload = { c: clientId, s: q.projectCode, qid: quoteId,
+      exp: new Date(Date.now() + 14*24*3600*1000).toISOString() };
+    const token = btoa(JSON.stringify(tokenPayload))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    PCG.clientInvites = PCG.clientInvites || [];
+    const invite = {
+      id:'ci.'+Math.random().toString(36).slice(2,8),
+      clientId, projectCode: q.projectCode, quoteId,
+      token, issuedAt: rev.issuedAt, issuedById: PCG.user.id, revokedAt: null
+    };
+    PCG.clientInvites.push(invite);
+    _auditQuote(rev.id, 'issue', `Issued to client — token expires ${tokenPayload.exp.slice(0,10)}`);
+    PCG.engines.notify.emit('QuoteIssuedToClient', { quoteId, clientId, projectCode: q.projectCode });
+    return { ok:true, invite, url: 'client/index.html?token=' + token };
+  };
+
+  PCG.api.getClientInvites = (filter) => {
+    let list = (PCG.clientInvites||[]).slice().reverse();
+    if(filter && filter.quoteId)  list = list.filter(i=>i.quoteId===filter.quoteId);
+    if(filter && filter.clientId) list = list.filter(i=>i.clientId===filter.clientId);
+    return list;
+  };
+
+  PCG.api.recordClientApproval = (payload) => {
+    PCG.clientApprovals = PCG.clientApprovals || [];
+    const a = {
+      id:'ca.'+Math.random().toString(36).slice(2,8),
+      quoteId: payload.quoteId,
+      quoteRevisionId: payload.quoteRevisionId,
+      clientId: payload.clientId,
+      projectCode: payload.projectCode,
+      action: payload.action,      // 'Approved' | 'ChangesRequested'
+      comment: payload.comment || '',
+      at: new Date().toISOString(),
+      byEmail: payload.byEmail || null
+    };
+    PCG.clientApprovals.push(a);
+    // If approved, mark the revision
+    if(payload.action === 'Approved'){
+      const rev = (PCG.quoteRevisions||[]).find(r=>r.id===payload.quoteRevisionId);
+      if(rev) {
+        rev.clientApprovedAt = a.at;
+        rev.clientApprovalId = a.id;
+      }
+    }
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:a.at, actor:'client:'+(payload.byEmail||payload.clientId),
+      action:'client.'+payload.action.toLowerCase(), entityId: payload.quoteRevisionId,
+      detail: payload.comment || '' });
+    PCG.engines.notify.emit('ClientQuoteDecision', { action: payload.action, quoteId: payload.quoteId });
+    return a;
+  };
+
+  PCG.api.getClientApprovals = (filter) => {
+    let list = (PCG.clientApprovals||[]).slice().reverse();
+    if(filter && filter.quoteId)  list = list.filter(a=>a.quoteId===filter.quoteId);
+    if(filter && filter.clientId) list = list.filter(a=>a.clientId===filter.clientId);
+    return list;
+  };
+
+  PCG.api.getClientContacts = (clientId) => {
+    return (PCG.clientContacts||[]).filter(c => !clientId || c.clientId === clientId);
+  };
+
+  PCG.api.getClientMessages = (clientId, projectCode) => {
+    return (PCG.clientMessages||[])
+      .filter(m => (!clientId || m.clientId===clientId) && (!projectCode || m.projectCode===projectCode))
+      .sort((a,b)=>new Date(a.at) - new Date(b.at));
+  };
+
+  PCG.api.postClientMessage = (payload) => {
+    PCG.clientMessages = PCG.clientMessages || [];
+    const m = {
+      id:'cm.'+Math.random().toString(36).slice(2,8),
+      clientId: payload.clientId,
+      projectCode: payload.projectCode,
+      fromSide: payload.fromSide || 'pcg',   // 'pcg' | 'client'
+      fromName: payload.fromName || 'PCG',
+      body: payload.body || '',
+      at: new Date().toISOString()
+    };
+    PCG.clientMessages.push(m);
+    return m;
+  };
+
+  // ==================================================================
+  // v2.X — Show Tech Plan (Engineering: Video-IO + Intercom + Audio)
+  // Spec §M / §T — read+basic-entry UX for live show
+  // ==================================================================
+  PCG.api.getShowTechPlan = (showId) => {
+    return (PCG.showTechPlans||[]).find(p=>p.showId===showId) || null;
+  };
+
+  PCG.api.createShowTechPlan = (showId) => {
+    PCG.requireAny(G.ADMIN, G.TSMS, G.DIRECTORS);
+    PCG.showTechPlans = PCG.showTechPlans || [];
+    if(PCG.api.getShowTechPlan(showId)) return PCG.api.getShowTechPlan(showId);
+    const p = {
+      id:'stp.'+Math.random().toString(36).slice(2,8),
+      showId,
+      videoIO: { id:'vio.'+Math.random().toString(36).slice(2,6), inputs:[], outputs:[], routes:[],
+                 switcherModelId:null, notes:'' },
+      intercom: { id:'ico.'+Math.random().toString(36).slice(2,6), systemType:'Clear-Com',
+                  channels:[], beltpackAssignments:[], radioFrequencies:[], notes:'' },
+      audioRack:{ id:'arp.'+Math.random().toString(36).slice(2,6), consoleModelId:null,
+                  channelCount:0, channelList:[], outputs:[], notes:'' },
+      createdAt: new Date().toISOString(), lastModifiedById: PCG.user.id
+    };
+    PCG.showTechPlans.push(p);
+    return p;
+  };
+
+  function _requireTechEdit() { PCG.requireAny(G.ADMIN, G.TSMS, G.DIRECTORS); }
+
+  PCG.api.addVideoIOPoint = (showId, point) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId) || PCG.api.createShowTechPlan(showId);
+    const target = point.pointType === 'Output' ? plan.videoIO.outputs : plan.videoIO.inputs;
+    const pt = Object.assign({
+      id:'vpt.'+Math.random().toString(36).slice(2,8),
+      pointNumber: (target.length + 1),
+      label: point.label || '',
+      signalType: point.signalType || 'SDI',
+      signalFormat: point.signalFormat || '1080p59.94',
+      sourceDevice: point.sourceDevice || '',
+      destinationDevice: point.destinationDevice || '',
+      pointType: point.pointType || 'Input'
+    }, point);
+    target.push(pt);
+    plan.lastModifiedById = PCG.user.id;
+    return pt;
+  };
+
+  PCG.api.removeVideoIOPoint = (showId, pointId) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId); if(!plan) return { ok:false };
+    const before = plan.videoIO.inputs.length + plan.videoIO.outputs.length;
+    plan.videoIO.inputs = plan.videoIO.inputs.filter(p=>p.id!==pointId);
+    plan.videoIO.outputs = plan.videoIO.outputs.filter(p=>p.id!==pointId);
+    plan.videoIO.routes = plan.videoIO.routes.filter(r => r.inputId!==pointId && r.outputId!==pointId);
+    return { ok: (plan.videoIO.inputs.length + plan.videoIO.outputs.length) < before };
+  };
+
+  PCG.api.addVideoRoute = (showId, route) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId) || PCG.api.createShowTechPlan(showId);
+    const r = Object.assign({
+      id:'vrt.'+Math.random().toString(36).slice(2,8),
+      name: route.name || 'Route ' + (plan.videoIO.routes.length+1),
+      inputId: route.inputId, outputId: route.outputId
+    }, route);
+    plan.videoIO.routes.push(r);
+    return r;
+  };
+
+  PCG.api.removeVideoRoute = (showId, routeId) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId); if(!plan) return { ok:false };
+    const before = plan.videoIO.routes.length;
+    plan.videoIO.routes = plan.videoIO.routes.filter(r=>r.id!==routeId);
+    return { ok: plan.videoIO.routes.length < before };
+  };
+
+  PCG.api.addIntercomChannel = (showId, channel) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId) || PCG.api.createShowTechPlan(showId);
+    const ch = Object.assign({
+      id:'ich.'+Math.random().toString(36).slice(2,8),
+      channelNumber: plan.intercom.channels.length + 1,
+      channelLabel: channel.channelLabel || ('Channel '+ (plan.intercom.channels.length+1)),
+      channelType: channel.channelType || 'Party',
+      primaryUsers: channel.primaryUsers || []
+    }, channel);
+    plan.intercom.channels.push(ch);
+    return ch;
+  };
+
+  PCG.api.removeIntercomChannel = (showId, channelId) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId); if(!plan) return { ok:false };
+    const before = plan.intercom.channels.length;
+    plan.intercom.channels = plan.intercom.channels.filter(c=>c.id!==channelId);
+    plan.intercom.beltpackAssignments = plan.intercom.beltpackAssignments.filter(b=>b.channelId!==channelId);
+    return { ok: plan.intercom.channels.length < before };
+  };
+
+  PCG.api.assignBeltpack = (showId, assignment) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId) || PCG.api.createShowTechPlan(showId);
+    const a = Object.assign({
+      id:'bp.'+Math.random().toString(36).slice(2,8),
+      beltpackNumber: plan.intercom.beltpackAssignments.length + 1,
+      userLabel: assignment.userLabel || 'Crew',
+      positionId: assignment.positionId || null,
+      channelId: assignment.channelId || null
+    }, assignment);
+    plan.intercom.beltpackAssignments.push(a);
+    return a;
+  };
+
+  PCG.api.removeBeltpack = (showId, beltpackId) => {
+    _requireTechEdit();
+    const plan = PCG.api.getShowTechPlan(showId); if(!plan) return { ok:false };
+    const before = plan.intercom.beltpackAssignments.length;
+    plan.intercom.beltpackAssignments = plan.intercom.beltpackAssignments.filter(b=>b.id!==beltpackId);
+    return { ok: plan.intercom.beltpackAssignments.length < before };
+  };
+
+  // ==================================================================
+  // v2.X — EQLPC — real Substitution Proposal + Draft Sub-Rental flows
+  // Spec §17 (EQLPC) · §8 (Availability) · §9 (Procurement)
+  // ==================================================================
+  PCG.api.getInventoryConflicts = PCG.api.getInventoryConflicts || (() => {
+    return (PCG.engines && PCG.engines.availability && PCG.engines.availability.conflicts)
+      ? PCG.engines.availability.conflicts()
+      : [];
+  });
+
+  PCG.api.getSubstitutionProposals = (filter) => {
+    let list = (PCG.substitutionProposals||[]).slice().reverse();
+    if(filter && filter.showId) list = list.filter(s=>s.showId===filter.showId);
+    if(filter && filter.status) list = list.filter(s=>s.status===filter.status);
+    return list;
+  };
+
+  PCG.api.proposeSubstitution = (payload) => {
+    PCG.requireAny(G.ADMIN, G.TSMS, G.WH_SUPERVISORS, G.DIRECTORS);
+    PCG.substitutionProposals = PCG.substitutionProposals || [];
+    const orig = PCG.api.getInventoryItem(payload.originalItemId);
+    const sub  = PCG.api.getInventoryItem(payload.substituteItemId);
+    const costOrig = (orig && orig.rates && orig.rates.day) || 0;
+    const costSub  = (sub  && sub.rates  && sub.rates.day ) || 0;
+    const delta = (costSub - costOrig) * (payload.qty || 1);
+    const p = {
+      id:'subprop.'+Math.random().toString(36).slice(2,8),
+      showId: payload.showId,
+      originalItemId: payload.originalItemId,
+      originalName: orig ? orig.name : payload.originalItemId,
+      substituteItemId: payload.substituteItemId,
+      substituteName: sub ? sub.name : payload.substituteItemId,
+      qty: payload.qty || 1,
+      reason: payload.reason || '',
+      costDelta: delta,
+      status:'Proposed',
+      requiresApproval: (delta > 0) ? 'AE-or-Director' : 'PM',
+      proposedById: PCG.user.id, proposedAt: new Date().toISOString(),
+      approvedById: null, approvedAt: null
+    };
+    PCG.substitutionProposals.push(p);
+    // Create a WorkItem for the PM so they see it in the action queue
+    PCG.workItems = PCG.workItems || [];
+    PCG.workItems.push({
+      id:'wi.'+Math.random().toString(36).slice(2,8),
+      type:'SubstitutionApproval',
+      ownerId: (function(){ const proj = (PCG.projects||[]).find(x=>x.code===payload.showId); return proj && proj.pmId; })(),
+      priority: delta > 0 ? 'High' : 'Medium',
+      status:'Open',
+      entityRef: p.id,
+      title: `Approve substitution: ${p.originalName} → ${p.substituteName}`,
+      detail: `Qty ${p.qty} · ${delta===0?'transparent':delta>0?'+'+delta:delta} cost delta`,
+      createdAt: p.proposedAt
+    });
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:p.proposedAt, actor:PCG.user.id, action:'eqlpc.substitution.propose',
+      entityId:p.id, detail:`${p.originalName} → ${p.substituteName} on ${payload.showId}` });
+    PCG.engines.notify.emit('SubstitutionProposed', { id:p.id, showId:payload.showId });
+    return { ok:true, proposal:p };
+  };
+
+  PCG.api.approveSubstitution = (proposalId) => {
+    PCG.requireAny(G.ADMIN, G.DIRECTORS, G.AE);
+    const p = (PCG.substitutionProposals||[]).find(x=>x.id===proposalId);
+    if(!p) return { ok:false };
+    p.status = 'Approved';
+    p.approvedById = PCG.user.id;
+    p.approvedAt = new Date().toISOString();
+    const wi = (PCG.workItems||[]).find(w=>w.entityRef===p.id);
+    if(wi) wi.status = 'Closed';
+    return { ok:true, proposal:p };
+  };
+
+  PCG.api.draftSubRentalFromDeficit = (payload) => {
+    PCG.requireAny(G.ADMIN, G.TSMS, G.WH_SUPERVISORS, G.DIRECTORS);
+    PCG.subRentals = PCG.subRentals || [];
+    const inv = PCG.api.getInventoryItem(payload.itemId);
+    const estCost = (inv && inv.rates && inv.rates.week) ? inv.rates.week * payload.qty * 0.8 : 0;
+    const proj = (PCG.projects||[]).find(p=>p.code===payload.showId);
+    const rpo = {
+      id:'rpo.'+Math.random().toString(36).slice(2,8),
+      projectCode: payload.showId, showId: payload.showId,
+      vendorId: payload.vendorId || null,
+      vendorName: payload.vendorName || 'TBD — assign vendor',
+      itemId: payload.itemId,
+      itemDescription: (inv ? inv.name : payload.itemId) + (payload.qty>1?` (${payload.qty} units)`:''),
+      qty: payload.qty || 1,
+      fromDate: (proj && proj.dates) ? proj.dates.loadIn : null,
+      toDate:   (proj && proj.dates) ? (proj.dates.ret || proj.dates.loadOut) : null,
+      quotedCost: Math.round(estCost),
+      holdExpiry: new Date(Date.now() + 3*24*3600*1000).toISOString(),
+      status:'Draft', vendorRef:null, invoiceAmount:null,
+      createdById: PCG.user.id, createdAt: new Date().toISOString()
+    };
+    PCG.subRentals.push(rpo);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:rpo.createdAt, actor:PCG.user.id, action:'eqlpc.rpo.draft',
+      entityId:rpo.id, detail:`Drafted RPO for ${rpo.itemDescription} on ${payload.showId}` });
+    PCG.engines.notify.emit('SubRentalDrafted', { id:rpo.id, showId:payload.showId });
+    return { ok:true, subRental:rpo };
+  };
+
+  // ==================================================================
+  // v2.X — CreativeRequest create (replaces fake notImpl on creative.html)
+  // Spec §24
+  // ==================================================================
+  PCG.api.createCreativeRequest = (payload) => {
+    PCG.requireAny(G.ADMIN, G.DIRECTORS, G.AE, G.AE_NO_CONFIRM);
+    PCG.creativeRequests = PCG.creativeRequests || [];
+    const r = {
+      id:'cr.'+Math.random().toString(36).slice(2,8),
+      projectId: payload.projectId,
+      requestedById: PCG.user.id,
+      requestedAt: new Date().toISOString(),
+      type: payload.type || 'Graphic',
+      description: payload.description || '',
+      clientApprovalRequired: !!payload.clientApprovalRequired,
+      deadline: payload.deadline || null,
+      fabricationStatus: 'Pending',
+      status:'Draft',
+      attachments:[]
+    };
+    PCG.creativeRequests.push(r);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:r.requestedAt, actor:PCG.user.id, action:'creative.request.create',
+      entityId:r.id, detail:`${r.type} · ${r.projectId}` });
+    PCG.engines.notify.emit('CreativeRequestCreated', { id:r.id, projectId:payload.projectId });
+    return { ok:true, request:r };
+  };
+
+  // ==================================================================
+  // v2.X — Travel record create (replaces fake notImpl on travel.html)
+  // Spec §13
+  // ==================================================================
+  PCG.api.createTravelRecord = (payload) => {
+    PCG.requireAny(G.ADMIN, G.SCHEDULING, G.DIRECTORS);
+    PCG.travelRecords = PCG.travelRecords || [];
+    const t = {
+      id:'tr.'+Math.random().toString(36).slice(2,8),
+      crewMemberId: payload.crewMemberId,
+      showId: payload.showId,
+      departureCity: payload.departureCity || '',
+      arrivalCity: payload.arrivalCity || '',
+      departureTime: payload.departureTime || null,
+      arrivalTime: payload.arrivalTime || null,
+      airline: payload.airline || null,
+      flightConfirmation: payload.flightConfirmation || null,
+      hotelName: payload.hotelName || null,
+      hotelConfirmation: payload.hotelConfirmation || null,
+      perDiemRate: payload.perDiemRate || 75,
+      perDiemDays: payload.perDiemDays || 0,
+      perDiemReimbursementSource: payload.perDiemReimbursementSource || 'Expense Report',
+      createdById: PCG.user.id,
+      createdAt: new Date().toISOString()
+    };
+    PCG.travelRecords.push(t);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:t.createdAt, actor:PCG.user.id, action:'travel.create',
+      entityId:t.id, detail:`${payload.crewMemberId} · ${payload.showId}` });
+    return { ok:true, travel:t };
+  };
+
+  PCG.api.exportTravelCSV = (showId) => {
+    PCG.requireAny(G.ADMIN, G.SCHEDULING, G.DIRECTORS, G.ACCOUNTING);
+    const list = (PCG.travelRecords||[]).filter(t => !showId || showId === 'all' || t.showId === showId);
+    const rows = [
+      ['Crew','Show','Route','Departure','Arrival','Airline','Flight','Hotel','Hotel Conf','Per Diem $/day','Per Diem Days','Reimbursement Source']
+    ];
+    list.forEach(t => {
+      const crew = PCG.findPerson(t.crewMemberId);
+      rows.push([
+        crew?crew.name:t.crewMemberId,
+        t.showId,
+        `${t.departureCity||'—'} → ${t.arrivalCity||'—'}`,
+        t.departureTime || '',
+        t.arrivalTime || '',
+        t.airline || '',
+        t.flightConfirmation || '',
+        t.hotelName || '',
+        t.hotelConfirmation || '',
+        t.perDiemRate || '',
+        t.perDiemDays || '',
+        t.perDiemReimbursementSource || ''
+      ]);
+    });
+    const csv = rows.map(r => r.map(c => {
+      const s = String(c==null?'':c);
+      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }).join(',')).join('\n');
+    return { ok:true, csv, count: list.length };
+  };
+
+  // ==================================================================
+  // v2.X — Real "create shift assignment" (replaces fake notImpl)
+  // Spec §12.1 — Placeholder ShiftAssignment
+  // ==================================================================
+  PCG.api.createShiftAssignment = (payload) => {
+    PCG.requireAny(G.ADMIN, G.SCHEDULING, G.DIRECTORS);
+    const pos = (PCG.crewPositions||[]).find(p=>p.id===payload.positionId);
+    const a = {
+      id:'sa.'+Math.random().toString(36).slice(2,8),
+      showId: payload.showId,
+      crewMemberId: payload.crewMemberId || null,
+      positionId: payload.positionId,
+      positionGroup: pos ? (pos.department || 'Core') : 'Core',
+      dates: payload.dates || [],
+      callTime: payload.callTime || '07:00',
+      status: payload.crewMemberId ? 'Invited' : 'Placeholder',
+      invitedAt: payload.crewMemberId ? new Date().toISOString() : null,
+      confirmedAt: null, acknowledgedAt: null,
+      note: payload.notes || null,
+      createdById: PCG.user.id,
+      createdAt: new Date().toISOString()
+    };
+    if(payload.crewMemberId){
+      const conflict = PCG.engines.scheduling.checkAssignment({
+        crewMemberId: payload.crewMemberId, showId: payload.showId, dates: payload.dates
+      });
+      if(conflict.conflict) return { ok:false, reason:'Conflict', conflicts:conflict.conflicts };
+    }
+    PCG.shiftAssignments = PCG.shiftAssignments || [];
+    PCG.shiftAssignments.push(a);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:a.createdAt, actor:PCG.user.id, action:'crew.shift.create',
+      entityId:a.id, detail:`${pos?pos.name:payload.positionId} on ${payload.showId} · ${(payload.dates||[]).length} days` });
+    PCG.engines.notify.emit('ShiftAssignmentCreated', { id:a.id, showId:payload.showId });
+    return { ok:true, assignment:a };
   };
 
 })();

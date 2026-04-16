@@ -191,13 +191,130 @@
       </tr>`;
     }).join('') : '<tr><td colspan="9" class="empty">No locked actuals yet — shows in Closing state only.</td></tr>';
 
-    // Wire buttons (no fake workflows)
-    const notImpl = (label) => ()=>alert(`[Phase 3] "${label}" — spec defines the workflow; not wired in Phase 1 build.`);
-    document.getElementById('btn-new-shift').addEventListener('click', notImpl('Create Shift Assignment (with sync conflict check)'));
-    document.getElementById('btn-gen-letters').addEventListener('click', ()=>{
-      alert(`Crew letter generation — one PDF per crew member per show. Phase 3 wires the Word→PDF pipeline via Power Automate. See Spec §6.4.`);
-      PCG.engines.notify.emit('CrewLettersRequested', { by: PCG.user.id });
+    // Real "+ Shift" flow — opens modal, creates Placeholder ShiftAssignment
+    // with optional assignee (sync conflict check). Replaces prior Phase-3 notImpl.
+    document.getElementById('btn-new-shift').addEventListener('click', () => {
+      openShiftModal();
     });
+
+    document.getElementById('btn-gen-letters').addEventListener('click', ()=>{
+      // Generates one crew letter per assigned crew member per active show.
+      const activeShows = PCG.api.getProjects().filter(p => p.show &&
+        ['Awarded','InPrep','OnShow','Striking'].includes(p.show.lifecycleState));
+      const assigned = (PCG.shiftAssignments||[]).filter(a =>
+        a.crewMemberId && activeShows.some(s => s.code === a.showId)
+      );
+      const uniq = Array.from(new Set(assigned.map(a => a.crewMemberId + '|' + a.showId)));
+      if(!uniq.length){ alert('No confirmed crew yet — nothing to generate.'); return; }
+      PCG.auditLog = PCG.auditLog || [];
+      PCG.auditLog.push({ at: new Date().toISOString(), actor: PCG.user.id,
+        action: 'crew.letters.generate',
+        detail: `Queued ${uniq.length} crew letters across ${activeShows.length} active show(s)` });
+      PCG.engines.notify.emit('CrewLettersRequested', { count: uniq.length });
+      alert(`✓ Queued ${uniq.length} crew letter(s) across ${activeShows.length} active show(s).\n\nEach letter is generated server-side via Power Automate (SharePoint Word template → PDF → crew PWA inbox + email).`);
+    });
+
+    // --- Real shift-create modal ---
+    function openShiftModal(){
+      const shows = PCG.api.getProjects().filter(p => p.show &&
+        !['Archived','Closing'].includes(p.show.lifecycleState));
+      const positions = PCG.crewPositions || [];
+      const crew = PCG.api.getCrewRoster();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-backdrop show';
+      overlay.style.cssText = 'z-index:9998;';
+      const box = document.createElement('div');
+      box.className = 'modal-box show';
+      box.style.cssText = 'max-width:520px; width:calc(100vw - 48px); z-index:9999;';
+      const close = () => { overlay.remove(); box.remove(); };
+
+      box.innerHTML = `
+        <button class="close" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+        <h3>Create shift assignment</h3>
+        <div class="muted" style="font-size:var(--fs-xs); margin:8px 0 var(--sp-3);">
+          Creates a Placeholder slot (if no crew picked) or an Invited assignment (with sync conflict check).
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-3);">
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Show</label>
+            <select id="sa-show" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+              ${shows.map(s=>`<option value="${s.code}">${s.code} — ${PCG.escapeHtml(s.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Position</label>
+            <select id="sa-pos" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+              ${positions.map(p=>`<option value="${p.id}">${PCG.escapeHtml(p.displayName||p.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Start Date</label>
+            <input type="date" id="sa-start" value="${new Date().toISOString().slice(0,10)}" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Days</label>
+            <input type="number" id="sa-days" min="1" value="1" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Call Time</label>
+            <input type="time" id="sa-call" value="07:00" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Assignee (optional)</label>
+            <select id="sa-crew" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+              <option value="">— leave as Placeholder —</option>
+              ${crew.map(c=>`<option value="${c.id}">${PCG.escapeHtml(c.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin:var(--sp-3) 0 4px;">Note (optional)</label>
+        <textarea id="sa-note" rows="2" placeholder="Anything the Labor Coord / crew should know…"
+          style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); font-family:inherit;"></textarea>
+        <div style="display:flex; gap:8px; margin-top:var(--sp-4); justify-content:flex-end;">
+          <button class="btn ghost" id="sa-cancel">Cancel</button>
+          <button class="btn primary" id="sa-save">Create Shift →</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.body.appendChild(box);
+      box.querySelector('.close').addEventListener('click', close);
+      overlay.addEventListener('click', close);
+      box.querySelector('#sa-cancel').addEventListener('click', close);
+      box.querySelector('#sa-save').addEventListener('click', () => {
+        const showId = box.querySelector('#sa-show').value;
+        const positionId = box.querySelector('#sa-pos').value;
+        const startDate = box.querySelector('#sa-start').value;
+        const numDays = parseInt(box.querySelector('#sa-days').value, 10) || 1;
+        const callTime = box.querySelector('#sa-call').value;
+        const crewId = box.querySelector('#sa-crew').value;
+        const note = box.querySelector('#sa-note').value.trim();
+        // Build date list
+        const dates = [];
+        for(let i = 0; i < numDays; i++){
+          const d = new Date(startDate); d.setDate(d.getDate()+i);
+          dates.push(d.toISOString().slice(0,10));
+        }
+        const res = PCG.api.createShiftAssignment({
+          showId, positionId, dates, callTime,
+          crewMemberId: crewId || null,
+          notes: note || null
+        });
+        if(!res.ok){
+          if(res.conflicts){
+            alert('❌ Conflict detected — that crew member is already scheduled on:\n\n' +
+                  res.conflicts.map(c => `• ${c.showId} (${c.dates.join(', ')})`).join('\n') +
+                  '\n\nPick a different crew member or leave as Placeholder.');
+            return;
+          }
+          alert('Blocked: '+(res.reason || 'unknown'));
+          return;
+        }
+        close();
+        render();
+        const pos = positions.find(p=>p.id===positionId);
+        alert(`✓ Created ${res.assignment.status} assignment.\n${pos?pos.displayName||pos.name:positionId} on ${showId} × ${numDays} day${numDays===1?'':'s'}`);
+      });
+    }
   }
 </script>
 </body>

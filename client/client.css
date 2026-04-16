@@ -1,0 +1,252 @@
+/* =========================================================================
+   PCG STAGE — Client Portal styles
+   Distinct from the ops app: lighter surface, more whitespace, brand-blue
+   accents. Separate CSS file per architecture rule (no shared UI code).
+   ========================================================================= */
+
+:root {
+  --cp-bg: #F7F9FC;
+  --cp-surface: #FFFFFF;
+  --cp-surface-2: #EEF3F8;
+  --cp-text: #0A1220;
+  --cp-text-2: #4A5568;
+  --cp-text-3: #7A8899;
+  --cp-border: #E1E8EF;
+  --cp-border-2: #CDD8E1;
+  --cp-accent: #0199FD;
+  --cp-accent-dark: #013558;
+  --cp-accent-purple: #7A41E5;
+  --cp-success: #1C8B4C;
+  --cp-warn: #C87A00;
+  --cp-danger: #B23838;
+  --cp-radius: 10px;
+  --cp-radius-sm: 6px;
+  --cp-shadow: 0 1px 2px rgba(10, 18, 32, 0.04), 0 4px 12px rgba(10, 18, 32, 0.06);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--cp-bg);
+  color: var(--cp-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+/* ----- Header ----- */
+.cp-header {
+  background: linear-gradient(135deg, var(--cp-accent-dark) 0%, #0B2842 100%);
+  color: #FFF;
+  padding: 24px 32px 80px;
+  position: relative;
+}
+.cp-header::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+  background: linear-gradient(90deg, var(--cp-accent-dark), var(--cp-accent), var(--cp-accent-purple));
+}
+.cp-header-row { display: flex; align-items: center; gap: 18px; max-width: 1100px; margin: 0 auto; }
+.cp-logo { width: 40px; height: 40px; border-radius: 50%; background: #FFF; display:grid; place-items:center; }
+.cp-logo img { width: 28px; height: 28px; border-radius: 50%; }
+.cp-brand {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.65); font-family: "Oswald", sans-serif;
+}
+.cp-header h1 { margin: 4px 0 0; font-size: 22px; font-family: "Oswald", sans-serif; letter-spacing: 0.01em; }
+.cp-header h1 strong { font-weight: 700; }
+.cp-header-meta {
+  margin-top: 4px; font-size: 13px; color: rgba(255,255,255,0.75);
+}
+.cp-signout {
+  margin-left: auto; color: rgba(255,255,255,0.7); font-size: 12px; text-decoration: none;
+  padding: 6px 14px; border: 1px solid rgba(255,255,255,0.2); border-radius: var(--cp-radius-sm);
+}
+.cp-signout:hover { background: rgba(255,255,255,0.08); color: #FFF; }
+
+/* ----- Layout + tabs ----- */
+.cp-main { max-width: 1100px; margin: -60px auto 40px; padding: 0 32px; }
+.cp-tabs {
+  display: flex; gap: 4px; background: var(--cp-surface);
+  border-radius: var(--cp-radius) var(--cp-radius) 0 0;
+  padding: 8px 8px 0; box-shadow: var(--cp-shadow);
+}
+.cp-tab {
+  padding: 12px 18px; border: 0; background: transparent;
+  font-family: "Oswald", sans-serif; font-size: 13px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--cp-text-3); cursor: pointer; border-radius: var(--cp-radius-sm) var(--cp-radius-sm) 0 0;
+  transition: color 0.15s, background 0.15s;
+}
+.cp-tab:hover { color: var(--cp-text-2); }
+.cp-tab.on { color: var(--cp-accent); background: var(--cp-surface-2); }
+.cp-tab .cp-tab-badge {
+  background: var(--cp-accent); color: #FFF; font-family: monospace;
+  padding: 1px 7px; border-radius: 999px; font-size: 10px; margin-left: 6px;
+}
+
+.cp-panel {
+  background: var(--cp-surface);
+  border-radius: 0 0 var(--cp-radius) var(--cp-radius);
+  box-shadow: var(--cp-shadow); padding: 36px 40px 40px;
+  min-height: 400px;
+}
+
+/* ----- Sections ----- */
+.cp-section-title {
+  font-family: "Oswald", sans-serif; font-size: 22px; margin: 0 0 4px;
+}
+.cp-section-sub { color: var(--cp-text-2); font-size: 14px; margin-bottom: 28px; }
+
+/* ----- Proposal ----- */
+.cp-quote-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;
+  padding: 18px 22px; background: var(--cp-surface-2); border-radius: var(--cp-radius);
+  margin-bottom: 28px;
+}
+.cp-quote-meta .kv .k {
+  font-family: "Oswald", sans-serif; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cp-text-3); margin-bottom: 2px;
+}
+.cp-quote-meta .kv .v { font-size: 15px; color: var(--cp-text); font-weight: 600; }
+.cp-quote-meta .kv .v.mono { font-family: "IBM Plex Mono", monospace; font-weight: 500; }
+
+.cp-pkg {
+  border: 1px solid var(--cp-border); border-radius: var(--cp-radius);
+  margin-bottom: 14px; overflow: hidden;
+}
+.cp-pkg-head {
+  display: flex; align-items: center; padding: 14px 18px;
+  background: var(--cp-surface-2); border-bottom: 1px solid var(--cp-border);
+}
+.cp-pkg-head strong { flex: 1; font-size: 14px; }
+.cp-pkg-head .cp-sub { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--cp-accent-dark); }
+.cp-pkg-lines { padding: 6px 0; }
+.cp-pkg-line {
+  display: grid; grid-template-columns: 1fr 90px 90px 140px;
+  padding: 10px 18px; font-size: 13px; align-items: center;
+  border-bottom: 1px solid var(--cp-border);
+}
+.cp-pkg-line:last-child { border-bottom: 0; }
+.cp-pkg-line .desc strong { display: block; font-weight: 600; }
+.cp-pkg-line .cp-qty { font-family: "IBM Plex Mono", monospace; color: var(--cp-text-2); text-align: right; }
+.cp-pkg-line .cp-ext { font-family: "IBM Plex Mono", monospace; text-align: right; font-weight: 600; }
+
+.cp-total {
+  display: flex; align-items: center; padding: 18px 22px;
+  margin-top: 18px; border-top: 2px solid var(--cp-accent-dark);
+}
+.cp-total-label { flex: 1; font-family: "Oswald", sans-serif; font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; }
+.cp-total-value { font-family: "IBM Plex Mono", monospace; font-size: 22px; font-weight: 700; color: var(--cp-accent-dark); }
+
+/* ----- Approval ----- */
+.cp-approval-card {
+  background: linear-gradient(180deg, rgba(1,153,253,0.05) 0%, var(--cp-surface) 100%);
+  border: 1px solid var(--cp-accent);
+  border-radius: var(--cp-radius);
+  padding: 22px 26px; margin-top: 32px;
+}
+.cp-approval-card h3 {
+  margin: 0 0 8px; font-family: "Oswald", sans-serif; font-size: 18px;
+}
+.cp-approval-card textarea {
+  width: 100%; border: 1px solid var(--cp-border-2); border-radius: var(--cp-radius-sm);
+  padding: 10px 14px; font-family: inherit; font-size: 14px; min-height: 70px; resize: vertical;
+  margin-top: 10px; background: var(--cp-surface);
+}
+.cp-approval-card textarea:focus { outline: 0; border-color: var(--cp-accent); box-shadow: 0 0 0 3px rgba(1,153,253,0.14); }
+.cp-actions { margin-top: 14px; display: flex; gap: 10px; }
+
+.cp-btn {
+  border: 0; border-radius: var(--cp-radius-sm); font-family: "Oswald", sans-serif;
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 13px;
+  padding: 11px 22px; cursor: pointer; font-weight: 600;
+}
+.cp-btn.primary { background: var(--cp-accent); color: #FFF; }
+.cp-btn.primary:hover { background: #0082D9; }
+.cp-btn.ghost { background: transparent; color: var(--cp-text-2); border: 1px solid var(--cp-border-2); }
+.cp-btn.ghost:hover { background: var(--cp-surface-2); }
+.cp-btn.warn { background: var(--cp-warn); color: #FFF; }
+
+.cp-approved-banner {
+  background: rgba(28, 139, 76, 0.08); border: 1px solid var(--cp-success);
+  color: var(--cp-success); padding: 14px 20px; border-radius: var(--cp-radius);
+  font-weight: 600; display: flex; align-items: center; gap: 10px;
+  margin-top: 32px;
+}
+
+/* ----- Schedule ----- */
+.cp-timeline { position: relative; padding-left: 28px; }
+.cp-timeline::before {
+  content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px;
+  width: 2px; background: var(--cp-border-2);
+}
+.cp-event {
+  position: relative; margin-bottom: 22px;
+}
+.cp-event::before {
+  content: ""; position: absolute; left: -24px; top: 6px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--cp-accent); border: 3px solid var(--cp-surface);
+  box-shadow: 0 0 0 1px var(--cp-border-2);
+}
+.cp-event-label {
+  font-family: "Oswald", sans-serif; font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--cp-text-3); margin-bottom: 2px;
+}
+.cp-event-date { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.cp-event-meta { color: var(--cp-text-2); font-size: 13px; }
+.cp-venue-box {
+  background: var(--cp-surface-2); border-radius: var(--cp-radius);
+  padding: 18px 22px; margin-top: 28px;
+}
+.cp-venue-box h4 { margin: 0 0 6px; font-family: "Oswald", sans-serif; font-size: 15px; }
+
+/* ----- Docs ----- */
+.cp-doc {
+  display: flex; align-items: center; padding: 14px 18px;
+  border: 1px solid var(--cp-border); border-radius: var(--cp-radius);
+  margin-bottom: 10px; text-decoration: none; color: var(--cp-text);
+  transition: border-color 0.15s, background 0.15s;
+}
+.cp-doc:hover { border-color: var(--cp-accent); background: var(--cp-surface-2); }
+.cp-doc-icon { font-size: 22px; margin-right: 14px; color: var(--cp-accent); }
+.cp-doc-main { flex: 1; }
+.cp-doc-main strong { display: block; font-size: 14px; }
+.cp-doc-kind { font-size: 11px; color: var(--cp-text-3); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ----- Messages ----- */
+.cp-thread { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; max-height: 420px; overflow-y: auto; padding-right: 8px; }
+.cp-msg {
+  max-width: 78%; padding: 11px 15px; border-radius: var(--cp-radius);
+  font-size: 14px; position: relative;
+}
+.cp-msg.pcg { background: var(--cp-surface-2); color: var(--cp-text); align-self: flex-start; border-bottom-left-radius: 2px; }
+.cp-msg.client { background: var(--cp-accent); color: #FFF; align-self: flex-end; border-bottom-right-radius: 2px; }
+.cp-msg-meta {
+  font-size: 11px; opacity: 0.7; margin-bottom: 4px;
+  font-family: "Oswald", sans-serif; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.cp-compose {
+  display: flex; gap: 10px; border-top: 1px solid var(--cp-border); padding-top: 14px;
+}
+.cp-compose textarea {
+  flex: 1; border: 1px solid var(--cp-border-2); border-radius: var(--cp-radius-sm);
+  padding: 10px 14px; font-family: inherit; font-size: 14px; min-height: 48px; resize: vertical;
+}
+
+/* ----- Empty state ----- */
+.cp-empty {
+  padding: 40px; text-align: center; color: var(--cp-text-3);
+  background: var(--cp-surface-2); border-radius: var(--cp-radius);
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 720px) {
+  .cp-header { padding: 20px 20px 70px; }
+  .cp-main { padding: 0 16px; }
+  .cp-panel { padding: 24px 20px; }
+  .cp-pkg-line { grid-template-columns: 1fr 64px 110px; }
+  .cp-pkg-line .cp-qty:nth-child(3) { display: none; }
+}

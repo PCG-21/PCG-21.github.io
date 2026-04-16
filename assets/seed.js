@@ -293,27 +293,57 @@
     { id:'rc.2026.Q3', name:'2026 Q3', effectiveFrom:'2026-07-01', effectiveTo:'2026-12-31' }
   ];
 
+  // PCG naming convention: PP=Production, PA=Production Audio, PL=Production Lighting, PV=Production Video, UHP=Union House Person
   PCG.crewPositions = [
-    { id:'pos.a1',      name:'Audio A1',        department:'Audio',   union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:85, billRate:125}] },
-    { id:'pos.a2',      name:'Audio A2',        department:'Audio',   union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:60, billRate:90}] },
-    { id:'pos.v1',      name:'Video V1',        department:'Video',   union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:80, billRate:120}] },
-    { id:'pos.dir.v',   name:'Video Director',  department:'Video',   union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:95, billRate:140}] },
-    { id:'pos.ld',      name:'Lighting LD',     department:'Lighting',union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:82, billRate:122}] },
-    { id:'pos.me',      name:'Lighting ME',     department:'Lighting',union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:55, billRate:85}] },
-    { id:'pos.caller',  name:'Show Caller',     department:'Production',union:null, unionLocal:null,
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:90, billRate:135}] },
-    { id:'pos.td',      name:'Technical Director', department:'Production', union:null, unionLocal:null,
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:110, billRate:160}] },
-    { id:'pos.avtech',  name:'AV Tech',         department:'Mixed', union:null, unionLocal:null,
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:45, billRate:75}] },
-    { id:'pos.led',     name:'LED Lead',        department:'Video', union:'IATSE', unionLocal:'720',
-      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:70, billRate:105}] }
+    // PP — Production
+    { id:'pos.td',      name:'PP - Production - Technical Director (TD)', displayName:'Technical Director (TD)', department:'Production', union:null, unionLocal:null,
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:110, billRate:160, dayRate:400}] },
+    { id:'pos.caller',  name:'PP - Production - Show Caller', displayName:'Show Caller', department:'Production',union:null, unionLocal:null,
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:90, billRate:135, dayRate:400}] },
+    { id:'pos.proj',    name:'PP - Production - Project Manager', displayName:'Project Manager', department:'Production', union:null, unionLocal:null,
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:100, billRate:150, dayRate:400}] },
+
+    // PA — Production Audio
+    { id:'pos.a1',      name:'PA - Audio - Tech (A1)',  displayName:'Audio A1',  department:'Audio',   union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:85, billRate:125, dayRate:375}] },
+    { id:'pos.a2',      name:'PA - Audio - Tech (A2)',  displayName:'Audio A2',  department:'Audio',   union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:60, billRate:90, dayRate:250}] },
+
+    // PV — Production Video
+    { id:'pos.v1',      name:'PV - Video - Switcher Screen(s)', displayName:'Video V1 / Switcher', department:'Video', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:80, billRate:120, dayRate:350}] },
+    { id:'pos.dir.v',   name:'PV - Video - Director',   displayName:'Video Director',  department:'Video',   union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:95, billRate:140, dayRate:400}] },
+    { id:'pos.cam',     name:'PV - Video - Camera Operator', displayName:'Camera Operator', department:'Video', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:70, billRate:105, dayRate:325}] },
+    { id:'pos.led',     name:'PV - Video - LED Tech',   displayName:'LED Lead',        department:'Video', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:70, billRate:105, dayRate:300}] },
+
+    // PL — Production Lighting
+    { id:'pos.ld',      name:'PL - Lighting - Director (LD)',   displayName:'Lighting LD', department:'Lighting', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:82, billRate:122, dayRate:375}] },
+    { id:'pos.me',      name:'PL - Lighting - Master Electrician (ME)', displayName:'Lighting ME', department:'Lighting', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:55, billRate:85, dayRate:225}] },
+
+    // UHP — Union House Persons / general labor
+    { id:'pos.uhp.a',   name:'UHP - Hand - Audio', displayName:'Audio Hand', department:'Audio', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:40, billRate:65, dayRate:175}] },
+    { id:'pos.uhp.l',   name:'UHP - Hand - Lighting', displayName:'Lighting Hand', department:'Lighting', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:40, billRate:65, dayRate:175}] },
+    { id:'pos.uhp.rig', name:'UHP - Rigger - General', displayName:'Rigger', department:'Rigging', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:60, billRate:95, dayRate:300}] },
+    { id:'pos.uhp.carp',name:'UHP - Carpenter / Stagehand', displayName:'Carpenter / Stagehand', department:'Scenic', union:'IATSE', unionLocal:'720',
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:45, billRate:70, dayRate:200}] },
+
+    // Mixed / utility
+    { id:'pos.avtech',  name:'AV Tech', displayName:'AV Tech', department:'Mixed', union:null, unionLocal:null,
+      ratesByVersion:[{rateCardVersionId:'rc.2026.Q1', payRate:45, billRate:75, dayRate:200}] }
+  ];
+
+  // Industry experience verticals (from Lasso screenshot)
+  PCG.experienceVerticals = [
+    'AV', 'Corporate', 'Events', 'Live Entertainment', 'Sports',
+    'Festivals', 'Trade Shows', 'Exhibit', 'Broadcast', 'Closed Studio', 'Theatre / Theatrical'
   ];
 
   /* -----------------------------------------------------------------
@@ -329,22 +359,99 @@
     doNotUse: false,
     performanceRatings: []
   }));
-  // qualifications map
+  // qualifications map — rating 1-5
   const qMap = {
-    'p.pshah':['pos.a1','pos.a2'],
-    'p.mchen':['pos.a1'],
-    'p.dkim':['pos.v1','pos.dir.v'],
-    'p.eliott':['pos.ld'],
-    'p.ctaylor':['pos.td'],
-    'p.jgerber':['pos.caller','pos.td'],
-    'p.rbenoit':['pos.led','pos.avtech'],
-    'p.dmar':['pos.avtech'],
-    'p.arachilla':['pos.avtech']
+    'p.pshah':    [['pos.a1',5],['pos.a2',5]],
+    'p.mchen':    [['pos.a1',4.5]],
+    'p.dkim':     [['pos.v1',5],['pos.dir.v',4.5],['pos.cam',4]],
+    'p.eliott':   [['pos.ld',5],['pos.me',5]],
+    'p.ctaylor':  [['pos.td',5],['pos.proj',4.5]],
+    'p.jgerber':  [['pos.caller',5],['pos.td',4]],
+    'p.rbenoit':  [['pos.led',5],['pos.cam',4.5],['pos.avtech',4]],
+    'p.dmar':     [['pos.avtech',4.5],['pos.cam',3.5]],
+    'p.arachilla':[['pos.avtech',4],['pos.uhp.a',4.5]],
+    'p.jspringer':[['pos.proj',5],['pos.td',4]],
+    'p.tscheff':  [['pos.proj',5],['pos.td',4.5]],
+    'p.coliver':  [['pos.proj',4.5]],
+    'p.jsharp':   [['pos.proj',5]]
   };
-  PCG.crewMembers.forEach(m=>{
-    (qMap[m.id]||[]).forEach(posId=>{
-      m.qualifications.push({ positionId:posId, rating: 5 });
+
+  // Enriched Lasso-style profile fields
+  const profileMap = {
+    'p.pshah':    { homeBase:'Detroit, MI',   markets:['Detroit','Las Vegas','Chicago'], address:{street:'35390 Churchill St',city:'Richmond',state:'MI',zip:'48062'}, employeeCode:'PS.026', username:'p.shah@premiercreative' },
+    'p.mchen':    { homeBase:'Detroit, MI',   markets:['Detroit','Nashville'],           address:{street:'1204 Main St', city:'Detroit',state:'MI',zip:'48201'},  employeeCode:'MC.014', username:'m.chen@premiercreative' },
+    'p.dkim':     { homeBase:'Las Vegas, NV', markets:['Las Vegas','Detroit'],           address:{street:'8310 Sahara', city:'Las Vegas',state:'NV',zip:'89103'}, employeeCode:'DK.008', username:'d.kim@premiercreative' },
+    'p.ctaylor':  { homeBase:'Detroit, MI',   markets:['Detroit','Las Vegas','Nashville','Chicago'], address:{street:'4402 Woodward', city:'Detroit',state:'MI',zip:'48201'}, employeeCode:'CT.002', username:'c.taylor@premiercreative' },
+    'p.arachilla':{ homeBase:'Detroit, MI',   markets:['Detroit'],                        address:{street:'220 Atwater', city:'Detroit',state:'MI',zip:'48226'}, employeeCode:'AR.012', username:'a.rachilla@premiercreative' }
+  };
+
+  PCG.crewMembers.forEach(m => {
+    // Qualifications with ratings
+    (qMap[m.id]||[]).forEach(([posId, rating])=>{
+      m.qualifications.push({ positionId: posId, rating });
     });
+
+    // Profile enrichment
+    const p = profileMap[m.id] || {};
+    m.homeBase = p.homeBase || 'Detroit, MI';
+    m.markets = p.markets || m.market || ['Detroit'];
+    m.market = m.markets;
+    m.address = p.address || null;
+    m.employeeCode = p.employeeCode || null;
+    m.username = p.username || null;
+
+    // Experience ratings by vertical (from Lasso profile pattern)
+    m.experience = {};
+    (PCG.experienceVerticals||[]).forEach(v => {
+      const pool = ['Expert','Strong','Some','Yet', 'No Response'];
+      m.experience[v] = pool[Math.floor(Math.random()*pool.length)];
+    });
+    // Top 5 crew members are experts at Corporate + AV
+    if(['p.pshah','p.dkim','p.ctaylor','p.eliott','p.jgerber','p.mchen'].includes(m.id)){
+      m.experience['Corporate'] = 'Expert';
+      m.experience['AV'] = 'Expert';
+    }
+
+    // Onboarding status
+    m.onboardingStatus = {
+      w9: true, i9: true, emergencyContact: true,
+      rateAgreement: m.employmentType==='1099' ? (Math.random() > 0.1) : true,
+      contractStatus: m.employmentType==='1099' ? 'Signed' : null
+    };
+    m.payrollReadiness = m.onboardingStatus.w9 && m.onboardingStatus.i9 && (m.employmentType!=='1099' || m.onboardingStatus.rateAgreement);
+
+    // Emergency contact
+    m.emergencyContact = {
+      name: m.name.split(' ')[0] + ' (Spouse)',
+      phone: '+1 555 555 ' + String(Math.floor(1000 + Math.random()*9000)),
+      relationship: 'Spouse'
+    };
+
+    // Performance ratings (per-show)
+    m.performanceRatings = [];
+    const showsWorked = (PCG.shiftAssignments||[]).filter(s=>s.crewMemberId===m.id && s.status==='Completed');
+    showsWorked.forEach(a => {
+      m.performanceRatings.push({
+        showId: a.showId,
+        rating: 4 + Math.random(),
+        notes: '',
+        ratedById: 'p.ctaylor'
+      });
+    });
+
+    // Client preferences
+    m.clientPreferences = [];
+    if(m.id === 'p.ctaylor') m.clientPreferences.push({ clientId:'c.littlecae', note:'LCE client has asked for Chris specifically', type:'preferred' });
+    if(m.id === 'p.pshah')   m.clientPreferences.push({ clientId:'c.littlecae', note:'Requested by LCE for wireless coord', type:'preferred' });
+
+    // Certifications
+    m.certifications = [];
+    if(['p.ctaylor','p.eliott','p.rbenoit'].includes(m.id)){
+      m.certifications.push({ type:'ETCP - Rigging', issuedAt:'2024-06-01', expiresAt:'2027-06-01' });
+    }
+    if(m.id === 'p.eliott'){
+      m.certifications.push({ type:'OSHA 30', issuedAt:'2023-03-15', expiresAt:'2026-03-15' });
+    }
   });
 
   /* -----------------------------------------------------------------
@@ -895,6 +1002,636 @@
      Seed audit log with lifecycle transitions
   ----------------------------------------------------------------- */
   PCG.auditLog = PCG.auditLog || [];
+
+  /* =================================================================
+     v2.1 — BROADER MODULE SEED
+     (§6 Inventory · §7 Kits · §12 Timesheets · §20 Logistics · §21 R&M · §22 Safety · Clients)
+     ================================================================= */
+
+  /* ---------- Clients (master records) ---------- */
+  PCG.clients = [
+    { id:'c.littlecae', name:'Little Caesars Enterprises', industry:'Quick-Service Restaurant',
+      billingAddress:'2211 Woodward Ave, Detroit, MI 48201',
+      primaryContactId:null, aeId:'p.jspringer', priorProjectCodes:['LCE-2025','LCE-2024'],
+      revenueYTD: 1250000, status:'Active',
+      preferences:['Deliver decks Wed noon','Kevin Adams is content lead — not decision-maker'],
+      doNotUse:[] },
+    { id:'c.sae',        name:'SAE International',        industry:'Professional Association',
+      billingAddress:'400 Commonwealth Dr, Warrendale, PA 15096',
+      aeId:'p.jspringer', priorProjectCodes:['SAE-WCX-2025','SAE-WCX-2024'],
+      revenueYTD: 512000, status:'Active', preferences:[], doNotUse:[] },
+    { id:'c.globex',     name:'Globex Corporation',       industry:'Conglomerate',
+      billingAddress:'1701 Market St, Philadelphia, PA 19103',
+      aeId:'p.jspringer', priorProjectCodes:['GLBX-2025','GLBX-2024'],
+      revenueYTD: 890000, status:'Active', preferences:[], doNotUse:[] },
+    { id:'c.woc',        name:'Women of Color Magazine',  industry:'Media',
+      billingAddress:'Fairfax, VA', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:210000, status:'Active' },
+    { id:'c.stellantis', name:'Stellantis Marketing',     industry:'Automotive',
+      billingAddress:'1000 Chrysler Dr, Auburn Hills, MI', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:340000, status:'Active' },
+    { id:'c.techco',     name:'TechCo Inc.',              industry:'Software', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:180000, status:'Active' },
+    { id:'c.creditaccept',name:'Credit Acceptance (ELSO)',industry:'Financial Services', aeId:'p.jspringer', priorProjectCodes:['ELSO-2025'], revenueYTD:620000, status:'Active' },
+    { id:'c.natltour',   name:'Nationals Tour LLC',       industry:'Entertainment', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:0, status:'New' },
+    { id:'c.accrue',     name:'Accrue Holdings',          industry:'Investment', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:0, status:'New' },
+    { id:'c.microsoft',  name:'Microsoft',                industry:'Software', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:0, status:'Prospect' }
+  ];
+
+  /* ---------- System Definitions (Kits) §7 ---------- */
+  PCG.systemDefinitions = [
+    { id:'sd.db-j8-12', name:'d&b J8 Line Array — 12 Cabinet System', category:'Audio',
+      departmentId:'dept.audio', managedById:'p.pshah', currentVersionId:'sdv.1',
+      requiredComponents:[
+        { modelId:'inv.db-j8', qty:12, role:'mainCabinet' },
+        { modelId:'inv.db-jsub', qty:6, role:'sub' }
+      ],
+      optionalComponents:[
+        { modelId:'inv.db-q10', qty:4, condition:'frontFill' }
+      ],
+      suggestedComponents:[
+        { modelId:'inv.db-q1', qty:4, reason:'Center cluster delay' }
+      ],
+      substitutionRules:[
+        { originalModelId:'inv.db-j8', substituteModelId:'inv.la-k2',
+          condition:'size-and-coverage match', approvalRequired:'PM', costImpactType:'vendorCostDelta' }
+      ],
+      compatibilityRules:[
+        { type:'error', description:'J8 cabinets require dAMP10 amps — cannot use Crown',
+          severity:'error' }
+      ],
+      autoIncludeRules:[
+        { trigger:'if qty of inv.db-j8 ≥ 12', addModelId:'amp.damp10', addQty:1 }
+      ],
+      storageRequirements:{ location:'Aisle A / Zone 4', cases:6, rackCount:2, specialHandling:'Fragile ribbon tweeters' },
+      standardPackList:[
+        { modelId:'rig.y-jbar', qty:4, notes:'Y-bars' },
+        { modelId:'rig.j-jack', qty:4, notes:'J-Jack' },
+        { modelId:'cbl.speakon-50', qty:8, notes:'50ft speakON' }
+      ],
+      dayRate: 24*150 + 6*200 + 4*250, weekRate: 24*450 + 6*600 + 4*750,
+      lastModifiedAt:'2026-02-10', lastModifiedById:'p.pshah',
+      changeHistory:[
+        { at:'2026-02-10', by:'p.pshah', summary:'Added optional Q10 front-fill line' },
+        { at:'2025-11-02', by:'p.pshah', summary:'Initial definition — 12-cabinet standard' }
+      ]
+    },
+    { id:'sd.brk-standard', name:'Breakout Standard Kit (per room)', category:'Breakout',
+      departmentId:'dept.wh', managedById:'p.svance', currentVersionId:'sdv.1',
+      requiredComponents:[
+        { modelId:'inv.brk-8table', qty:1, role:'table' },
+        { modelId:'inv.brk-lcd',    qty:1, role:'display' },
+        { modelId:'inv.brk-wlshh',  qty:1, role:'wirelessHH' },
+        { modelId:'inv.brk-podmic', qty:2, role:'podMic' },
+        { modelId:'inv.brk-mixer',  qty:1, role:'mixer' },
+        { modelId:'inv.brk-spkr',   qty:1, role:'speaker' }
+      ],
+      optionalComponents:[{ modelId:'inv.brk-lcd', qty:1, condition:'VDA room' }],
+      substitutionRules:[],
+      compatibilityRules:[],
+      autoIncludeRules:[],
+      storageRequirements:{ location:'Aisle B / Zone 2', cases:1, rackCount:0 },
+      standardPackList:[{ modelId:'cbl.xlr-25', qty:4, notes:'25ft XLR' }],
+      dayRate: 15 + 75 + 60 + 2*35 + 150 + 120, weekRate: 450,
+      lastModifiedAt:'2026-01-15', lastModifiedById:'p.svance', changeHistory:[]
+    },
+    { id:'sd.barco-e2', name:'Barco E2 4K Screen Management Package', category:'Video',
+      departmentId:'dept.video', managedById:'p.dkim', currentVersionId:'sdv.1',
+      requiredComponents:[
+        { modelId:'inv.barco-e2', qty:1, role:'switcher' }
+      ],
+      optionalComponents:[], suggestedComponents:[
+        { modelId:'inv.mon-50dual', qty:2, reason:'Preview/program monitors' }
+      ],
+      substitutionRules:[], compatibilityRules:[
+        { type:'warning', description:'Requires 10GigE network fabric for 4K', severity:'warning' }
+      ],
+      autoIncludeRules:[], storageRequirements:{ location:'Aisle C / Zone 1', cases:2, specialHandling:'Climate controlled' },
+      standardPackList:[], dayRate: 4500, weekRate: 13500,
+      lastModifiedAt:'2026-03-01', lastModifiedById:'p.dkim', changeHistory:[]
+    }
+  ];
+
+  /* ---------- Service Tickets expansion §21 ---------- */
+  const existingTickets = (PCG.serviceTickets||[]).slice();
+  PCG.serviceTickets = existingTickets.concat([
+    { id:'svc.003', serialId:'J8-007', itemId:'inv.db-j8', showId:null,
+      reportedById:'p.arachilla', reportedAt:'2026-04-08T15:10',
+      description:'HF driver distortion > -10dB at 3kHz', triage:'Major',
+      diagnosis:'Ribbon tweeter damage — ordered replacement', status:'WaitingParts',
+      partsNeeded:'Ribbon tweeter assembly', laborHours:3.5, estimatedCost:1650,
+      clientCaused:false, recurringFailure:true,
+      warrantyVendor:'d&b', warrantyExpiry:'2028-01-01', warrantyClaimStatus:'Filed',
+      warrantyClaimOutcome:'Pending vendor response' },
+    { id:'svc.004', serialId:'AXD-003', itemId:'inv.shure-axd', showId:'LCE-2026',
+      reportedById:'p.pshah', reportedAt:'2026-04-10T09:00',
+      description:'RF drop on Ch 4 — likely antenna cable', triage:'Minor',
+      diagnosis:'Bent SMA connector', status:'InRepair',
+      partsNeeded:'SMA connector + 6ft coax', laborHours:0.75, estimatedCost:45,
+      clientCaused:false, recurringFailure:false },
+    { id:'svc.005', serialId:'URSA-002', itemId:'inv.ursa-g2', showId:null,
+      reportedById:'p.dkim', reportedAt:'2026-04-05T11:00',
+      description:'SDI output intermittent', triage:'Major',
+      diagnosis:'Mainboard replacement required', status:'VendorRepair',
+      partsNeeded:'Sent to Blackmagic', laborHours:0, estimatedCost:2200,
+      clientCaused:false, recurringFailure:false },
+    { id:'svc.006', serialId:'LCD50-009', itemId:'inv.mon-50dual', showId:'GLBX-GSK26',
+      reportedById:'p.svance', reportedAt:'2026-04-12T14:00',
+      description:'Panel scratch from cart load', triage:'Minor',
+      diagnosis:'Cosmetic only', status:'BenchTest',
+      partsNeeded:null, laborHours:0.5, estimatedCost:80,
+      clientCaused:true, recurringFailure:false,
+      damageChargeId:'co.004' }
+  ]);
+
+  /* ---------- Containers (§6) ---------- */
+  PCG.containers = [
+    { id:'ctr.001', label:'Case J8-RACK-01', type:'Rack', contents:[{serialId:'J8-001'},{serialId:'J8-002'}], currentLocationId:'wh.A.12.B', currentShowId:'LCE-2026', weightLbs:220 },
+    { id:'ctr.002', label:'Case J8-RACK-02', type:'Rack', contents:[{serialId:'J8-003'},{serialId:'J8-004'}], currentLocationId:'wh.A.12.B', currentShowId:'LCE-2026', weightLbs:220 },
+    { id:'ctr.003', label:'WB-AUDIO-01 Workbox', type:'Case', contents:[], currentLocationId:'wh.A.1.A', weightLbs:140 }
+  ];
+
+  /* ---------- Drivers §20 ---------- */
+  PCG.drivers = [
+    { id:'drv.jreyes', crewMemberId:'p.jreyes', name:'Jose Reyes', licenseClass:'CDL-A', licenseExpiry:'2027-06-30', dotMedicalExpiry:'2026-11-15' },
+    { id:'drv.mhahn',  crewMemberId:'p.mhahn',  name:'Maria Hahn', licenseClass:'CDL-A', licenseExpiry:'2028-02-12', dotMedicalExpiry:'2027-01-20' }
+  ];
+
+  /* ---------- Timesheets §12.3 ---------- */
+  PCG.payRules = [
+    { id:'pr.iatse720', name:'IATSE-720-Standard', employmentType:'IATSE', unionLocal:'720', market:'Las Vegas',
+      dailyOTThresholdHours:8, weeklyOTThresholdHours:40, dailyDTThresholdHours:12,
+      minimumCallMinutes:600, otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:2.5,
+      mealPenaltyAfterMinutes:360, mealPenaltyAmount:50,
+      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' },
+    { id:'pr.iatse38', name:'IATSE-38-Standard', employmentType:'IATSE', unionLocal:'38', market:'Detroit',
+      dailyOTThresholdHours:8, weeklyOTThresholdHours:40, dailyDTThresholdHours:12,
+      minimumCallMinutes:600, otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:2.5,
+      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' },
+    { id:'pr.w2std', name:'W2-Standard', employmentType:'W2', unionLocal:null, market:'*',
+      dailyOTThresholdHours:8, weeklyOTThresholdHours:40, dailyDTThresholdHours:12,
+      minimumCallMinutes:480, otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:2.0,
+      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' },
+    { id:'pr.1099', name:'1099-Standard', employmentType:'1099', unionLocal:null, market:'*',
+      dailyOTThresholdHours:10, weeklyOTThresholdHours:50, dailyDTThresholdHours:14,
+      minimumCallMinutes:480, otMultiplier:1.0, dtMultiplier:1.0, holidayMultiplier:1.0,
+      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' }
+  ];
+
+  PCG.timesheets = [
+    { id:'ts.001', shiftAssignmentId:'sa.glbx.td', crewMemberId:'p.ctaylor', showId:'GLBX-GSK26',
+      workDate:'2026-04-10', clockIn:'2026-04-10T06:00', clockOut:'2026-04-10T18:30',
+      scheduledHours:10, workedHours:12, otHours:2, dtHours:0, mealBreakMinutes:30,
+      travelHours:0, notes:'', submittedAt:'2026-04-10T19:00',
+      approvedById:'p.coliver', approvedAt:'2026-04-11T08:00', status:'Approved', payRuleApplied:'pr.w2std' },
+    { id:'ts.002', shiftAssignmentId:'sa.glbx.td', crewMemberId:'p.ctaylor', showId:'GLBX-GSK26',
+      workDate:'2026-04-11', clockIn:'2026-04-11T06:00', clockOut:'2026-04-11T20:30',
+      scheduledHours:10, workedHours:14, otHours:4, dtHours:0, mealBreakMinutes:30,
+      notes:'Extended rehearsal per PM', submittedAt:'2026-04-11T21:00',
+      status:'Submitted', payRuleApplied:'pr.w2std' },
+    { id:'ts.003', shiftAssignmentId:'sa.glbx.td', crewMemberId:'p.ctaylor', showId:'GLBX-GSK26',
+      workDate:'2026-04-12', clockIn:'2026-04-12T06:00', clockOut:'2026-04-12T21:00',
+      scheduledHours:10, workedHours:14.5, otHours:4, dtHours:0.5, mealBreakMinutes:30,
+      notes:'OT > 2h — explicit approval note: client added rehearsal block', submittedAt:'2026-04-12T21:45',
+      status:'Submitted', payRuleApplied:'pr.w2std' }
+  ];
+
+  /* ---------- Incident Reports §22 ---------- */
+  PCG.incidentReports = [
+    { id:'inc.001', showId:'GLBX-GSK26', reportedById:'p.ctaylor', reportedAt:'2026-04-11T10:45',
+      type:'NearMiss', severity:'Minor',
+      description:'Cable tray insufficiently secured behind FOH — walkway obstructed. No injury.',
+      locationDescription:'MGM Ballroom — FOH east aisle',
+      witnessNames:['Priya Shah','Dana Kim'], immediateActionTaken:'Gaffed immediately, checked remaining run.',
+      medicalAttentionRequired:false, venueNotified:true, status:'Closed',
+      closedAt:'2026-04-11T14:30', closedById:'p.ctaylor', attachments:[] },
+    { id:'inc.002', showId:'LCE-2026', reportedById:'p.arachilla', reportedAt:'2026-04-10T08:00',
+      type:'PropertyDamage', severity:'Minor',
+      description:'J8 cabinet J8-003 grille dent from cart impact during load-in.',
+      locationDescription:'Caesars Forum Dock B',
+      immediateActionTaken:'Cabinet tagged, swapped from active rig.',
+      medicalAttentionRequired:false, venueNotified:false, status:'UnderReview',
+      escalatedTo:'p.kbenz', attachments:[] }
+  ];
+
+  /* ---------- InventoryModel entries (expand on existing flat inventory) ---------- */
+  // Back-fill model-like fields for entries if missing
+  (PCG.inventory||[]).forEach(i=>{
+    i.class = i.class || (i.categoryId && i.categoryId.startsWith('cat.breakout') ? 'Rental' : 'Rental');
+    i.ownedQty = i.qty;
+    i.activeSerialCount = (PCG.inventorySerials||[]).filter(s=>s.itemId===i.id).length;
+    i.averageUtilizationPct = Math.min(100, Math.round(30 + Math.random()*50));
+    i.status = i.status || 'Active';
+  });
+
+  // Mark some serials across the state machine for demo
+  (PCG.inventorySerials||[]).forEach((s, idx) => {
+    if(idx === 2)  s.status = 'QCHold';
+    if(idx === 10) s.status = 'Lost';
+  });
+
+  /* ---------- Reorder Rules (§6) ---------- */
+  PCG.reorderRules = [
+    { id:'rr.001', modelId:'inv.brk-podmic', warehouseId:'wh.premier-main', minQty:40, reorderQty:20, preferredVendorId:'earthworks-direct', lastTriggeredAt:null },
+    { id:'rr.002', modelId:'inv.brk-wlshh',  warehouseId:'wh.premier-main', minQty:20, reorderQty:10, preferredVendorId:'shure-direct',       lastTriggeredAt:null }
+  ];
+
+  /* ---------- Warehouses (§10 — three locations) ---------- */
+  PCG.warehouses = [
+    { id:'wh.troy',      name:'Troy / Main / HQ', address:'Troy, MI', purpose:'Primary — full pull, QC, IC, staging, loading. Manifest origination. Fleet base.', capacitySqft: 42000, serialCount: 16233 },
+    { id:'wh.hpd',       name:'Huntington Place (HPD / Center)', address:'Detroit, MI', purpose:'Secondary — full pull, QC, IC. Center AE home base. Cross-rental receiving.', capacitySqft: 9500, serialCount: 2234 },
+    { id:'wh.bldg-b',    name:'Building B (OneSource / Creative)', address:'Detroit, MI', purpose:'Creative services + scenic storage. Limited shipping.', capacitySqft: 8200, serialCount: 420 }
+  ];
+
+  /* ---------- Field Notes / Issue Log (§G) ---------- */
+  PCG.fieldNotes = [
+    { id:'fn.001', showId:'GLBX-GSK26', authorId:'p.ctaylor',
+      text:'Client requested pre-function cocktail ambient added — filed AO-001. Confirmed with PM verbally, will cost later.',
+      category:'change', attachments:[], timestamp:'2026-04-11T11:30' },
+    { id:'fn.002', showId:'GLBX-GSK26', authorId:'p.pshah',
+      text:'RF coordination issue Ch 4 — swapped to backup frequency. Talent was mid-speech, handled live. Service ticket opened post-show.',
+      category:'operational', attachments:[], timestamp:'2026-04-11T14:22' },
+    { id:'fn.003', showId:'GLBX-GSK26', authorId:'p.svance',
+      text:'J8-003 grille dented during load-in — cart impact at dock. Photos attached. Flagged to AE for damage charge.',
+      category:'damage', attachments:['/docs/j8-003-dent-1.jpg','/docs/j8-003-dent-2.jpg'], timestamp:'2026-04-08T15:10' },
+    { id:'fn.004', showId:'LCE-2026', authorId:'p.jspringer',
+      text:'Client added Awards ready room — scope change, filed as CO#3. Need Flex update + power walkthrough.',
+      category:'change', attachments:[], timestamp:'2026-04-14T17:40' },
+    { id:'fn.005', showId:'LCE-2026', authorId:'p.ctaylor',
+      text:'Vincent at Caesars confirmed dock timing. Truck #12 arriving 5:30am, Truck #07 at 6:00am. Do not be late.',
+      category:'note', attachments:[], timestamp:'2026-04-09T18:00' },
+    { id:'fn.006', showId:'SAE-WCX-2026', authorId:'p.tscheff',
+      text:'Room 310B CRC Classroom added last-week — waiting on billing clarification (master vs own). Steph reviewing.',
+      category:'change', attachments:[], timestamp:'2026-04-14T19:10' }
+  ];
+
+  /* ---------- Procurement Requests (§9.1) ---------- */
+  PCG.procurementRequests = [
+    { id:'pr.001', departmentId:'dept.audio', requesterId:'p.pshah',
+      itemDescription:'Shure AD4Q (G57+) 4-pack Wireless Microphone Combo Kit',
+      qty:1, justification:'High wireless demand across Q2 shows; current inventory 100% allocated on peak weeks.',
+      estimatedCost:22000, vendorId:'shure-direct', dateNeeded:'2026-06-15',
+      status:'PendingApproval', approvalRoute:['Dept Director','CFO'], createdAt:'2026-04-12T10:00' },
+    { id:'pr.002', departmentId:'dept.wh', requesterId:'p.svance',
+      itemDescription:'Replacement ribbon tweeters — d&b J8 (qty 4, warranty + spares)',
+      qty:4, justification:'J8-007 recurring failure — stock 2 warranty spares.',
+      estimatedCost:1800, vendorId:'db-direct', dateNeeded:'2026-05-01',
+      status:'Approved', approvedById:'p.kbenz', approvedAt:'2026-04-14T14:00',
+      poNumber:'PO-2026-0142', expectedDelivery:'2026-04-28', createdAt:'2026-04-13T09:00' },
+    { id:'pr.003', departmentId:'dept.video', requesterId:'p.dkim',
+      itemDescription:'BMD URSA Broadcast G2 (2 units) + 20x HD lens',
+      qty:2, justification:'Capital — expand camera fleet. Expected 14-month payback.',
+      estimatedCost:45000, vendorId:'b-h', dateNeeded:'2026-09-01',
+      status:'Draft', createdAt:'2026-04-10T11:00' }
+  ];
+
+  /* ---------- Closeout Records (§35) ---------- */
+  PCG.closeoutRecords = [
+    { id:'co.rec.glbx', showId:'GLBX-GSK26',
+      pmSignoffAt: null, pmSignoffById: null,
+      laborActualsConfirmed: false,
+      subRentalInvoicesMatched: true,
+      scopeVsDeliveredReviewed: false,
+      financeHandoffGeneratedAt: null,
+      missingItemResolutions: [],
+      openTicketDispositions: [
+        { ticketId:'svc.001', disposition:'Deferred', notes:'Cosmetic only; billing to client in progress' }
+      ],
+      lessonsLearned: '',
+      techRatings: [
+        { crewMemberId:'p.ctaylor', rating: 5, notes:'Strong leadership onsite' }
+      ],
+      clientSatisfactionNote: 'Client rep verbally positive; awaiting written feedback.',
+      postShowFollowUpAssigned: false
+    }
+  ];
+
+  /* ---------- Work Items (§25 full WorkItem model) ---------- */
+  PCG.workItems = [
+    { id:'wi.001', type:'InventoryConflict', priority:'Critical',
+      ownerId:'p.ctaylor', status:'Open',
+      title:'JSub — 2-unit deficit on LCE-2026',
+      description:'10 owned, 12 allocated. Sub-rental via Solotech pending approval.',
+      linkedEntity:{ entityType:'SubRentalRPO', entityId:'rpo.lce.jsub' },
+      dueBy:'2026-04-15T16:00', escalationPath:'p.kbenz', createdAt:'2026-04-14T09:00' },
+    { id:'wi.002', type:'ApprovalNeeded', priority:'High',
+      ownerId:'p.kbenz', status:'Open',
+      title:'CO #3 — Awards Ready Room ($18,400)',
+      description:'Client-requested scope addition. AE filed, awaiting Director approval.',
+      linkedEntity:{ entityType:'ChangeOrder', entityId:'co.001' },
+      dueBy:'2026-04-16T12:00', createdAt:'2026-04-14T18:00' },
+    { id:'wi.003', type:'LaborActualsMissing', priority:'High',
+      ownerId:'p.coliver', status:'Open',
+      title:'Timesheets not finalized — GLBX closeout blocked',
+      description:'2 of 3 GLBX timesheets still in Submitted status. Closeout cannot complete.',
+      linkedEntity:{ entityType:'Show', entityId:'GLBX-GSK26' },
+      dueBy:'2026-04-16T17:00', createdAt:'2026-04-14T10:00' },
+    { id:'wi.004', type:'RPODeadline', priority:'Critical',
+      ownerId:'p.svance', status:'Open',
+      title:'RPO hold expires in 4h — Solotech JSub',
+      description:'Sub-rental for LCE-2026 — confirm go/no-go.',
+      linkedEntity:{ entityType:'SubRentalRPO', entityId:'rpo.lce.jsub' },
+      dueBy:'2026-04-15T16:00', escalationPath:'p.kbenz', createdAt:'2026-04-15T12:00' },
+    { id:'wi.005', type:'MaintenanceOverdue', priority:'Standard',
+      ownerId:'p.svance', status:'Open',
+      title:'J8-007 — retirement review recommended',
+      description:'3 service tickets in 12 months. Recurring failure flag.',
+      linkedEntity:{ entityType:'SerializedItem', entityId:'J8-007' },
+      dueBy:null, createdAt:'2026-04-08T15:00' },
+    { id:'wi.006', type:'AddOrderPending', priority:'High',
+      ownerId:'p.svance', status:'Open',
+      title:'AO-002 LCE — Awards Ready Room AV',
+      description:'PM submitted Add Order — warehouse acknowledgment pending.',
+      linkedEntity:{ entityType:'AddOrder', entityId:'ao.002' },
+      dueBy:'2026-04-15T15:00', createdAt:'2026-04-14T17:40' },
+    { id:'wi.007', type:'ScanOrphan', priority:'Standard',
+      ownerId:'p.svance', status:'Open',
+      title:'Orphaned return scan — LCD55-024',
+      description:'Scan captured; pull sheet line no longer exists. WH Lead review required.',
+      linkedEntity:{ entityType:'ScanRecord', entityId:'sc.orphan.001' },
+      dueBy:null, createdAt:'2026-04-14T16:00' },
+    { id:'wi.008', type:'CloseoutBlocked', priority:'High',
+      ownerId:'p.jsharp', status:'Open',
+      title:'GLBX-GSK26 closeout blocked',
+      description:'Labor actuals not finalized · 1 open service ticket deferred · finance packet not yet generated.',
+      linkedEntity:{ entityType:'Show', entityId:'GLBX-GSK26' },
+      dueBy:'2026-04-18T17:00', createdAt:'2026-04-14T09:00' }
+  ];
+
+  /* ---------- Clock Events (shop clock-in/out, §12.3 time capture) ---------- */
+  PCG.clockEvents = [
+    { id:'ce.001', crewMemberId:'p.arachilla', warehouseId:'wh.troy',
+      clockIn:'2026-04-15T07:02', clockOut:null, shift:'Day Shift',
+      assignedPullSheets:['ps.sae.breakout'],
+      assignedTasks:[
+        { id:'tk.wh.1', description:'Pull d&b JSub sub-rental from Solotech receive area', status:'InProgress' },
+        { id:'tk.wh.2', description:'Cycle count — Aisle A Zone 4 (J8 cabinets)', status:'Pending' },
+        { id:'tk.wh.3', description:'Prep SAE WCX breakout kits (30 rooms)', status:'InProgress' }
+      ]
+    }
+  ];
+
+  /* ---------- Pitches / Proposals (pre-quote — AE creative) ---------- */
+  PCG.pitches = [
+    { id:'pitch.lce.2026', projectCode:'LCE-2026', clientId:'c.littlecae', aeId:'p.jspringer',
+      title:'LCE Conference 2026 — Creative Proposal',
+      status:'Accepted', createdAt:'2026-01-20', acceptedAt:'2026-02-08',
+      stageSetId:'sd.db-j8-12', stageSetName:'Marquee',
+      showType:'GeneralSession', estimatedBudgetLow:350000, estimatedBudgetHigh:420000,
+      estimatedAttendance:1200, breakoutCount:0,
+      valueProps:[
+        'Marquee stage — LED × 4 panels with split-fabric traveler frames the keynote',
+        'd&b J-Series line array gives intelligible speech to every seat',
+        'Dedicated Awards program package rolls in Night 2 — no strike',
+        '24/7 PCG crew lead (Jeff Springer) — 1 throat to choke'
+      ],
+      creativeDirection:'Bold, confident, polished. Keynote stage is the brand moment; breakouts reinforce.',
+      keyDates:{ loadIn:'2026-04-10', showStart:'2026-04-13', showEnd:'2026-04-15' },
+      deliverables:['Keynote GS stage + show flow','Rehearsal day','Awards reception','Walk-in loops'],
+      nextSteps:'Contract + deposit invoice · quote issued · PM assigned · load-in prep begins 6 weeks out',
+      convertedQuoteId:'q.LCE-2026.v3'
+    },
+    { id:'pitch.msft.2026', projectCode:null, clientId:'c.microsoft', aeId:'p.jspringer',
+      title:'Microsoft Summer Partner Summit 2026 — Creative Proposal',
+      status:'Draft', createdAt:'2026-04-14', acceptedAt:null,
+      stageSetId:'sd.barco-e2', stageSetName:'Lumen (proposed)',
+      showType:'BreakoutConference', estimatedBudgetLow:420000, estimatedBudgetHigh:510000,
+      estimatedAttendance:800, breakoutCount:12,
+      valueProps:[
+        'Lumen set — LED × 4 + LED header, brand-swappable for Microsoft palette',
+        'Breakout-heavy package — 12 rooms of consistent standardized kits',
+        'Keynote Ballroom with d&b line array + Barco E2 screen management',
+        'Dedicated sweep crew for room resets between sessions'
+      ],
+      creativeDirection:'Techy, modern, warm. Brand-forward visuals with Microsoft color palette baked into LED pre-rolls.',
+      keyDates:{ loadIn:'2026-06-20', showStart:'2026-06-22', showEnd:'2026-06-24' },
+      deliverables:['Keynote GS package','12 breakout rooms standard kit','Streaming record of keynote','Sponsor loop playback'],
+      nextSteps:'Share with client · collect feedback · convert to Quote if accepted',
+      convertedQuoteId:null
+    }
+  ];
+
+  /* ---------- Creative Requests (§24) ---------- */
+  PCG.creativeRequests = [
+    { id:'cr.001', projectId:'LCE-2026', requestedById:'p.jspringer', requestedAt:'2026-03-20T14:00',
+      type:'Graphic', description:'Sponsor loop — 8 sponsors, full-motion 20s each, 4K',
+      clientApprovalRequired:true, deadline:'2026-04-11',
+      fabricationStatus:'InRevision',
+      installDependencies:[], status:'InProgress',
+      attachments:['/docs/sponsor-loop-v2.mov'] },
+    { id:'cr.002', projectId:'LCE-2026', requestedById:'p.jspringer', requestedAt:'2026-03-15T10:00',
+      type:'Rendition', description:'Marquee stage set — final renders for client approval',
+      clientApprovalRequired:true, deadline:'2026-04-01',
+      fabricationStatus:'Complete',
+      status:'Complete', attachments:['/docs/marquee-v3-render.pdf'] },
+    { id:'cr.003', projectId:'WOC-2026', requestedById:'p.jspringer', requestedAt:'2026-03-28T10:00',
+      type:'Scenic', description:'Custom LED art treatment — Miyra set, Women of Color brand palette',
+      clientApprovalRequired:true, deadline:'2026-05-01',
+      fabricationStatus:'InDesign',
+      installDependencies:['Scenic crew load-in ready','LED processor config done'], status:'InProgress',
+      attachments:[] },
+    { id:'cr.004', projectId:'SAE-WCX-2026', requestedById:'p.tscheff', requestedAt:'2026-03-10T15:00',
+      type:'Print', description:'31 room signage — foam core, one per breakout room with SAE branding',
+      clientApprovalRequired:false, deadline:'2026-04-12',
+      fabricationStatus:'PrintProduction',
+      status:'InProgress', attachments:[] },
+    { id:'cr.005', projectId:'GLBX-GSK26', requestedById:'p.jsharp', requestedAt:'2026-04-11T16:00',
+      type:'Installation', description:'Pre-function cocktail activation — 3x LED art pieces, ambient',
+      clientApprovalRequired:false, deadline:'2026-04-12',
+      fabricationStatus:'ApprovedForProduction',
+      status:'InProgress', attachments:[] },
+    { id:'cr.006', projectId:'NAT-TOUR26', requestedById:'p.jspringer', requestedAt:'2026-04-15T09:00',
+      type:'Graphic', description:'Nationals Tour — IMAG graphics package, 5 camera bump-ins',
+      clientApprovalRequired:true, deadline:'2026-05-10',
+      fabricationStatus:'Pending',
+      status:'Draft', attachments:[] }
+  ];
+
+  /* ---------- My-Crew Timesheets (for Crew PWA entry) ---------- */
+  // Ensure Mike Chen (p.mchen) has an in-progress timesheet on SAE WCX
+  if(PCG.timesheets && !PCG.timesheets.find(t=>t.crewMemberId==='p.mchen')){
+    PCG.timesheets.push(
+      { id:'ts.mc.1', shiftAssignmentId:'sa.sae.a1', crewMemberId:'p.mchen', showId:'SAE-WCX-2026',
+        workDate:'2026-04-14', clockIn:'2026-04-14T07:00', clockOut:'2026-04-14T19:00',
+        scheduledHours:10, workedHours:11.5, otHours:3.5, dtHours:0, mealBreakMinutes:30,
+        notes:'Set day 1 — audio rig Keynote Ballroom', submittedAt:null,
+        status:'Draft', payRuleApplied:'pr.iatse38' },
+      { id:'ts.mc.2', shiftAssignmentId:'sa.sae.a1', crewMemberId:'p.mchen', showId:'SAE-WCX-2026',
+        workDate:'2026-04-15', clockIn:null, clockOut:null,
+        scheduledHours:10, workedHours:0, otHours:0, dtHours:0, mealBreakMinutes:0,
+        notes:'', submittedAt:null, status:'Draft', payRuleApplied:'pr.iatse38' }
+    );
+  }
+
+
+  /* -----------------------------------------------------------------
+     v2.X — ShowTechPlan (Engineering — spec §M / §T)
+     MVP demo per spec line 6983: one plan on the live ROS show.
+  ----------------------------------------------------------------- */
+  PCG.showTechPlans = [{
+    id:'stp.glbx.gsk26',
+    showId:'GLBX-GSK26',
+    createdAt:'2026-04-10T08:00',
+    lastModifiedAt:'2026-04-12T14:30',
+    lastModifiedById:'p.ctaylor',
+
+    videoIO: {
+      id:'vio.glbx', switcherModelId:'inv.ross-carb',
+      switcherModelName:'Ross Carbonite Ultra 12',
+      notes:'Backup switcher (Ross Graphite) on rack 2 in case of failure. SDI-only venue.',
+      inputs:[
+        { id:'vpt.i1', pointNumber:1, label:'PGM1 SDI',     signalType:'SDI',  signalFormat:'1080p59.94',
+          sourceDevice:'Ross Carbonite ME1', destinationDevice:'LED Main Processor', pointType:'Input' },
+        { id:'vpt.i2', pointNumber:2, label:'PGM2 SDI',     signalType:'SDI',  signalFormat:'1080p59.94',
+          sourceDevice:'Ross Carbonite ME2', destinationDevice:'Stage Left Sidebar',  pointType:'Input' },
+        { id:'vpt.i3', pointNumber:3, label:'Laptop HDMI',  signalType:'HDMI', signalFormat:'1080p60',
+          sourceDevice:'Presenter laptop → HDMI→SDI converter', destinationDevice:'Carbonite Input 5', pointType:'Input' },
+        { id:'vpt.i4', pointNumber:4, label:'IMAG SDI',     signalType:'SDI',  signalFormat:'1080p59.94',
+          sourceDevice:'Sony HXC-100 Cam 1', destinationDevice:'Carbonite Input 7', pointType:'Input' }
+      ],
+      outputs:[
+        { id:'vpt.o1', pointNumber:1, label:'MAIN LED SDI',    signalType:'SDI',  signalFormat:'1080p59.94',
+          sourceDevice:'Carbonite PGM OUT',  destinationDevice:'Absen A3 LED Wall · Main', pointType:'Output' },
+        { id:'vpt.o2', pointNumber:2, label:'Confidence HDMI', signalType:'HDMI', signalFormat:'1080p60',
+          sourceDevice:'Carbonite AUX 1',    destinationDevice:'Presenter confidence monitor · front-of-stage', pointType:'Output' },
+        { id:'vpt.o3', pointNumber:3, label:'Record SDI',      signalType:'SDI',  signalFormat:'1080p59.94',
+          sourceDevice:'Carbonite PGM OUT',  destinationDevice:'Blackmagic HyperDeck Studio HD Plus (session record)', pointType:'Output' }
+      ],
+      routes:[
+        { id:'vrt.r1', name:'PGM → Main Wall',       inputId:'vpt.i1', outputId:'vpt.o1' },
+        { id:'vrt.r2', name:'IMAG → Confidence',     inputId:'vpt.i4', outputId:'vpt.o2' }
+      ]
+    },
+
+    intercom: {
+      id:'ico.glbx', systemType:'Clear-Com', systemModelId:'inv.cc-hub',
+      notes:'Wired IFB to speaker stage left via XLR. 2-wire Clear-Com on Channel A, 4-wire Dante matrix on Channels B+C.',
+      channels:[
+        { id:'ich.show', channelNumber:1, channelLabel:'SHOW',       channelType:'Party',
+          primaryUsers:['Show Caller','TD','Stage Manager','A1'] },
+        { id:'ich.tech', channelNumber:2, channelLabel:'TECH',       channelType:'Party',
+          primaryUsers:['TD','Video Director','V1','LD','ME'] },
+        { id:'ich.prod', channelNumber:3, channelLabel:'PRODUCTION', channelType:'IFB',
+          primaryUsers:['Show Caller → Presenter','Producer Speak'] }
+      ],
+      beltpackAssignments:[
+        { id:'bp.1', beltpackNumber:1, userLabel:'Show Caller — C. Oliver',   positionId:'pos.caller',  channelId:'ich.show' },
+        { id:'bp.2', beltpackNumber:2, userLabel:'TD — C. Taylor',             positionId:'pos.td',      channelId:'ich.show' },
+        { id:'bp.3', beltpackNumber:3, userLabel:'Stage Manager — FOH',        positionId:null,          channelId:'ich.show' },
+        { id:'bp.4', beltpackNumber:4, userLabel:'A1 — P. Shah',               positionId:'pos.a1',      channelId:'ich.show' },
+        { id:'bp.5', beltpackNumber:5, userLabel:'Video Director — D. Kim',    positionId:'pos.dir.v',   channelId:'ich.tech' },
+        { id:'bp.6', beltpackNumber:6, userLabel:'LD — E. Reyes',              positionId:'pos.ld',      channelId:'ich.tech' }
+      ],
+      radioFrequencies:[
+        { id:'rf.1', band:'UHF', frequency:'470.325', assignedTo:'Handhelds (2)' },
+        { id:'rf.2', band:'UHF', frequency:'535.850', assignedTo:'Lav / IFB' }
+      ]
+    },
+
+    audioRack: {
+      id:'arp.glbx', consoleModelId:'inv.yam-ql5', consoleModelName:'Yamaha QL5',
+      channelCount:32, notes:'QL5 rack at FOH position 18. 32 channels in, 16 out via Dante to amp room.',
+      channelList:[
+        { channel:1,  label:'Presenter Lav 1',   source:'Shure AD2/KSM11 (RF 470.325)',    group:'Speech' },
+        { channel:2,  label:'Presenter Lav 2',   source:'Shure AD2/KSM11 (RF 470.525)',    group:'Speech' },
+        { channel:3,  label:'Handheld HH1',      source:'Shure AD2 (RF 535.850)',           group:'Speech' },
+        { channel:4,  label:'Handheld HH2',      source:'Shure AD2 (RF 536.050)',           group:'Speech' },
+        { channel:5,  label:'Podium Mic',        source:'Shure MX418 Gooseneck',            group:'Speech' },
+        { channel:6,  label:'Q&A Mic 1',         source:'Shure SM58',                        group:'Speech' },
+        { channel:7,  label:'Q&A Mic 2',         source:'Shure SM58',                        group:'Speech' },
+        { channel:8,  label:'Playback L',        source:'QLab → MOTU M4 L',                 group:'Playback' },
+        { channel:9,  label:'Playback R',        source:'QLab → MOTU M4 R',                 group:'Playback' },
+        { channel:10, label:'Video Embed L',     source:'Carbonite embedded audio L',        group:'Playback' },
+        { channel:11, label:'Video Embed R',     source:'Carbonite embedded audio R',        group:'Playback' },
+        { channel:12, label:'Press Feed Out',    source:'MIX bus → ProjectorRack',           group:'Output' }
+      ],
+      outputs:[
+        { name:'Main L/R', routing:'L+R to J8 Array via Lake LM44' },
+        { name:'Sub Send', routing:'Aux 3 to JSub' },
+        { name:'Monitor', routing:'Aux 1 to Stage Monitor (Q1 wedges)' },
+        { name:'Press Feed', routing:'Aux 5 → Press Room XLR' }
+      ]
+    }
+  }];
+
+  /* -----------------------------------------------------------------
+     v2.X — Client contacts (for portal magic-link auth)
+     Spec §U — Client Experience Engine
+  ----------------------------------------------------------------- */
+  PCG.clientContacts = [
+    // Little Caesars
+    { id:'cc.lce.jbeth',   clientId:'c.littlecae', name:'Jordan Beth',    role:'VP Events',         email:'jbeth@lce.com',        phone:'+1 313 555 0201', portalAccess:'Full' },
+    { id:'cc.lce.mhart',   clientId:'c.littlecae', name:'Morgan Hart',    role:'Procurement',       email:'mhart@lce.com',        phone:'+1 313 555 0202', portalAccess:'ReadOnly' },
+    { id:'cc.lce.rvega',   clientId:'c.littlecae', name:'Rita Vega',      role:'Brand Marketing',   email:'rvega@lce.com',        phone:'+1 313 555 0203', portalAccess:'ReadOnly' },
+    // SAE
+    { id:'cc.sae.kwong',   clientId:'c.sae',       name:'Kelly Wong',     role:'Program Director',  email:'kwong@sae.org',        phone:'+1 248 555 0301', portalAccess:'Full' },
+    { id:'cc.sae.trami',   clientId:'c.sae',       name:'Tomás Ramírez',  role:'Operations Lead',   email:'tramirez@sae.org',     phone:'+1 248 555 0302', portalAccess:'ReadOnly' },
+    // Globex
+    { id:'cc.glbx.ahoward',clientId:'c.globex',    name:'Andrea Howard',  role:'CMO Office',        email:'ahoward@globex.com',   phone:'+1 212 555 0401', portalAccess:'Full' },
+    { id:'cc.glbx.pmarx',  clientId:'c.globex',    name:'Priya Marx',     role:'Brand Events',      email:'pmarx@globex.com',     phone:'+1 212 555 0402', portalAccess:'ReadOnly' }
+  ];
+
+  /* -----------------------------------------------------------------
+     v2.X — Client messages (portal ↔ PCG threaded)
+  ----------------------------------------------------------------- */
+  PCG.clientMessages = [
+    { id:'cm.001', clientId:'c.littlecae', projectCode:'LCE-2026',
+      fromSide:'pcg', fromName:'J. Springer', at:'2026-04-10T14:22',
+      body:'Latest quote (Rev 3) is in your portal. A couple of line additions around the cocktail reception — see Proposal tab. Let me know if the window still works.' },
+    { id:'cm.002', clientId:'c.littlecae', projectCode:'LCE-2026',
+      fromSide:'client', fromName:'J. Beth', at:'2026-04-11T09:40',
+      body:'Thanks — reviewing with Morgan. One question on the LED wall size; can we talk 2pm?' },
+    { id:'cm.003', clientId:'c.littlecae', projectCode:'LCE-2026',
+      fromSide:'pcg', fromName:'J. Springer', at:'2026-04-11T10:05',
+      body:'2pm works. Jasmine will send a Teams link. The LED wall is spec\'d for 16\' × 9\' — happy to walk through alternatives.' }
+  ];
+
+  /* -----------------------------------------------------------------
+     v2.X — Prior-year quote (enables Copy-From-Prior flow in quote builder)
+  ----------------------------------------------------------------- */
+  if (PCG.quotes && !PCG.quotes.find(q=>q.id==='q.LCE-2025.final')) {
+    PCG.quotes.unshift({
+      id:'q.LCE-2025.final', quoteNo:'Q-2025-0188', projectCode:'LCE-2025',
+      clientId:'c.littlecae', version:4,
+      activeRevisionId:'qr.LCE-2025.v4',
+      rateCardVersionId:'rc.2025.Q4',
+      status:'Awarded', totalRevenue:104800, totalCost:58900, margin:0.438,
+      createdAt:'2025-02-20', createdById:'p.jspringer',
+      termsText:'NET 30 · 50% deposit required on quote award'
+    });
+    PCG.quoteRevisions.unshift({
+      id:'qr.LCE-2025.v4', quoteId:'q.LCE-2025.final',
+      revisionNumber:4, status:'Awarded',
+      rateCardVersionId:'rc.2025.Q4',
+      createdAt:'2025-03-15', approvedAt:'2025-03-22', approvedById:'p.jspringer',
+      totalRevenue:104800, totalCost:58900, margin:0.438,
+      lines:[
+        { id:'qln.l25.a1', packageName:'Audio — Main Room', type:'Rental',
+          inventoryItemId:'inv.db-j8',   description:'d&b J8 Line Array',
+          qty:12, rateTier:'week', unitPrice:450, days:5, cost:280, marginContribution:1700 },
+        { id:'qln.l25.a2', packageName:'Audio — Main Room', type:'Rental',
+          inventoryItemId:'inv.db-jsub', description:'d&b JSub Sub',
+          qty:6, rateTier:'week', unitPrice:600, days:5, cost:360 },
+        { id:'qln.l25.v1', packageName:'Video — IMAG', type:'Rental',
+          inventoryItemId:'inv.barco-e2', description:'Barco E2 Screen Mgmt',
+          qty:1, rateTier:'week', unitPrice:13500, days:5, cost:4600 },
+        { id:'qln.l25.v2', packageName:'Video — IMAG', type:'Rental',
+          inventoryItemId:'inv.mon-50dual', description:'50" LCD Monitor (dual)',
+          qty:4, rateTier:'week', unitPrice:250, days:5, cost:90 },
+        { id:'qln.l25.l1', packageName:'Labor', type:'Labor',
+          crewPositionId:'pos.a1', description:'Audio A1', qty:1, rateTier:'day', unitPrice:125, days:5, cost:85 },
+        { id:'qln.l25.l2', packageName:'Labor', type:'Labor',
+          crewPositionId:'pos.v1', description:'Video V1', qty:1, rateTier:'day', unitPrice:120, days:5, cost:80 },
+        { id:'qln.l25.l3', packageName:'Labor', type:'Labor',
+          crewPositionId:'pos.ld', description:'Lighting LD', qty:1, rateTier:'day', unitPrice:122, days:5, cost:82 }
+      ],
+      corrections:[]
+    });
+  }
+
+  /* -----------------------------------------------------------------
+     v2.X — Client approvals & invites (runtime; empty until issue+approve)
+  ----------------------------------------------------------------- */
+  PCG.clientInvites = PCG.clientInvites || [];
+  PCG.clientApprovals = PCG.clientApprovals || [];
+  PCG.substitutionProposals = PCG.substitutionProposals || [];
 
   /* -----------------------------------------------------------------
      Augment existing actionQueue with explicit roles

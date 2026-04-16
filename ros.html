@@ -176,7 +176,10 @@
   `).join('') || PCG.states.empty('No global elements.');
 
   document.getElementById('applyTemplate').addEventListener('click', ()=>{
-    alert('[Phase 3] Template application — would clone the template\'s itemsTemplate into a new draft RunOfShow on this show. See spec §15.');
+    // Template scoping (per-show-type vs per-PM vs per-client) is an OPEN
+    // DECISION until the RunOfShow entity ownership is resolved with CSO.
+    // See spec §15 — itemsTemplate cloning will be wired once scoping lands.
+    alert('ROS template scoping is an OPEN DECISION (spec §15). For now, build the ROS from scratch or use Show Book "Copy From Prior Show" to seed cues.');
   });
 
   sel.addEventListener('change', render);

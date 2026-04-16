@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Preview Access</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* PIN gate — demo-access lock for hosted preview. Not a real security boundary. */
+  body { background: var(--surface-0); color: var(--text-primary); margin:0; min-height:100vh;
+         display:grid; place-items:center; font-family: var(--font-body); }
+  .pin-shell {
+    width: min(420px, calc(100vw - 32px));
+    padding: 32px 28px; border-radius: var(--r-md);
+    background: linear-gradient(180deg, rgba(1,153,253,0.06) 0%, rgba(10,18,32,0) 60%), var(--surface-1);
+    border: 1px solid var(--border-accent); position: relative; overflow:hidden;
+  }
+  .pin-shell::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .pin-logo { width:56px; height:56px; border-radius:50%; margin-bottom:16px; display:block; }
+  .pin-tag {
+    font-family: var(--font-display); font-size:10px; letter-spacing:0.14em;
+    text-transform:uppercase; color: var(--pcg-bright-blue); margin-bottom:4px;
+  }
+  .pin-shell h1 {
+    font-family: var(--font-display); font-size: 28px; margin: 0 0 6px; letter-spacing: 0.01em;
+  }
+  .pin-sub { color: var(--text-secondary); font-size: var(--fs-sm); margin-bottom:22px; line-height:1.5; }
+  .pin-row { display:flex; gap:10px; align-items:stretch; }
+  .pin-row input {
+    flex: 1; background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 11px 14px; font-size: 16px; font-family: var(--font-mono);
+    letter-spacing: 0.25em; outline: 0; text-align:center;
+  }
+  .pin-row input:focus { border-color: var(--pcg-bright-blue); box-shadow: 0 0 0 2px rgba(1,153,253,0.2); }
+  .pin-row button {
+    padding: 11px 22px; border-radius: var(--r-sm); border: 0;
+    background: var(--pcg-bright-blue); color: #001a2a; font-weight: 700; font-size: var(--fs-sm);
+    cursor: pointer; font-family: var(--font-display); letter-spacing:0.06em; text-transform: uppercase;
+  }
+  .pin-row button:hover { filter: brightness(1.08); }
+  .pin-err {
+    color: var(--status-red); font-size: var(--fs-xs); margin-top: 10px; min-height: 16px;
+    font-family: var(--font-mono);
+  }
+  .pin-foot {
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+    color: var(--text-tertiary); font-size: 11px; font-family: var(--font-mono); line-height: 1.6;
+  }
+  .pin-foot code {
+    background: var(--surface-2); padding: 1px 5px; border-radius: 3px;
+    font-size: 10.5px; color: var(--text-secondary);
+  }
+</style>
+</head>
+<body>
+<div class="pin-shell">
+  <img class="pin-logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" />
+  <div class="pin-tag">PCG STAGE · Preview Build</div>
+  <h1>Enter access PIN</h1>
+  <div class="pin-sub">
+    This is a hosted preview of the PCG production operations platform. Enter the PIN your PCG contact provided to continue.
+  </div>
+
+  <form id="pinForm" autocomplete="off">
+    <div class="pin-row">
+      <input type="password" id="pinIn" inputmode="numeric" maxlength="16" autofocus
+             placeholder="••••••" autocapitalize="off" spellcheck="false" />
+      <button type="submit">Enter</button>
+    </div>
+    <div class="pin-err" id="pinErr"></div>
+  </form>
+
+  <div class="pin-foot">
+    Access is logged per session. PCG STAGE is an internal system preview —<br>
+    production deployments authenticate via Entra ID (Microsoft 365 SSO).
+  </div>
+</div>
+
+<script>
+  // Demo PIN. To change: edit this value. To disable the gate entirely:
+  // open any page with ?bypass_pin=true, or run sessionStorage.setItem('pcg_demo_pin','1') in DevTools.
+  const DEMO_PIN = 'PCG26';
+
+  const form = document.getElementById('pinForm');
+  const input = document.getElementById('pinIn');
+  const err = document.getElementById('pinErr');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = (input.value || '').trim();
+    if (!v) { err.textContent = 'Enter the access PIN.'; return; }
+    if (v.toUpperCase() !== DEMO_PIN.toUpperCase()) {
+      err.textContent = 'That PIN is not recognized. Contact your PCG contact for access.';
+      input.select();
+      return;
+    }
+    sessionStorage.setItem('pcg_demo_pin', '1');
+    const ret = new URL(location.href).searchParams.get('return');
+    const target = ret ? decodeURIComponent(ret) : 'tour.html';
+    // Sanitize: only allow same-origin relative paths.
+    const safe = /^[a-zA-Z0-9_\-/.?&=%]+$/.test(target) && !target.startsWith('//') && !target.startsWith('http');
+    location.replace(safe ? target : 'tour.html');
+  });
+
+  // If already unlocked, skip straight through (e.g. user reloaded gate manually).
+  if (sessionStorage.getItem('pcg_demo_pin')) {
+    const ret = new URL(location.href).searchParams.get('return');
+    if (ret) location.replace(decodeURIComponent(ret));
+  }
+</script>
+</body>
+</html>

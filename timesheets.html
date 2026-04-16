@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Timesheets</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .ts-row {
+    display:grid; grid-template-columns: 1.4fr 1fr 80px 80px 80px 80px 120px 100px 140px;
+    gap: var(--sp-3); align-items:center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .ts-row:hover { background: var(--surface-2); }
+  .ts-row .m { font-family: var(--font-mono); text-align:right; }
+  .ts-row.ot-heavy    { border-left: 3px solid var(--status-amber); }
+  .ts-row.dt-overrun  { border-left: 3px solid var(--status-red); background: rgba(240,78,85,0.04); }
+  .payrule-badge {
+    display:inline-block; padding: 1px 6px; border-radius: 3px;
+    font-family: var(--font-mono); font-size: 10px;
+    background: rgba(1,153,253,0.12); color: var(--pcg-bright-blue);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Labor · Timesheets · Payroll Export</div>
+          <h1>Time Capture Pipeline</h1>
+          <div class="muted">§12.3 — PayRule matched by employmentType + unionLocal + market. OT > 2h requires explicit approval note.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+          <button class="btn sm primary" id="exportBtn">⇣ Export Payroll</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div style="display:flex; gap:var(--sp-2); margin-bottom:var(--sp-4);">
+        <button class="chip on" data-f="all">All</button>
+        <button class="chip" data-f="Draft">Draft</button>
+        <button class="chip" data-f="Submitted">Submitted</button>
+        <button class="chip" data-f="Approved">Approved</button>
+        <button class="chip" data-f="ot">OT &gt; 2h</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="title">Timesheet Queue</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
+        <div style="display:grid; grid-template-columns: 1.4fr 1fr 80px 80px 80px 80px 120px 100px 140px; gap:var(--sp-3); padding: 10px var(--sp-4); background: var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-tertiary);">
+          <div>Crew / Date</div>
+          <div>Shift</div>
+          <div style="text-align:right;">Sch</div>
+          <div style="text-align:right;">Worked</div>
+          <div style="text-align:right;">OT</div>
+          <div style="text-align:right;">DT</div>
+          <div style="text-align:right;">Gross Pay</div>
+          <div>PayRule</div>
+          <div>Status</div>
+        </div>
+        <div id="rows"></div>
+      </div>
+
+      <div class="split" style="margin-top:var(--sp-5);">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Payroll Export Preview</div></div>
+            <div class="card-body" id="exportPreview"></div>
+          </div>
+        </div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Active Pay Rules</div></div>
+            <div class="card-body" id="payrules"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Export Targets (TBD)</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              Export format confirmation pending Accounting:
+              <ul style="padding-left:18px; margin-top:4px;">
+                <li>ADP Work Market API</li>
+                <li>ADP Workforce Now CSV</li>
+                <li>Manual approval packet for 1099s</li>
+              </ul>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'portfolio', crumbs:[{label:'Timesheets'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    const shows = PCG.api.getProjects().filter(p=>p.show);
+    const sel = document.getElementById('showSel');
+    sel.innerHTML = '<option value="all">All shows</option>' + shows.map(s=>`<option value="${s.code}">${s.code}</option>`).join('');
+
+    let filter = 'all';
+
+    function render(){
+      const showCode = sel.value;
+      let list = PCG.api.getTimesheets(showCode==='all' ? {} : {showId:showCode});
+      if(filter!=='all' && filter!=='ot') list = list.filter(t=>t.status===filter);
+      if(filter==='ot') list = list.filter(t=>(t.otHours||0) > 2);
+      document.getElementById('count').textContent = `${list.length} timesheet${list.length===1?'':'s'}`;
+
+      document.getElementById('rows').innerHTML = list.length ? list.map(t=>{
+        const crew = PCG.findPerson(t.crewMemberId);
+        const assn = (PCG.shiftAssignments||[]).find(a=>a.id===t.shiftAssignmentId);
+        const pos  = assn && PCG.api.getCrewPosition(assn.positionId);
+        const rate = pos && pos.ratesByVersion && pos.ratesByVersion[0];
+        const payRate = rate && rate.payRate;
+        const reg = t.workedHours - (t.otHours||0) - (t.dtHours||0);
+        const grossPay = payRate ? (reg*payRate + (t.otHours||0)*payRate*1.5 + (t.dtHours||0)*payRate*2.0) : null;
+        const cls = (t.dtHours||0) > 0 ? 'dt-overrun' : (t.otHours||0) > 2 ? 'ot-heavy' : '';
+        const sPill = { Draft:'gray', Submitted:'amber', Approved:'green', Exported:'purple' }[t.status] || 'gray';
+
+        return `<div class="ts-row ${cls}">
+          <div>
+            <div style="font-weight:600;">${crew?PCG.escapeHtml(crew.name):'—'}</div>
+            <div class="muted" style="font-size:11px;">${PCG.fmtShort(t.workDate)}${t.notes?' · '+PCG.escapeHtml(t.notes.slice(0,60)):''}</div>
+          </div>
+          <div>
+            <div>${pos?PCG.escapeHtml(pos.name):'—'}</div>
+            <div class="muted" style="font-size:11px;">${t.clockIn?PCG.fmtTime(t.clockIn):'—'}→${t.clockOut?PCG.fmtTime(t.clockOut):'—'}</div>
+          </div>
+          <div class="m">${t.scheduledHours||0}</div>
+          <div class="m" style="font-weight:600;">${t.workedHours||0}</div>
+          <div class="m" style="color:${(t.otHours||0)>0?'var(--status-amber)':'inherit'};">${t.otHours||0}</div>
+          <div class="m" style="color:${(t.dtHours||0)>0?'var(--status-red)':'inherit'};">${t.dtHours||0}</div>
+          <div class="m">${PCG.canSeeTier('T1_CREW_PAY_RATES') ? (grossPay!=null?PCG.money(grossPay):'—') : '🔒'}</div>
+          <div><span class="payrule-badge">${t.payRuleApplied||'—'}</span></div>
+          <div><span class="pill ${sPill}" style="font-size:10px;">${(t.status||'—').toUpperCase()}</span>
+            ${t.status==='Submitted' ? '<div style="margin-top:4px;"><button class="btn sm primary" style="font-size:10px;">Approve</button></div>':''}
+          </div>
+        </div>`;
+      }).join('') : PCG.states.empty('No timesheets match.');
+
+      // Export preview (for currently selected show)
+      if(showCode!=='all'){
+        try {
+          const packet = PCG.api.generatePayrollExport(showCode);
+          document.getElementById('exportPreview').innerHTML = packet.length ? `
+            <div class="muted" style="font-size:var(--fs-xs); margin-bottom:8px;">${packet.length} approved line(s). Format: structured JSON ready for ADP Work Market or Workforce Now CSV.</div>
+            <pre style="background:var(--surface-2); padding:12px; border-radius:var(--r-sm); font-size:11px; max-height:280px; overflow:auto; margin:0;">${PCG.escapeHtml(JSON.stringify(packet.slice(0,3), null, 2))}${packet.length>3?'\n\n... ('+packet.length+' entries total)':''}</pre>
+          ` : PCG.states.empty('No approved timesheets to export for this show.');
+        } catch(e){
+          document.getElementById('exportPreview').innerHTML = PCG.states.forbidden();
+        }
+      } else {
+        document.getElementById('exportPreview').innerHTML = PCG.states.empty('Select a specific show to preview export.');
+      }
+
+      // KPIs
+      const all = PCG.api.getTimesheets(showCode==='all' ? {} : {showId:showCode});
+      const submitted = all.filter(t=>t.status==='Submitted').length;
+      const approved = all.filter(t=>t.status==='Approved').length;
+      const otHeavy = all.filter(t=>(t.otHours||0)>2).length;
+      const dtOverrun = all.filter(t=>(t.dtHours||0)>0).length;
+      const totalHours = all.reduce((s,t)=>s+(t.workedHours||0),0);
+      const totalOT = all.reduce((s,t)=>s+(t.otHours||0),0);
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi"><div class="label">Total Sheets</div><div class="value">${all.length}</div><div class="sub">${showCode==='all'?'all shows':showCode}</div></div>
+        <div class="kpi amber"><div class="label">Awaiting Approval</div><div class="value">${submitted}</div><div class="sub">Labor Coord review</div></div>
+        <div class="kpi"><div class="label">Approved</div><div class="value" style="color:var(--status-green);">${approved}</div><div class="sub">ready to export</div></div>
+        <div class="kpi amber"><div class="label">OT &gt; 2h</div><div class="value">${otHeavy}</div><div class="sub">need approval note</div></div>
+        <div class="kpi red"><div class="label">DT Overrun</div><div class="value">${dtOverrun}</div><div class="sub">double-time days</div></div>
+        <div class="kpi blue"><div class="label">Total Worked</div><div class="value">${totalHours}h</div><div class="sub">${totalOT}h OT</div></div>
+      `;
+    }
+
+    // Pay rules card
+    document.getElementById('payrules').innerHTML = PCG.api.getPayRules().map(r=>`
+      <div class="pinned" style="margin-bottom:6px;">
+        <span class="icon mono" style="font-size:11px;">${r.id.replace('pr.','')}</span>
+        <div><strong>${PCG.escapeHtml(r.name)}</strong>
+          <div class="muted" style="font-size:var(--fs-xs);">OT&gt;${r.dailyOTThresholdHours}h · DT&gt;${r.dailyDTThresholdHours}h · ${r.otMultiplier}× / ${r.dtMultiplier}×</div>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      const code = sel.value;
+      if(code==='all'){ alert('Select a specific show to export.'); return; }
+      try {
+        const rows = PCG.api.generatePayrollExport(code);
+        if(!rows.length){ alert('No Approved timesheets to export for '+code+'.'); return; }
+        const header = ['Crew ID','Name','Employment','Work Date','Regular Hrs','OT Hrs','DT Hrs','Gross Pay','Pay Rule','Meal Penalties'];
+        const csvRows = [header].concat(rows.map(r => [
+          r.crewMemberId, r.name || '', r.employmentType || '',
+          r.workDate || '', r.regularHours || 0, r.otHours || 0, r.dtHours || 0,
+          r.grossPay || 0, r.payRuleApplied || '', r.mealPenalties || 0
+        ]));
+        const csv = csvRows.map(row => row.map(c => {
+          const s = String(c==null?'':c);
+          return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+        }).join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `pcg-payroll-${code}-${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        alert(`✓ Payroll export: ${rows.length} row(s) downloaded.\n\nADP Work Market delivery is gated on OPEN DECISION #3 (CFO). For now, the CSV is structured for direct ingest.`);
+      } catch(e){ alert('Blocked: '+e.message); }
+    });
+
+    sel.addEventListener('change', render);
+    document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+      document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+      filter = e.target.dataset.f; render();
+    }));
+    sel.value = 'GLBX-GSK26';
+    render();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Crew Assignment</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .staff-shell {
+    display: grid;
+    grid-template-columns: 420px 1fr 340px;
+    gap: var(--sp-4);
+    min-height: 70vh;
+  }
+  @media (max-width: 1400px){ .staff-shell { grid-template-columns: 380px 1fr; } .staff-right { display:none; } }
+
+  .pos-group { margin-bottom: var(--sp-4); }
+  .pos-group .lbl {
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--text-tertiary); padding: 0 8px; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pos-group .lbl .ct { color: var(--text-primary); font-weight: 600; letter-spacing: 0.02em; font-size: 11px; }
+
+  .pos-row {
+    display: grid; grid-template-columns: 40px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: var(--r-sm); margin-bottom: 6px;
+    background: var(--surface-1); cursor: pointer;
+    transition: border-color var(--t-fast), background var(--t-fast);
+  }
+  .pos-row:hover { border-color: var(--border-accent); }
+  .pos-row.active { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.08); }
+  .pos-row.unfilled { border-left: 3px solid var(--status-red); }
+  .pos-row.invited { border-left: 3px solid var(--status-amber); }
+  .pos-row.confirmed { border-left: 3px solid var(--status-green); }
+  .pos-row .av {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--grad-show-light-blue);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 11px; font-weight: 600;
+    color: white;
+  }
+  .pos-row .av.unfilled { background: var(--surface-3); border: 1px dashed var(--border-strong); color: var(--text-tertiary); }
+  .pos-row .nm { font-weight: 600; font-size: var(--fs-sm); }
+  .pos-row .rl { font-size: 11px; color: var(--text-tertiary); }
+  .pos-row .stat { font-size: 10px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .pool-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .pool-header {
+    padding: var(--sp-4); border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .pool-header h3 { font-size: var(--fs-md); }
+  .pool-filters {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+    font-size: 11px;
+  }
+  .pool-filters select, .pool-filters input {
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 4px 8px; font-size: 11px;
+  }
+  .pool-scroll { max-height: 70vh; overflow-y: auto; }
+  .crew-row {
+    display: grid; grid-template-columns: 36px 1fr auto auto;
+    gap: 10px; align-items: center;
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .crew-row:hover { background: var(--surface-2); }
+  .crew-row.conflict { background: rgba(240,78,85,0.06); border-left: 3px solid var(--status-red); }
+  .crew-row.qualified { border-left: 3px solid var(--status-green); }
+  .crew-row.not-qualified { opacity: 0.65; }
+  .crew-row .rating { font-family: var(--font-mono); color: var(--status-amber); font-size: 12px; }
+
+  .conf-step {
+    display: grid; grid-template-columns: 20px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 12px; border-radius: var(--r-sm);
+    background: var(--surface-2); margin-bottom: 6px; font-size: var(--fs-sm);
+  }
+  .conf-step.done { border-left: 3px solid var(--status-green); background: rgba(47,191,113,0.06); }
+  .conf-step.now  { border-left: 3px solid var(--pcg-bright-blue); background: rgba(1,153,253,0.06); }
+  .conf-step .marker {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-3); color: var(--text-tertiary); font-size: 11px;
+  }
+  .conf-step.done .marker { background: rgba(47,191,113,0.25); color: var(--status-green); }
+  .conf-step.now .marker  { background: rgba(1,153,253,0.25); color: var(--pcg-bright-blue); }
+
+  .stripe {
+    display: flex; gap: 8px; padding: 10px; background: var(--surface-2);
+    border-radius: var(--r-sm); margin-bottom: var(--sp-4); align-items: center;
+  }
+  .stripe .pct {
+    flex: 1; height: 8px; background: var(--surface-3);
+    border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .stripe .pct .fill { height: 100%; background: var(--grad-show-light-blue); transition: width 0.3s; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <!-- Header with show selector -->
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Labor · Crew Assignment</div>
+          <h1 id="hdr">—</h1>
+          <div class="muted">Multi-step confirmation workflow (§12.2). Invite → Applied → Approved → Confirmed → Acknowledged.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 12px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+          <button class="btn sm" id="cloneBtn">Clone Prior Roster</button>
+          <button class="btn sm" id="lettersBtn">Generate Crew Letters</button>
+        </div>
+      </div>
+
+      <!-- Readiness stripe -->
+      <div class="stripe" id="stripe"></div>
+
+      <div class="staff-shell">
+        <!-- LEFT — Position list -->
+        <aside>
+          <div class="pool-card">
+            <div class="pool-header">
+              <h3>Positions on Show</h3>
+              <div class="muted" style="font-size:11px; margin-top:4px;" id="posSummary"></div>
+              <div class="pool-filters">
+                <button class="chip on" data-pf="all">All</button>
+                <button class="chip" data-pf="unfilled">Unfilled</button>
+                <button class="chip" data-pf="invited">Invited</button>
+                <button class="chip" data-pf="confirmed">Confirmed</button>
+              </div>
+            </div>
+            <div style="padding: var(--sp-3); max-height:70vh; overflow-y:auto;" id="posList"></div>
+          </div>
+        </aside>
+
+        <!-- CENTER — Crew pool (appears when a position is selected) -->
+        <section>
+          <div class="pool-card" id="poolCard">
+            <div class="pool-header">
+              <h3 id="poolTitle">Select a position to see the qualified crew pool</h3>
+              <div class="muted" style="font-size:11px; margin-top:4px;" id="poolSubtitle">Click any position on the left. Unfilled slots load the crew pool filtered to that position.</div>
+            </div>
+            <div id="poolBody"></div>
+          </div>
+        </section>
+
+        <!-- RIGHT — Confirmation tracker + cost preview -->
+        <aside class="staff-right">
+          <div class="pool-card" style="margin-bottom: var(--sp-4);">
+            <div class="pool-header"><h3>Confirmation Flow (§12.2)</h3></div>
+            <div style="padding: var(--sp-4);" id="confFlow">
+              <div class="muted" style="font-size:var(--fs-sm);">Select a filled position to see its confirmation progress.</div>
+            </div>
+          </div>
+          <div class="pool-card" style="margin-bottom: var(--sp-4);">
+            <div class="pool-header"><h3>Labor Cost Preview</h3></div>
+            <div style="padding: var(--sp-4);" id="costPreview"></div>
+          </div>
+          <div class="pool-card">
+            <div class="pool-header"><h3>Source of Truth</h3></div>
+            <div style="padding: var(--sp-4); font-size:var(--fs-xs); color:var(--text-secondary);">
+              Staffing truth = ShiftAssignment.status. Crew Letter generation requires <strong>Acknowledged</strong>. Any crew change re-flags letters as "Stale — resend needed."
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal for invite confirmation / conflicts -->
+<div class="modal-backdrop" id="bd" onclick="PCG.closeModal()"></div>
+<div class="modal-box" id="mbox">
+  <button class="close" onclick="PCG.closeModal()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+  <div id="mbody"></div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'scheduling', crumbs:[{label:'Scheduling', href:'scheduling.html'},{label:'Assign Crew'}]});
+
+  const canAssign = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS);
+  if(!canAssign){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    // Show selector
+    const shows = PCG.api.getProjects().filter(p=>p.show && ['Awarded','InPrep','OnShow','Striking'].includes(p.show.lifecycleState));
+    const sel = document.getElementById('showSel');
+    sel.innerHTML = shows.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('');
+    const q = PCG.qs('project');
+    if(q && shows.find(p=>p.code===q)) sel.value = q;
+
+    let state = {
+      showCode: sel.value,
+      selectedAssignmentId: null,
+      posFilter: 'all',
+      pool: { q:'', market:'', employmentType:'', qualifiedOnly:true, excludeDoNotUse:true }
+    };
+
+    // Close modal helper (global for onclick)
+    PCG.closeModal = () => {
+      document.getElementById('bd').classList.remove('show');
+      document.getElementById('mbox').classList.remove('show');
+    };
+
+    // --- Group positions by positionGroup then by department ---
+    function groupAssignments(assns){
+      const byGroup = {};
+      assns.forEach(a => {
+        const g = a.positionGroup || 'Other';
+        (byGroup[g] = byGroup[g] || []).push(a);
+      });
+      return byGroup;
+    }
+
+    function render(){
+      const p = PCG.api.getProject(state.showCode);
+      document.getElementById('hdr').textContent = `${p.code} — ${p.name}`;
+
+      const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===state.showCode);
+      const total = assns.length;
+      const filled = assns.filter(a=>a.crewMemberId && a.status!=='Cancelled').length;
+      const confirmed = assns.filter(a=>['Confirmed','Acknowledged','Completed'].includes(a.status)).length;
+      const ack = assns.filter(a=>['Acknowledged','Completed'].includes(a.status)).length;
+      const unfilled = assns.filter(a=>!a.crewMemberId || a.status==='Cancelled').length;
+
+      // Stripe
+      const pctConfirmed = total ? Math.round(confirmed/total*100) : 0;
+      const pctAck = total ? Math.round(ack/total*100) : 0;
+      document.getElementById('stripe').innerHTML = `
+        <div class="eyebrow" style="font-size:10px; margin-right:8px;">READINESS</div>
+        <div class="pct"><div class="fill" style="width:${pctConfirmed}%"></div></div>
+        <div class="mono" style="font-size:11px; min-width:160px; text-align:right;">
+          <span style="color:var(--status-green);">${confirmed}</span> confirmed ·
+          <span style="color:var(--pcg-bright-blue);">${ack}</span> ack ·
+          <span style="color:${unfilled?'var(--status-red)':'var(--text-tertiary)'};">${unfilled}</span> open /
+          <strong>${total}</strong>
+        </div>
+      `;
+
+      // Position summary + list
+      document.getElementById('posSummary').textContent = `${filled} filled · ${unfilled} open · ${pctAck}% acknowledged`;
+
+      const filtered = assns.filter(a => {
+        if(state.posFilter==='all') return true;
+        if(state.posFilter==='unfilled') return !a.crewMemberId || a.status==='Cancelled';
+        if(state.posFilter==='invited') return a.status==='Invited' || a.status==='Applied' || a.status==='Approved';
+        if(state.posFilter==='confirmed') return ['Confirmed','Acknowledged','Completed'].includes(a.status);
+        return true;
+      });
+
+      const groups = groupAssignments(filtered);
+      const groupOrder = ['Core','Audio','Video','Lighting','Scenic','Floor Lead','Travel','Other'];
+      const sortedGroups = Object.keys(groups).sort((a,b)=>{
+        const ai = groupOrder.indexOf(a), bi = groupOrder.indexOf(b);
+        return (ai<0?99:ai) - (bi<0?99:bi);
+      });
+
+      document.getElementById('posList').innerHTML = sortedGroups.length ? sortedGroups.map(g => {
+        const items = groups[g];
+        return `<div class="pos-group">
+          <div class="lbl">${PCG.escapeHtml(g)} <span class="ct">${items.length}</span></div>
+          ${items.map(a => {
+            const crew = a.crewMemberId ? PCG.findPerson(a.crewMemberId) : null;
+            const pos = (PCG.crewPositions||[]).find(pp=>pp.id===a.positionId);
+            const unfilled = !a.crewMemberId || a.status==='Cancelled';
+            const cls = unfilled ? 'unfilled'
+                      : ['Invited','Applied','Approved'].includes(a.status) ? 'invited'
+                      : ['Confirmed','Acknowledged','Completed'].includes(a.status) ? 'confirmed' : '';
+            const initials = crew ? crew.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase() : '?';
+            return `<div class="pos-row ${cls} ${state.selectedAssignmentId===a.id?'active':''}" onclick="selectPos('${a.id}')">
+              <div class="av ${unfilled?'unfilled':''}">${initials}</div>
+              <div>
+                <div class="nm">${unfilled ? '<span class="muted">Unfilled</span>' : PCG.escapeHtml(crew.name)}</div>
+                <div class="rl">${pos ? PCG.escapeHtml(pos.displayName || pos.name) : PCG.escapeHtml(a.positionId)} · ${PCG.escapeHtml(a.callTime||'—')}</div>
+              </div>
+              <div class="stat" style="color:${unfilled?'var(--status-red)':'var(--text-secondary)'};">${a.status.toUpperCase()}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('') : PCG.states.empty('No positions match this filter.');
+
+      renderPool();
+      renderConf();
+      renderCost();
+    }
+
+    // --- Crew pool (shown when a position is selected) ---
+    function renderPool(){
+      const a = state.selectedAssignmentId ? (PCG.shiftAssignments||[]).find(x=>x.id===state.selectedAssignmentId) : null;
+      if(!a){
+        document.getElementById('poolCard').querySelector('.pool-header').innerHTML = `
+          <h3 id="poolTitle">Crew Pool</h3>
+          <div class="muted" style="font-size:11px; margin-top:4px;">Click any position on the left. Unfilled slots load the pool filtered by the required position qualification.</div>
+        `;
+        document.getElementById('poolBody').innerHTML = PCG.states.empty('No position selected.');
+        return;
+      }
+
+      const pos = (PCG.crewPositions||[]).find(p=>p.id===a.positionId);
+      const currentCrew = a.crewMemberId ? PCG.findPerson(a.crewMemberId) : null;
+
+      const header = document.getElementById('poolCard').querySelector('.pool-header');
+      header.innerHTML = `
+        <h3>${pos ? PCG.escapeHtml(pos.displayName || pos.name) : PCG.escapeHtml(a.positionId)}</h3>
+        <div class="muted" style="font-size:11px; margin-top:4px;">
+          ${(a.dates||[]).length ? PCG.fmtShort(a.dates[0])+' → '+PCG.fmtShort(a.dates[a.dates.length-1]) : '—'} · Call ${PCG.escapeHtml(a.callTime||'—')} ·
+          ${pos && pos.union ? `<span class="pill red" style="font-size:10px;">${pos.unionLocal||'UNION'}</span>` : '<span class="pill gray plain" style="font-size:10px;">NON-UNION</span>'}
+          ${currentCrew ? ` · Currently <strong>${PCG.escapeHtml(currentCrew.name)}</strong>` : ''}
+        </div>
+        <div class="pool-filters">
+          <input id="pq" placeholder="Name…" value="${state.pool.q}" style="width:140px;" />
+          <select id="pmarket"><option value="">Any market</option>${['Detroit','Las Vegas','Chicago','Nashville'].map(m=>`<option ${state.pool.market===m?'selected':''}>${m}</option>`).join('')}</select>
+          <select id="pemp"><option value="">Any type</option>${['W2','1099','IATSE','Teamster','HouseStaff'].map(t=>`<option ${state.pool.employmentType===t?'selected':''}>${t}</option>`).join('')}</select>
+          <label style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="pqual" ${state.pool.qualifiedOnly?'checked':''}/> Qualified only</label>
+          <label style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="pdnu" ${state.pool.excludeDoNotUse?'checked':''}/> Exclude DNU</label>
+        </div>
+      `;
+
+      const pool = PCG.api.getQualifiedCrew(a.positionId, {
+        qualifiedOnly: state.pool.qualifiedOnly,
+        market: state.pool.market,
+        employmentType: state.pool.employmentType,
+        excludeDoNotUse: state.pool.excludeDoNotUse,
+        q: state.pool.q
+      });
+
+      // Check conflicts for each member
+      const body = document.getElementById('poolBody');
+      const isPlaceholder = !a.crewMemberId || a.status==='Cancelled';
+
+      body.innerHTML = `
+        <div class="pool-scroll">${pool.length ? pool.map(entry => {
+          const m = entry.member;
+          const conflict = PCG.engines.scheduling.checkAssignment({
+            crewMemberId: m.id, showId: a.showId, dates: a.dates
+          });
+          const conflictCls = conflict.conflict ? 'conflict' : (entry.qualified ? 'qualified' : 'not-qualified');
+          const ratingStars = entry.rating ? '★'.repeat(Math.round(entry.rating)) : '—';
+          const initials = m.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+          const disabled = !!conflict.conflict;
+          const action = m.id === a.crewMemberId
+            ? '<span class="pill blue" style="font-size:10px;">ASSIGNED</span>'
+            : isPlaceholder
+              ? `<button class="btn sm primary" ${disabled?'disabled':''} onclick="event.stopPropagation(); doInvite('${m.id}')">${disabled?'Conflict':'Invite'}</button>`
+              : `<button class="btn sm" ${disabled?'disabled':''} onclick="event.stopPropagation(); doReassign('${m.id}')">Reassign</button>`;
+
+          return `<div class="crew-row ${conflictCls}">
+            <div class="av" style="width:32px; height:32px; border-radius:50%; background:var(--grad-show-light-blue); display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:11px; font-weight:600; color:white;">${initials}</div>
+            <div>
+              <div style="font-weight:600;">${PCG.escapeHtml(m.name)}</div>
+              <div class="muted" style="font-size:11px;">${PCG.escapeHtml(m.employmentType||'')} · ${(m.market||[]).join(', ')}</div>
+              ${conflict.conflict ? `<div style="color:var(--status-red); font-size:11px; margin-top:2px;">⛔ ${(conflict.conflicts||[]).map(c=>'Conflict: '+c.showId).join(' · ')}</div>` : ''}
+            </div>
+            <div class="rating">${entry.qualified ? ratingStars : '<span class="muted">no qual</span>'}</div>
+            <div>${action}</div>
+          </div>`;
+        }).join('') : PCG.states.empty('No crew match this filter.')}</div>`;
+
+      // Wire pool filter inputs
+      document.getElementById('pq').addEventListener('input', e=>{ state.pool.q = e.target.value; renderPool(); });
+      document.getElementById('pmarket').addEventListener('change', e=>{ state.pool.market = e.target.value; renderPool(); });
+      document.getElementById('pemp').addEventListener('change', e=>{ state.pool.employmentType = e.target.value; renderPool(); });
+      document.getElementById('pqual').addEventListener('change', e=>{ state.pool.qualifiedOnly = e.target.checked; renderPool(); });
+      document.getElementById('pdnu').addEventListener('change', e=>{ state.pool.excludeDoNotUse = e.target.checked; renderPool(); });
+    }
+
+    // --- Confirmation flow panel ---
+    function renderConf(){
+      const a = state.selectedAssignmentId ? (PCG.shiftAssignments||[]).find(x=>x.id===state.selectedAssignmentId) : null;
+      const flow = document.getElementById('confFlow');
+      if(!a || !a.crewMemberId){
+        flow.innerHTML = `<div class="muted" style="font-size:var(--fs-sm);">Select a filled position to see and drive the confirmation flow.</div>`;
+        return;
+      }
+      const crew = PCG.findPerson(a.crewMemberId);
+      const STEPS = ['Placeholder','Invited','Applied','Approved','Confirmed','Acknowledged','Completed'];
+      const ix = STEPS.indexOf(a.status);
+      const next = STEPS[ix+1];
+
+      flow.innerHTML = `
+        <div style="font-weight:600; margin-bottom:10px;">${PCG.escapeHtml(crew.name)}</div>
+        ${STEPS.map((s,i)=>{
+          const cls = i < ix ? 'done' : i === ix ? 'now' : '';
+          return `<div class="conf-step ${cls}">
+            <div class="marker">${i < ix ? '✓' : i === ix ? '●' : ''}</div>
+            <div>${s}</div>
+            <div class="mono" style="font-size:10px; color:var(--text-tertiary);">${
+              s==='Invited' && a.invitedAt ? PCG.fmtShort(a.invitedAt) :
+              s==='Confirmed' && a.confirmedAt ? PCG.fmtShort(a.confirmedAt) :
+              s==='Acknowledged' && a.acknowledgedAt ? PCG.fmtShort(a.acknowledgedAt) : ''
+            }</div>
+          </div>`;
+        }).join('')}
+
+        <div style="margin-top: var(--sp-3); display:flex; gap:6px; flex-wrap:wrap;">
+          ${next && !['Cancelled','NoShow','Completed'].includes(a.status) ? `<button class="btn sm primary" onclick="advanceStatus('${next}')">→ ${next}</button>` : ''}
+          <button class="btn sm ghost" onclick="cancelAssignment()">Cancel Assignment</button>
+        </div>
+
+        <div style="margin-top: var(--sp-3); font-size: 11px; color: var(--text-tertiary);">
+          ${a.status==='Acknowledged' ? '✓ Eligible for Crew Letter generation.' : 'Crew Letter generation requires Acknowledged status.'}
+        </div>
+      `;
+    }
+
+    // --- Labor cost preview ---
+    function renderCost(){
+      const preview = PCG.api.getLaborCostPreview(state.showCode);
+      const el = document.getElementById('costPreview');
+      if(!preview){ el.innerHTML = '<div class="muted" style="font-size:var(--fs-xs);">🔒 Bill rate visibility required.</div>'; return; }
+      el.innerHTML = `
+        <div class="kv-grid">
+          <div class="k">Positions</div><div class="v mono">${preview.positionCount}</div>
+          <div class="k">Est. Bill</div><div class="v mono" style="font-weight:600;">${PCG.money(preview.totalBill)}</div>
+          ${preview.totalPay ? `<div class="k">Est. Pay</div><div class="v mono" style="color:var(--text-secondary);">${PCG.money(preview.totalPay)}</div>
+          <div class="k">Labor Margin</div><div class="v mono" style="color:var(--status-green);">${PCG.pct((preview.totalBill-preview.totalPay)/preview.totalBill)}</div>` : ''}
+        </div>
+        <div style="font-size:11px; color:var(--text-tertiary); margin-top:8px;">Assumes 10h/day × number of days per position. Actual hours captured from timesheets.</div>
+      `;
+    }
+
+    // --- Global handlers ---
+    window.selectPos = (id) => {
+      state.selectedAssignmentId = id;
+      render();
+    };
+
+    window.doInvite = (crewId) => {
+      const result = PCG.api.inviteCrew(state.selectedAssignmentId, crewId);
+      if(!result.ok){
+        document.getElementById('mbody').innerHTML = `
+          <h3>Conflict Detected</h3>
+          <div style="margin-top:var(--sp-3);">
+            <div style="color:var(--status-red);">⛔ This crew member is already scheduled:</div>
+            <ul>${(result.conflicts||[]).map(c=>`<li>${PCG.escapeHtml(c.showId)} · ${c.status || '—'}</li>`).join('')}</ul>
+            <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3);">Use Scheduling Grid to resolve the other assignment, or pick a different crew member.</div>
+          </div>
+          <div style="margin-top:var(--sp-3);"><button class="btn ghost" onclick="PCG.closeModal()">Close</button></div>
+        `;
+        document.getElementById('bd').classList.add('show');
+        document.getElementById('mbox').classList.add('show');
+        return;
+      }
+      render();
+    };
+
+    window.doReassign = (newCrewId) => {
+      if(!confirm('Reassign this position?')) return;
+      const a = (PCG.shiftAssignments||[]).find(x=>x.id===state.selectedAssignmentId);
+      a.crewMemberId = newCrewId;
+      a.status = 'Invited';
+      a.invitedAt = new Date().toISOString();
+      render();
+    };
+
+    window.advanceStatus = (toStatus) => {
+      const result = PCG.api.advanceCrewStatus(state.selectedAssignmentId, toStatus);
+      if(!result.ok){ alert(result.reason || 'Failed'); return; }
+      render();
+    };
+
+    window.cancelAssignment = () => {
+      const reason = prompt('Cancellation reason? (Logged, creates a new Placeholder slot)');
+      if(!reason) return;
+      const result = PCG.api.cancelCrewAssignment(state.selectedAssignmentId, reason);
+      if(result.ok){
+        state.selectedAssignmentId = result.newSlot.id;
+        render();
+      }
+    };
+
+    document.getElementById('cloneBtn').addEventListener('click', ()=>{
+      document.getElementById('mbody').innerHTML = `
+        <h3>Clone Roster from Prior Year</h3>
+        <div style="margin-top: var(--sp-3); font-size:var(--fs-sm);">
+          Pick a prior show to seed this show's roster. All positions from the prior year's roster are created as <strong>Invited</strong> so you can confirm or swap.
+        </div>
+        <div style="margin-top: var(--sp-3);">
+          <select id="priorSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); width:100%;">
+            ${PCG.api.getProjects().filter(p=>p.code!==state.showCode).map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('')}
+          </select>
+        </div>
+        <div style="margin-top: var(--sp-3); display:flex; gap:var(--sp-2);">
+          <button class="btn primary" onclick="doClone()">Clone Roster</button>
+          <button class="btn ghost" onclick="PCG.closeModal()">Cancel</button>
+        </div>
+      `;
+      document.getElementById('bd').classList.add('show');
+      document.getElementById('mbox').classList.add('show');
+    });
+
+    window.doClone = () => {
+      const prior = document.getElementById('priorSel').value;
+      const result = PCG.api.cloneRosterFromPriorShow(prior, state.showCode);
+      PCG.closeModal();
+      if(result.ok){ alert(`Cloned ${result.cloned} position(s). All set to Invited — review and confirm.`); render(); }
+      else alert('Clone failed: '+result.reason);
+    };
+
+    document.getElementById('lettersBtn').addEventListener('click', ()=>{
+      const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===state.showCode);
+      const ready = assns.filter(a=>a.status==='Acknowledged' || a.status==='Completed');
+      const pending = assns.filter(a=>a.status==='Confirmed').length;
+      if(!ready.length){
+        alert(`No Acknowledged crew yet.\nWaiting for Acknowledged: ${pending}\nCrew letters are only generated for Acknowledged assignments.`);
+        return;
+      }
+      // Open a printable preview window with one letter per Acknowledged crew.
+      // Production deployment wraps this in a Power Automate Word→PDF pipeline
+      // that also emails the letter + posts to the crew PWA inbox.
+      const proj = PCG.findProject(state.showCode) || {};
+      const venue = proj.venueId ? (PCG.venues||[]).find(v=>v.id===proj.venueId) : null;
+      const pm = PCG.findPerson(proj.pmId);
+      const td = PCG.findPerson(proj.td);
+      const letters = ready.map(a => {
+        const c = PCG.findPerson(a.crewMemberId) || {};
+        const pos = (PCG.crewPositions||[]).find(p=>p.id===a.positionId);
+        const travel = (PCG.travelRecords||[]).find(t=>t.crewMemberId===a.crewMemberId && t.showId===a.showId);
+        const esc = PCG.escapeHtml;
+        return `
+          <div style="page-break-after:always; padding:48px 56px; font-family:Helvetica, Arial, sans-serif; color:#111; max-width:700px; margin:0 auto;">
+            <div style="font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:#0199FD; margin-bottom:6px;">PREMIER CREATIVE GROUP · CREW LETTER</div>
+            <h1 style="font-family:Oswald, sans-serif; font-size:28px; margin:0 0 4px;">${esc(proj.name||proj.code)}</h1>
+            <div style="color:#555; margin-bottom:24px;">${esc(proj.code)} · ${venue?esc(venue.name):''}${venue && venue.city?', '+esc(venue.city):''}</div>
+            <p>Hello <strong>${esc(c.name||a.crewMemberId)}</strong>,</p>
+            <p>You are confirmed for <strong>${esc(pos?pos.displayName||pos.name:a.positionId)}</strong> on <strong>${esc(proj.code)}</strong>.</p>
+            <h3 style="font-family:Oswald,sans-serif; margin-top:24px; margin-bottom:4px;">YOUR DETAILS</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <tr><td style="padding:4px 0; width:140px; color:#555;">Dates</td><td>${(a.dates||[]).join(', ')}</td></tr>
+              <tr><td style="padding:4px 0; color:#555;">Call Time</td><td><strong>${esc(a.callTime||'07:00')}</strong></td></tr>
+              <tr><td style="padding:4px 0; color:#555;">Position</td><td>${esc(pos?pos.displayName||pos.name:a.positionId)}</td></tr>
+              ${travel ? `
+                <tr><td style="padding:4px 0; color:#555;">Flight</td><td>${esc(travel.airline||'')} · ${esc(travel.flightConfirmation||'')} — ${esc(travel.departureCity||'')} → ${esc(travel.arrivalCity||'')}</td></tr>
+                <tr><td style="padding:4px 0; color:#555;">Hotel</td><td>${esc(travel.hotelName||'—')} · conf ${esc(travel.hotelConfirmation||'—')}</td></tr>
+              ` : ''}
+              ${venue ? `
+                <tr><td style="padding:4px 0; color:#555; vertical-align:top;">Venue</td><td><strong>${esc(venue.name)}</strong><br>${esc(venue.address||'')}</td></tr>
+                ${venue.loadInNotes ? `<tr><td style="padding:4px 0; color:#555; vertical-align:top;">Load-In</td><td>${esc(venue.loadInNotes)}</td></tr>` : ''}
+              ` : ''}
+            </table>
+            <h3 style="font-family:Oswald,sans-serif; margin-top:24px; margin-bottom:4px;">KEY CONTACTS</h3>
+            <div style="font-size:13px; color:#333;">
+              ${pm?`PM — <strong>${esc(pm.name)}</strong> · +1 313 555 0100<br>`:''}
+              ${td?`TD — <strong>${esc(td.name)}</strong> · +1 313 555 0101`:''}
+            </div>
+            <p style="margin-top:30px; color:#555; font-size:12px;">Please confirm you've seen this letter via the Crew App. Any changes require 24h notice — contact your PM.</p>
+            <div style="font-size:10px; color:#888; margin-top:60px; border-top:1px solid #ddd; padding-top:10px;">Generated ${new Date().toLocaleString()} · ${esc(PCG.user.name)} · PCG STAGE</div>
+          </div>`;
+      }).join('');
+      const w = window.open('', '_blank');
+      if(!w){ alert('Popup blocked — allow popups to preview crew letters.'); return; }
+      w.document.write(`<!doctype html><html><head><title>Crew Letters · ${proj.code}</title><style>@media print{body{margin:0;}}</style></head><body style="background:#f4f5f7; margin:0; padding:24px 0;">${letters}<div style="text-align:center; margin:20px;"><button onclick="window.print()" style="padding:10px 24px; background:#0199FD; color:#FFF; border:0; border-radius:6px; font-size:14px; cursor:pointer;">Print All Letters</button></div></body></html>`);
+      w.document.close();
+      PCG.auditLog = PCG.auditLog || [];
+      PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id,
+        action:'crew.letters.preview', detail:`${letters.length/1} letters for ${state.showCode}` });
+    });
+
+    document.querySelectorAll('.chip[data-pf]').forEach(c=>c.addEventListener('click', e=>{
+      document.querySelectorAll('.chip[data-pf]').forEach(x=>x.classList.toggle('on', x===e.target));
+      state.posFilter = e.target.dataset.pf; render();
+    }));
+
+    sel.addEventListener('change', ()=>{
+      state.showCode = sel.value;
+      state.selectedAssignmentId = null;
+      render();
+    });
+
+    render();
+  }
+</script>
+</body>
+</html>

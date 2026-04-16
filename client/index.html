@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Client Portal</title>
+<link rel="stylesheet" href="client.css" />
+</head>
+<body>
+
+<!-- Invalid / expired token state -->
+<div id="invalidState" style="display:none; max-width:480px; margin:60px auto; padding:40px 32px; background:#FFF; border-radius:10px; box-shadow:0 4px 20px rgba(10,18,32,0.08); text-align:center;">
+  <div style="font-size:40px; margin-bottom:16px;">⚠️</div>
+  <h2 style="font-family:'Oswald',sans-serif; margin:0 0 8px;">Link expired or invalid</h2>
+  <p style="color:#4A5568; margin-bottom:20px;">This client portal link is no longer active. Please contact your PCG account lead to request a new link.</p>
+</div>
+
+<!-- Header -->
+<div class="cp-header" id="cpHeader" style="display:none;">
+  <div class="cp-header-row">
+    <div class="cp-logo"><img src="../assets/pcg-logo.png" onerror="this.onerror=null;this.src='../assets/pcg-logo.svg';" alt="PCG" /></div>
+    <div>
+      <div class="cp-brand">Premier Creative Group · Client Portal</div>
+      <h1 id="hdrTitle">Event title</h1>
+      <div class="cp-header-meta" id="hdrMeta"></div>
+    </div>
+    <a class="cp-signout" href="#" onclick="window.close();return false;">Close</a>
+  </div>
+</div>
+
+<!-- Main body -->
+<div class="cp-main" id="cpMain" style="display:none;">
+  <div class="cp-tabs" id="cpTabs">
+    <button class="cp-tab on" data-tab="proposal">Proposal</button>
+    <button class="cp-tab"    data-tab="schedule">Schedule</button>
+    <button class="cp-tab"    data-tab="docs">Documents</button>
+    <button class="cp-tab"    data-tab="messages">Messages <span class="cp-tab-badge" id="msgCount" style="display:none;">0</span></button>
+  </div>
+  <div class="cp-panel" id="cpPanel"></div>
+</div>
+
+<script src="../assets/data.js"></script>
+<script src="../assets/permissions.js"></script>
+<script src="../assets/engines.js"></script>
+<script src="../assets/api.js?clientbypass=1"></script>
+<script src="../assets/seed.js"></script>
+<script src="client-api.js"></script>
+<script>
+  // NOTE: Client portal bypasses the ops-app PIN gate by design (it's an
+  // externally-shared magic-link surface). We skip app.js entirely.
+
+  const escape = s => String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const money = n => (n==null||isNaN(n)) ? "—" : `$${Number(n).toLocaleString("en-US",{maximumFractionDigits:0})}`;
+  const fmtDate = (iso, opts={}) => {
+    if(!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleString("en-US", {
+      month: "long", day: "numeric", year: "numeric",
+      ...(opts.time ? { hour:"numeric", minute:"2-digit" } : {})
+    });
+  };
+  const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString("en-US",{hour:"numeric", minute:"2-digit"}) : "—";
+
+  const ctx = ClientApi.parseToken();
+  const me = ClientApi.getMe();
+
+  if (!ctx || ClientApi.isExpired(ctx) || !me) {
+    document.getElementById('invalidState').style.display = 'block';
+  } else {
+    mount();
+  }
+
+  function mount(){
+    document.getElementById('cpHeader').style.display = 'block';
+    document.getElementById('cpMain').style.display = 'block';
+    const schedule = ClientApi.getSchedule();
+    document.getElementById('hdrTitle').innerHTML =
+      `<strong>${escape(me.clientName)}</strong> — ${escape(me.projectName)}`;
+    const parts = [];
+    if (schedule && schedule.loadIn && schedule.loadOut) {
+      parts.push(fmtDate(schedule.loadIn) + ' → ' + fmtDate(schedule.loadOut));
+    }
+    if (me.primaryContact) parts.push('For: ' + me.primaryContact.name);
+    if (me.accountLead) parts.push('Account Lead: ' + me.accountLead.name);
+    document.getElementById('hdrMeta').textContent = parts.join(' · ');
+
+    // Messages count badge
+    updateMsgBadge();
+
+    // Tabs
+    document.querySelectorAll('.cp-tab').forEach(b => b.addEventListener('click', e => {
+      document.querySelectorAll('.cp-tab').forEach(x => x.classList.toggle('on', x === e.target));
+      render(e.target.dataset.tab);
+    }));
+
+    render('proposal');
+  }
+
+  function updateMsgBadge(){
+    const msgs = ClientApi.getMessages();
+    const el = document.getElementById('msgCount');
+    if (msgs.length) { el.style.display = 'inline-block'; el.textContent = msgs.length; }
+    else el.style.display = 'none';
+  }
+
+  function render(tab) {
+    const panel = document.getElementById('cpPanel');
+    if (tab === 'proposal') return renderProposal(panel);
+    if (tab === 'schedule') return renderSchedule(panel);
+    if (tab === 'docs')     return renderDocs(panel);
+    if (tab === 'messages') return renderMessages(panel);
+  }
+
+  function renderProposal(panel){
+    const p = ClientApi.getProposal();
+    if (!p){ panel.innerHTML = `<div class="cp-empty">No proposal available for this link.</div>`; return; }
+
+    const groups = (p.lineGroups || []).map(g => `
+      <div class="cp-pkg">
+        <div class="cp-pkg-head">
+          <strong>${escape(g.packageName)}</strong>
+          <span class="cp-sub">${money(g.subtotal)}</span>
+        </div>
+        <div class="cp-pkg-lines">
+          ${g.lines.map(l => `
+            <div class="cp-pkg-line">
+              <div class="desc"><strong>${escape(l.description)}</strong></div>
+              <div class="cp-qty">Qty ${l.qty}</div>
+              <div class="cp-qty">${l.days||1} day${(l.days||1)===1?'':'s'}</div>
+              <div class="cp-ext">${money(l.extended)}</div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+
+    const history = ClientApi.getApprovalHistory();
+    const lastAction = history[0];
+    const alreadyApproved = !!history.find(h => h.action === 'Approved');
+
+    panel.innerHTML = `
+      <h2 class="cp-section-title">Proposal · ${escape(p.quoteNo)} · Revision ${p.revisionNumber}</h2>
+      <div class="cp-section-sub">Issued ${fmtDate(p.issuedAt, { time: true })} · Status <strong>${escape(p.status)}</strong></div>
+
+      <div class="cp-quote-meta">
+        <div class="kv"><div class="k">Client</div><div class="v">${escape(me.clientName)}</div></div>
+        <div class="kv"><div class="k">Project</div><div class="v">${escape(me.projectName)}</div></div>
+        <div class="kv"><div class="k">Quote #</div><div class="v mono">${escape(p.quoteNo)}</div></div>
+        <div class="kv"><div class="k">Revision</div><div class="v mono">v${p.revisionNumber}</div></div>
+        <div class="kv"><div class="k">Payment Terms</div><div class="v">${escape(p.termsText || '—')}</div></div>
+      </div>
+
+      ${groups || '<div class="cp-empty">No line items on this proposal yet.</div>'}
+
+      <div class="cp-total">
+        <div class="cp-total-label">Total · All packages</div>
+        <div class="cp-total-value">${money(p.totalRevenue)}</div>
+      </div>
+
+      ${alreadyApproved ? `
+        <div class="cp-approved-banner">
+          ✓ Approved by ${escape((lastAction && lastAction.byEmail) || me.primaryContact && me.primaryContact.email || me.clientName)}
+            on ${fmtDate(lastAction.at, { time: true })}${lastAction.comment?' — "' + escape(lastAction.comment) + '"':''}
+        </div>
+      ` : `
+        <div class="cp-approval-card">
+          <h3>Review &amp; approve</h3>
+          <p style="color: var(--cp-text-2); margin: 0 0 6px;">
+            Approving this proposal authorizes Premier Creative Group to proceed with the scope above.
+            Requesting changes sends a note to your account lead and pauses scheduling.
+          </p>
+          <textarea id="appCmt" placeholder="Optional comment (e.g. specific approval conditions, CO notes)…"></textarea>
+          <div class="cp-actions">
+            <button class="cp-btn primary" id="approveBtn">Approve Proposal</button>
+            <button class="cp-btn ghost" id="rejectBtn">Request Changes</button>
+          </div>
+        </div>
+      `}
+    `;
+
+    if (!alreadyApproved) {
+      document.getElementById('approveBtn').addEventListener('click', () => {
+        const cmt = document.getElementById('appCmt').value.trim();
+        if (!confirm('Approve this proposal? PCG will receive a notification and begin scheduling.')) return;
+        ClientApi.approveQuote(cmt);
+        renderProposal(panel);
+      });
+      document.getElementById('rejectBtn').addEventListener('click', () => {
+        const cmt = document.getElementById('appCmt').value.trim();
+        if (!cmt) { alert('Please add a short comment so your account lead knows what to change.'); return; }
+        ClientApi.requestChanges(cmt);
+        alert('Changes requested. Your account lead will follow up shortly.');
+        renderProposal(panel);
+      });
+    }
+  }
+
+  function renderSchedule(panel){
+    const s = ClientApi.getSchedule();
+    if (!s) { panel.innerHTML = `<div class="cp-empty">Schedule not yet available.</div>`; return; }
+    const items = [];
+    if (s.loadIn) items.push({ lbl: 'Load-In', iso: s.loadIn, meta: 'Crew arrives on-site for setup' });
+    if (s.showStart) items.push({ lbl: 'Show Start', iso: s.showStart, meta: 'Doors open to attendees' });
+    if (s.showEnd) items.push({ lbl: 'Show End', iso: s.showEnd, meta: 'Show wraps' });
+    if (s.loadOut) items.push({ lbl: 'Load-Out', iso: s.loadOut, meta: 'Strike and depart venue' });
+
+    panel.innerHTML = `
+      <h2 class="cp-section-title">Production schedule</h2>
+      <div class="cp-section-sub">High-level milestones for your show. Detailed Run of Show is managed by your PCG team.</div>
+
+      <div class="cp-timeline">
+        ${items.map(i => `
+          <div class="cp-event">
+            <div class="cp-event-label">${escape(i.lbl)}</div>
+            <div class="cp-event-date">${fmtDate(i.iso)} · ${fmtTime(i.iso)}</div>
+            <div class="cp-event-meta">${escape(i.meta)}</div>
+          </div>`).join('')}
+      </div>
+
+      ${s.venue ? `
+        <div class="cp-venue-box">
+          <h4>Venue</h4>
+          <div style="font-weight:600;">${escape(s.venue.name)}</div>
+          <div style="color:var(--cp-text-2); font-size:13px;">${escape(s.venue.address || '')}</div>
+          ${s.venue.loadInNotes ? `<div style="color:var(--cp-text-2); font-size:13px; margin-top:8px;"><strong>Load-in notes:</strong> ${escape(s.venue.loadInNotes)}</div>`:''}
+        </div>`:''}
+    `;
+  }
+
+  function renderDocs(panel){
+    const docs = ClientApi.getDocuments();
+    panel.innerHTML = `
+      <h2 class="cp-section-title">Documents</h2>
+      <div class="cp-section-sub">Pinned, client-visible documents from your account lead.</div>
+      ${docs.length ? docs.map(d => `
+        <a class="cp-doc" href="${escape(d.url)}" target="_blank" rel="noopener">
+          <span class="cp-doc-icon">${d.kind === 'pdf' ? '📄' : d.kind === 'image' ? '🖼' : '📎'}</span>
+          <div class="cp-doc-main">
+            <strong>${escape(d.title)}</strong>
+            <div class="cp-doc-kind">${escape(d.kind || 'document')}${d.pinned ? ' · pinned' : ''}</div>
+          </div>
+          <span style="color: var(--cp-accent);">↗</span>
+        </a>`).join('') : `<div class="cp-empty">No documents shared yet.</div>`}
+    `;
+  }
+
+  function renderMessages(panel){
+    const msgs = ClientApi.getMessages();
+    panel.innerHTML = `
+      <h2 class="cp-section-title">Messages</h2>
+      <div class="cp-section-sub">Thread with your account lead. Messages are also visible to PCG in the ops app.</div>
+
+      <div class="cp-thread" id="thread">
+        ${msgs.length ? msgs.map(m => `
+          <div class="cp-msg ${m.fromSide === 'client' ? 'client' : 'pcg'}">
+            <div class="cp-msg-meta">${escape(m.fromName || (m.fromSide==='client'?'You':'PCG'))} · ${fmtDate(m.at,{time:true})}</div>
+            <div>${escape(m.body)}</div>
+          </div>`).join('') : `<div class="cp-empty">No messages yet. Send the first one below.</div>`}
+      </div>
+
+      <div class="cp-compose">
+        <textarea id="msgBody" placeholder="Write a message to your PCG account lead…"></textarea>
+        <button class="cp-btn primary" id="sendMsg" style="align-self: flex-end;">Send</button>
+      </div>
+    `;
+
+    const thread = document.getElementById('thread');
+    if (thread) thread.scrollTop = thread.scrollHeight;
+
+    document.getElementById('sendMsg').addEventListener('click', () => {
+      const body = document.getElementById('msgBody').value.trim();
+      if (!body) return;
+      ClientApi.postMessage(body);
+      document.getElementById('msgBody').value = '';
+      renderMessages(panel);
+      updateMsgBadge();
+    });
+  }
+</script>
+</body>
+</html>

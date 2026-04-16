@@ -37,8 +37,8 @@
     { id:'p.ctaylor',   name:'Chris Taylor',     role:'Technical Site Manager (TSM)', landing:'eqlpc', groups:['STAGE-TSMs','STAGE-Everyone'] },
     { id:'p.jgerber',   name:'Jason Gerber',     role:'Producer / Show Caller',landing:'producer',   groups:['STAGE-Producers','STAGE-Everyone'] },
     { id:'p.coliver',   name:'Chelsea Oliver',   role:'Scheduling / Labor',    landing:'labor',      groups:['STAGE-Scheduling','STAGE-Everyone'] },
-    { id:'p.svance',    name:'Steph Vance',      role:'Warehouse Supervisor',  landing:'warehouse',  groups:['STAGE-WHSupervisors','STAGE-Everyone'] },
-    { id:'p.arachilla', name:'Alex Rachilla',    role:'Warehouse Tech',        landing:'warehouse',  groups:['STAGE-WHATechs','STAGE-Everyone'] },
+    { id:'p.svance',    name:'Steph Vance',      role:'Warehouse Supervisor',  landing:'warehouse',     groups:['STAGE-WHSupervisors','STAGE-Everyone'] },
+    { id:'p.arachilla', name:'Alex Rachilla',    role:'Warehouse Tech',        landing:'warehouseTech', groups:['STAGE-WHATechs','STAGE-Everyone'] },
     { id:'p.bwhit',     name:'Brandon White',    role:'Accounting',            landing:'ae',         groups:['STAGE-Accounting','STAGE-Everyone'] },
     { id:'p.mchen',     name:'Mike Chen',        role:'Crew (Freelancer)',     landing:'crew',       groups:['STAGE-Crew'] }
   ];
@@ -56,14 +56,15 @@
      Crew        → Crew PWA
   -------------------------------------------------------------------- */
   PCG.LANDING_ROUTES = {
-    pm:         'pm-home.html',
-    warehouse:  'warehouse.html',
-    labor:      'scheduling.html',
-    eqlpc:      'eqlpc.html',
-    producer:   'producer-home.html',
-    ae:         'ae-home.html',
-    leadership: 'leadership-home.html',
-    crew:       'crew/index.html'
+    pm:            'pm-home.html',
+    warehouse:     'wh-sup-home.html',
+    warehouseTech: 'wh-tech-home.html',
+    labor:         'labor-home.html',
+    eqlpc:         'eqlpc.html',
+    producer:      'producer-home.html',
+    ae:            'ae-home.html',
+    leadership:    'leadership-home.html',
+    crew:          'crew/index.html'
   };
 
   PCG.landingUrlForUser = function(user){

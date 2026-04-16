@@ -3,17 +3,68 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PCG Stage · Creative</title>
+<title>PCG Stage · Creative · Bldg B</title>
 <link rel="stylesheet" href="assets/tokens.css" />
 <link rel="stylesheet" href="assets/app.css" />
 <style>
-.set-card {
-  background: var(--surface-1); border:1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4);
-  position: relative; overflow: hidden;
-}
-.set-card .motif { position:absolute; right:-30px; top:-30px; width:140px; height:140px; border-radius:50%; background: var(--grad-show-light-purple); opacity:0.25; }
-.set-card h4 { font-family: var(--font-display); text-transform:uppercase; letter-spacing:0.08em; font-size: var(--fs-lg); }
-.set-card .features { font-size: var(--fs-xs); color: var(--text-secondary); margin-top: 6px; }
+  .fab-board {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 8px; min-height: 320px;
+  }
+  .fab-col {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .fab-col header {
+    padding: 10px 12px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fab-col header .ct { margin-left: auto; font-family: var(--font-mono); color: var(--text-primary); font-weight: 600; }
+  .fab-col .body { padding: 8px; flex: 1; overflow-y: auto; max-height: 60vh; }
+  .fab-card {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-left: 3px solid var(--pcg-bright-blue);
+    border-radius: 6px; padding: 10px; margin-bottom: 6px;
+    font-size: var(--fs-xs); cursor: pointer;
+  }
+  .fab-card:hover { border-color: var(--border-accent); }
+  .fab-card.type-Graphic      { border-left-color: var(--pcg-bright-blue); }
+  .fab-card.type-Print        { border-left-color: var(--pcg-spotlight-purple); }
+  .fab-card.type-Scenic       { border-left-color: var(--status-amber); }
+  .fab-card.type-Installation { border-left-color: var(--pcg-energetic-magenta); }
+  .fab-card.type-Rendition    { border-left-color: var(--status-green); }
+  .fab-card.approval-needed   { box-shadow: 0 0 0 1px rgba(245,183,60,0.4); }
+  .fab-card.overdue           { box-shadow: 0 0 0 1px var(--status-red); }
+
+  .fab-card .tt { font-weight: 600; color: var(--text-primary); font-size: var(--fs-sm); }
+  .fab-card .meta { color: var(--text-tertiary); font-size: 10px; margin-top: 4px; }
+  .type-pill {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-family: var(--font-display); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    background: var(--surface-3); color: var(--text-secondary);
+  }
+  .type-Graphic-pill      { background: rgba(1,153,253,0.2); color: var(--pcg-bright-blue); }
+  .type-Print-pill        { background: rgba(122,65,229,0.2); color: var(--pcg-spotlight-purple-l1); }
+  .type-Scenic-pill       { background: rgba(245,183,60,0.2); color: var(--status-amber); }
+  .type-Installation-pill { background: rgba(217,47,180,0.2); color: var(--pcg-energetic-magenta-l1); }
+  .type-Rendition-pill    { background: rgba(47,191,113,0.2); color: var(--status-green); }
+
+  .bldg-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-4);
+    display: grid; grid-template-columns: 60px 1fr auto; gap: var(--sp-3); align-items: center;
+  }
+  .bldg-card .ic {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: var(--grad-show-light-spectrum); opacity: 0.85;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 22px;
+  }
 </style>
 </head>
 <body>
@@ -21,91 +72,99 @@
   <div id="app-shell"></div>
   <main class="main">
     <div class="container">
-      <div class="eyebrow">Creative</div>
-      <h1>Deliverables · Approvals · Stage Sets</h1>
-      <div class="muted" style="margin-bottom:var(--sp-4);">Creative pipeline across shows. Treatment, renderings, content handoffs.</div>
 
-      <div class="kpi-strip">
-        <div class="kpi"><div class="label">Active Treatments</div><div class="value">5</div><div class="sub">in design</div></div>
-        <div class="kpi amber"><div class="label">Awaiting Client Approval</div><div class="value">3</div><div class="sub">cross-portfolio</div></div>
-        <div class="kpi red"><div class="label">Blocked on Creative</div><div class="value">1</div><div class="sub">LCE sponsor loop</div></div>
-        <div class="kpi blue"><div class="label">Assets Ingested This Wk</div><div class="value">47</div><div class="sub">logos, loops, videos</div></div>
-        <div class="kpi"><div class="label">Stage Sets in Play</div><div class="value">4</div><div class="sub">Marquee, Nova, Miyra, Lumen</div></div>
-        <div class="kpi"><div class="label">OneSource Shows</div><div class="value">2</div><div class="sub">ELSO program</div></div>
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Creative Services · Building B</div>
+          <h1>Creative Pipeline</h1>
+          <div class="muted">§24 — Graphics, print, scenic, installation, renditions. Client approval milestones tracked as InvoiceMilestone type.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn sm" href="kits.html">Stage Sets (System Builder)</a>
+          <button class="btn sm primary" id="newReq">＋ New Creative Request</button>
+        </div>
+      </div>
+
+      <!-- Building B overview -->
+      <div class="grid-3" style="margin-bottom: var(--sp-5);">
+        <div class="bldg-card">
+          <div class="ic">🏭</div>
+          <div>
+            <div style="font-family:var(--font-display); font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.06em;">Building B — OneSource / Creative</div>
+            <div class="muted" style="font-size:11px;">Scenic + creative storage · Specialty items · Limited shipping</div>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:22px; color:var(--pcg-bright-blue); font-weight:600;">420</div>
+        </div>
+        <div class="bldg-card">
+          <div class="ic" style="background: linear-gradient(135deg, var(--pcg-bright-blue), var(--pcg-spotlight-purple));">🎨</div>
+          <div>
+            <div style="font-family:var(--font-display); font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.06em;">Creative Lead</div>
+            <div class="muted" style="font-size:11px;">Keith Oliver · Creative Director / AM</div>
+          </div>
+          <a class="btn sm ghost" href="scheduling.html">Roster</a>
+        </div>
+        <div class="bldg-card">
+          <div class="ic" style="background: linear-gradient(135deg, var(--status-amber), var(--pcg-energetic-magenta));">📐</div>
+          <div>
+            <div style="font-family:var(--font-display); font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.06em;">CAD / Vectorworks</div>
+            <div class="muted" style="font-size:11px;">Stored in SharePoint · Linked per Show + Dept</div>
+          </div>
+          <a class="btn sm ghost" href="#">Drawings</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <!-- Fabrication Status Board (§24) -->
+      <div class="card" style="padding: var(--sp-4); margin-bottom: var(--sp-5);">
+        <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3); flex-wrap:wrap;">
+          <div class="title" style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:var(--fs-md);">Fabrication Status Board</div>
+          <div style="margin-left:auto; display:flex; gap:4px; flex-wrap:wrap;">
+            <button class="chip on" data-t="all">All Types</button>
+            <button class="chip" data-t="Graphic">Graphic</button>
+            <button class="chip" data-t="Print">Print</button>
+            <button class="chip" data-t="Scenic">Scenic</button>
+            <button class="chip" data-t="Installation">Installation</button>
+            <button class="chip" data-t="Rendition">Rendition</button>
+          </div>
+        </div>
+        <div class="fab-board" id="board"></div>
       </div>
 
       <div class="split">
         <div>
           <div class="card">
-            <div class="card-header"><div class="title">Creative Deliverable Pipeline</div></div>
-            <table class="pcg-table">
-              <thead><tr><th>Project</th><th>Deliverable</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr class="health-red"><td class="mono">LCE-2026</td><td><strong>Sponsor Slideshow Loop (final)</strong></td><td>Keith Oliver</td><td class="mono">Apr 16 17:00</td><td><span class="pill red">BLOCKED · CLIENT CONTENT</span></td></tr>
-                <tr class="health-amber"><td class="mono">LCE-2026</td><td>Awards Program Motion Package</td><td>Keith Oliver</td><td class="mono">Apr 13</td><td><span class="pill amber">CLIENT REVIEW</span></td></tr>
-                <tr class="health-green"><td class="mono">LCE-2026</td><td>Marquee Set Renderings v3</td><td>Dan Marino</td><td class="mono">Apr 10 ✓</td><td><span class="pill green">APPROVED</span></td></tr>
-                <tr class="health-amber"><td class="mono">WOC-2026</td><td>Miyra Treatment — Custom LED Art</td><td>Keith Oliver</td><td class="mono">May 1</td><td><span class="pill amber">CLIENT REVIEW</span></td></tr>
-                <tr class="health-green"><td class="mono">GLBX-GSK26</td><td>Nova Set Renderings</td><td>Dan Marino</td><td class="mono">Mar 28 ✓</td><td><span class="pill green">APPROVED</span></td></tr>
-                <tr class="health-green"><td class="mono">ELSO-SS26</td><td>Lumen Set Concept</td><td>Keith Oliver</td><td class="mono">May 10</td><td><span class="pill blue">IN DESIGN</span></td></tr>
-                <tr class="health-amber"><td class="mono">SAE-WCX-2026</td><td>Keynote Ballroom Motion Kit</td><td>Dan Marino</td><td class="mono">Apr 12</td><td><span class="pill amber">CLIENT REVIEW</span></td></tr>
-              </tbody>
-            </table>
+            <div class="card-header"><div class="title">Client Approvals Pending</div></div>
+            <div class="card-body" id="approvals"></div>
           </div>
-
-          <div class="card" style="margin-top:var(--sp-5);">
-            <div class="card-header"><div class="title">PCG Stage Sets · In Use</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Named templates — Marquee · Lumen · Miyra · Nova</span></div>
-            <div class="card-body">
-              <div class="grid-4">
-                <div class="set-card">
-                  <div class="motif"></div>
-                  <div class="eyebrow">LCE-2026</div>
-                  <h4>Marquee</h4>
-                  <div class="features">LED × 4 panels · Split fabric traveler · SEG fabric wings</div>
-                </div>
-                <div class="set-card">
-                  <div class="motif" style="background:var(--grad-show-light-blue);"></div>
-                  <div class="eyebrow">GLBX-GSK26</div>
-                  <h4>Nova</h4>
-                  <div class="features">LED × 4 · LED header · Split fabric traveler · high-energy</div>
-                </div>
-                <div class="set-card">
-                  <div class="motif" style="background:var(--grad-show-light-spectrum);"></div>
-                  <div class="eyebrow">WOC-2026</div>
-                  <h4>Miyra</h4>
-                  <div class="features">3.9mm LED main + 2.6m surround · projection traveler · lighting gobo</div>
-                </div>
-                <div class="set-card">
-                  <div class="motif"></div>
-                  <div class="eyebrow">ELSO-SS26</div>
-                  <h4>Lumen</h4>
-                  <div class="features">LED × 4 + LED header · fabric traveler · OneSource-ready brand swap</div>
-                </div>
-              </div>
-            </div>
+          <div class="card" style="margin-top: var(--sp-5);">
+            <div class="card-header"><div class="title">Deadlines This Week</div></div>
+            <div class="card-body" id="deadlines"></div>
           </div>
         </div>
 
         <aside>
           <div class="card">
-            <div class="card-header"><div class="title">Assets · Inbound</div></div>
-            <div class="card-body">
-              <div class="pinned"><span class="icon">⬆</span><div><strong>LCE — Client Logo Pack (final)</strong><div class="muted" style="font-size:var(--fs-xs);">Received Apr 12 · Kevin Adams</div></div></div>
-              <div class="pinned"><span class="icon">⬆</span><div><strong>LCE — Awards Trophy Photos</strong><div class="muted" style="font-size:var(--fs-xs);">Received Apr 13 · Jennifer Beth</div></div></div>
-              <div class="pinned"><span class="icon">⬆</span><div><strong>WOC — Speaker Headshots (23)</strong><div class="muted" style="font-size:var(--fs-xs);">Received Apr 10</div></div></div>
-              <div class="pinned"><span class="icon">⬆</span><div><strong>LCE — Sponsor Slideshow Loop</strong><div class="muted" style="font-size:var(--fs-xs);">⚠ Not received — Wed 17:00 deadline</div></div></div>
+            <div class="card-header"><div class="title">PCG Stage Sets (Named)</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div style="display:grid; gap:8px;">
+                <div class="pinned"><span class="icon">◆</span><div><strong>Miyra</strong><div class="muted" style="font-size:var(--fs-xs);">3.9mm LED + 2.6m surround · projection traveler</div></div></div>
+                <div class="pinned"><span class="icon">◆</span><div><strong>Marquee</strong><div class="muted" style="font-size:var(--fs-xs);">LED × 4 · Split fabric traveler · SEG wings</div></div></div>
+                <div class="pinned"><span class="icon">◆</span><div><strong>Lumen</strong><div class="muted" style="font-size:var(--fs-xs);">LED × 4 + LED header · brand-swappable</div></div></div>
+                <div class="pinned"><span class="icon">◆</span><div><strong>Nova</strong><div class="muted" style="font-size:var(--fs-xs);">LED × 4 · LED header · high-energy</div></div></div>
+              </div>
             </div>
           </div>
 
-          <div class="card" style="margin-top:var(--sp-4);">
-            <div class="card-header"><div class="title">OneSource Program</div></div>
-            <div class="card-body" style="font-size:var(--fs-sm);">
-              <p>Leverage shared creative spend across ELSO events — Credit Acceptance program. Scalable, Adaptable, Brandable, Shippable, Sustainable, Affordable stage sets.</p>
-              <div class="divider"></div>
-              <div class="muted" style="font-size:var(--fs-xs);">Next OneSource review: May 3</div>
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Source of Truth</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              CreativeRequest status = truth for fabrication. CAD files live in SharePoint; STAGE stores the SharePoint URL + version metadata. Client approvals are tracked as InvoiceMilestone type when billable.
             </div>
           </div>
         </aside>
       </div>
+
     </div>
   </main>
 </div>
@@ -116,6 +175,152 @@
 <script src="assets/api.js"></script>
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
-<script>PCG.mountShell({active:"creative", crumbs:[{label:"Creative"}]});</script>
+<script>
+  PCG.mountShell({active:'creative', crumbs:[{label:'Creative · Bldg B'}]});
+
+  const STATUSES = ['Pending','InDesign','InRevision','ApprovedForProduction','InFabrication','PrintProduction','Complete'];
+  let typeFilter = 'all';
+
+  function render(){
+    const all = PCG.api.getCreativeRequests();
+    const visible = typeFilter==='all' ? all : all.filter(r=>r.type===typeFilter);
+
+    // Board (fabrication status columns)
+    document.getElementById('board').innerHTML = STATUSES.map(s=>{
+      const cards = visible.filter(r => r.fabricationStatus === s);
+      return `<div class="fab-col">
+        <header>${s.replace(/([A-Z])/g,' $1').trim()}<span class="ct">${cards.length}</span></header>
+        <div class="body">
+          ${cards.map(r=>{
+            const overdue = r.deadline && new Date(r.deadline) < new Date() && r.fabricationStatus !== 'Complete';
+            const needs = r.clientApprovalRequired && ['InRevision','InDesign'].includes(r.fabricationStatus);
+            const cls = `type-${r.type} ${needs?'approval-needed':''} ${overdue?'overdue':''}`;
+            return `<div class="fab-card ${cls}">
+              <div class="tt">${PCG.escapeHtml(r.description.slice(0,70))}${r.description.length>70?'…':''}</div>
+              <div class="meta">
+                <span class="type-pill type-${r.type}-pill">${PCG.escapeHtml(r.type)}</span>
+                <span class="mono">${PCG.escapeHtml(r.projectId)}</span>
+                · ${r.deadline?PCG.fmtShort(r.deadline):'—'}
+              </div>
+              ${needs?'<div style="font-size:9px; color:var(--status-amber); margin-top:4px;">⚠ CLIENT APPROVAL</div>':''}
+              ${overdue?'<div style="font-size:9px; color:var(--status-red); margin-top:4px;">⛔ OVERDUE</div>':''}
+            </div>`;
+          }).join('') || '<div style="color:var(--text-tertiary); font-size:11px; padding: 8px; text-align: center;">—</div>'}
+        </div>
+      </div>`;
+    }).join('');
+
+    // Client approvals pending
+    const needApproval = all.filter(r => r.clientApprovalRequired && ['InRevision','InDesign'].includes(r.fabricationStatus));
+    document.getElementById('approvals').innerHTML = needApproval.length ? needApproval.map(r=>`
+      <div class="attn-item amber">
+        <div>
+          <div class="ttl"><span class="type-pill type-${r.type}-pill">${PCG.escapeHtml(r.type)}</span> ${PCG.escapeHtml(r.description)}</div>
+          <div class="meta"><span class="mono">${PCG.escapeHtml(r.projectId)}</span> · Status <strong>${r.fabricationStatus}</strong> · Deadline ${PCG.fmtShort(r.deadline)}</div>
+        </div>
+        <div class="act"><a class="btn sm" href="project.html?project=${r.projectId}">Open Project</a></div>
+      </div>
+    `).join('') : PCG.states.empty('Nothing blocked on client approval.');
+
+    // Deadlines this week
+    const weekOut = new Date(); weekOut.setDate(weekOut.getDate()+7);
+    const today = new Date();
+    const soon = all.filter(r => r.deadline && new Date(r.deadline) <= weekOut && r.fabricationStatus !== 'Complete')
+                    .sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
+    document.getElementById('deadlines').innerHTML = soon.length ? soon.map(r=>{
+      const overdue = new Date(r.deadline) < today;
+      const days = Math.ceil((new Date(r.deadline)-today)/(1000*60*60*24));
+      return `<div class="attn-item ${overdue?'red':''}">
+        <div>
+          <div class="ttl"><span class="type-pill type-${r.type}-pill">${PCG.escapeHtml(r.type)}</span> ${PCG.escapeHtml(r.description)}</div>
+          <div class="meta"><span class="mono">${PCG.escapeHtml(r.projectId)}</span> · ${PCG.escapeHtml(r.fabricationStatus)}</div>
+        </div>
+        <div class="act"><span class="mono" style="color:${overdue?'var(--status-red)':'var(--status-amber)'};">${overdue?'OVERDUE':days+'d'}</span></div>
+      </div>`;
+    }).join('') : PCG.states.empty('No deadlines this week.');
+
+    // KPIs
+    const inProgress = all.filter(r=>r.status==='InProgress' || ['InDesign','InRevision','InFabrication','PrintProduction'].includes(r.fabricationStatus)).length;
+    const complete = all.filter(r=>r.fabricationStatus==='Complete').length;
+    const draft = all.filter(r=>r.status==='Draft' || r.fabricationStatus==='Pending').length;
+    const overdueCount = all.filter(r => r.deadline && new Date(r.deadline) < new Date() && r.fabricationStatus !== 'Complete').length;
+    const needApp = needApproval.length;
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi"><div class="label">Total Requests</div><div class="value">${all.length}</div><div class="sub">active + historical</div></div>
+      <div class="kpi blue"><div class="label">In Progress</div><div class="value">${inProgress}</div><div class="sub">in design/fab</div></div>
+      <div class="kpi"><div class="label">Complete</div><div class="value" style="color:var(--status-green);">${complete}</div><div class="sub">ready to ship</div></div>
+      <div class="kpi amber"><div class="label">Client Approval</div><div class="value">${needApp}</div><div class="sub">blocked</div></div>
+      <div class="kpi ${overdueCount?'red':''}"><div class="label">Overdue</div><div class="value">${overdueCount}</div><div class="sub">past deadline</div></div>
+      <div class="kpi"><div class="label">Draft</div><div class="value">${draft}</div><div class="sub">not yet started</div></div>
+    `;
+  }
+
+  document.querySelectorAll('.chip[data-t]').forEach(c=>c.addEventListener('click', e=>{
+    document.querySelectorAll('.chip[data-t]').forEach(x=>x.classList.toggle('on', x===e.target));
+    typeFilter = e.target.dataset.t; render();
+  }));
+
+  document.getElementById('newReq').addEventListener('click', () => {
+    if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM)){
+      alert('Only AEs, Directors, or Admins can create Creative Requests.'); return;
+    }
+    const projects = PCG.api.getProjects()
+      .filter(p=>p.show && !['Archived'].includes(p.show.lifecycleState));
+    const overlay = document.createElement('div');
+    overlay.className='modal-backdrop show'; overlay.style.zIndex=9998;
+    const box = document.createElement('div');
+    box.className='modal-box show';
+    box.style.cssText='max-width:520px; width:calc(100vw - 48px); z-index:9999;';
+    const close = () => { overlay.remove(); box.remove(); };
+    box.innerHTML = `
+      <button class="close" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+      <h3>New Creative Request</h3>
+      <div class="muted" style="font-size:var(--fs-xs); margin:8px 0 var(--sp-3);">Routes to the linked project · starts at Pending status · dept director assigned by default.</div>
+      <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Project</label>
+      <select id="cr-proj" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); margin-bottom:var(--sp-2);">
+        ${projects.map(p=>`<option value="${p.code}">${p.code} — ${PCG.escapeHtml(p.name)}</option>`).join('')}
+      </select>
+      <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Type</label>
+      <select id="cr-type" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); margin-bottom:var(--sp-2);">
+        <option>Graphic</option><option>Rendition</option><option>Scenic</option><option>Print</option><option>Installation</option>
+      </select>
+      <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Description</label>
+      <textarea id="cr-desc" rows="3" placeholder="What's needed? For whom? Any constraints?" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:8px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); font-family:inherit; margin-bottom:var(--sp-2);"></textarea>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3);">
+        <div>
+          <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Deadline</label>
+          <input type="date" id="cr-deadline" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); padding-top:22px;">
+          <input type="checkbox" id="cr-capp" /> Requires client approval
+        </label>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:var(--sp-4); justify-content:flex-end;">
+        <button class="btn ghost" id="cr-cancel">Cancel</button>
+        <button class="btn primary" id="cr-save">Create Request →</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.appendChild(box);
+    overlay.addEventListener('click', close);
+    box.querySelector('.close').addEventListener('click', close);
+    box.querySelector('#cr-cancel').addEventListener('click', close);
+    box.querySelector('#cr-save').addEventListener('click', () => {
+      const desc = box.querySelector('#cr-desc').value.trim();
+      if(!desc){ alert('Description is required.'); return; }
+      const res = PCG.api.createCreativeRequest({
+        projectId: box.querySelector('#cr-proj').value,
+        type: box.querySelector('#cr-type').value,
+        description: desc,
+        deadline: box.querySelector('#cr-deadline').value || null,
+        clientApprovalRequired: box.querySelector('#cr-capp').checked
+      });
+      if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+      close();
+      location.reload();
+    });
+  });
+
+  render();
+</script>
 </body>
 </html>

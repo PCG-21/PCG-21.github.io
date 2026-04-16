@@ -25,12 +25,37 @@
           <button data-v="warehouse">Warehouse</button>
           <button data-v="labor">Labor</button>
         </div>
-        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); flex-wrap:wrap;">
           <button class="btn sm ghost" id="btn-new-line">＋ Add Line</button>
           <button class="btn sm ghost" id="btn-copy-from">Copy From Prior Quote</button>
           <button class="btn sm" id="btn-recheck">Re-check Availability</button>
+          <button class="btn sm" id="btn-client-preview">Client Portal Preview ↗</button>
           <button class="btn sm primary" id="btn-issue">Issue Proposal</button>
         </div>
+      </div>
+
+      <!-- Issue result banner (appears after Issue-to-Client) -->
+      <div id="issue-banner"></div>
+
+      <!-- Real Add Line / System Builder / Labor picker modal -->
+      <div class="modal-backdrop" id="pk-bd" onclick="closePicker()"></div>
+      <div class="modal-box" id="pk-box" style="max-width:780px; width:calc(100vw - 48px);">
+        <button class="close" onclick="closePicker()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+        <h3 id="pk-title">Add line to quote</h3>
+        <div class="qb-views" id="pk-tabs" style="margin-top:var(--sp-3);">
+          <button class="on" data-pt="items">Items</button>
+          <button data-pt="systems">System Builder</button>
+          <button data-pt="labor">Labor</button>
+        </div>
+        <div id="pk-body" style="margin-top:var(--sp-3); max-height: 60vh; overflow:auto;"></div>
+      </div>
+
+      <!-- Copy-from-prior modal -->
+      <div class="modal-backdrop" id="cp-bd" onclick="closeCopy()"></div>
+      <div class="modal-box" id="cp-box" style="max-width:640px; width:calc(100vw - 48px);">
+        <button class="close" onclick="closeCopy()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+        <h3>Copy from prior quote</h3>
+        <div id="cp-body" style="margin-top:var(--sp-3); max-height: 60vh; overflow:auto;"></div>
       </div>
 
       <!-- Permission-aware margin banner -->
@@ -164,11 +189,19 @@
 
   V.labor = () => !PCG.canSeeTier('T3_BILL_RATES') ? PCG.states.forbidden() : `
     <div class="card-body">
-      <div class="muted" style="font-size:var(--fs-sm); margin-bottom:var(--sp-3);">Labor view — positions quoted, rate tier, pay/bill visibility depends on your role (Tier 1 pay rate: Scheduling + Admin only).</div>
+      <div style="display:flex; align-items:center; gap: var(--sp-3); margin-bottom: var(--sp-3);">
+        <div class="muted" style="font-size:var(--fs-sm);">Quote labor lines bind to <strong>CrewPosition</strong>. On Award, each line auto-seeds a <strong>Placeholder ShiftAssignment</strong> — Labor Coord picks up in <a href="crew-assign.html?project=${project.code}">Assign Crew</a>.</div>
+        ${editableByMe ? '<button class="btn sm" id="addLaborBtn" style="margin-left:auto;">＋ Add Labor Line</button>' : ''}
+      </div>
       <table class="pcg-table">
-        <thead><tr><th>Position</th><th>Qty</th><th>Days</th><th>Bill Rate</th>${PCG.canSeeTier('T1_CREW_PAY_RATES')?'<th>Pay Rate</th>':''}<th>Ext. Rev</th></tr></thead>
+        <thead><tr><th>Position (CrewPosition)</th><th style="width:70px;">Qty</th><th style="width:70px;">Days</th><th>Bill Rate</th>${PCG.canSeeTier('T1_CREW_PAY_RATES')?'<th>Pay Rate</th>':''}<th>Ext. Rev</th>${editableByMe?'<th></th>':''}</tr></thead>
         <tbody id="tb-labor"></tbody>
       </table>
+      <div style="margin-top: var(--sp-4); padding: var(--sp-3); background: var(--surface-2); border-radius: var(--r-sm); font-size: var(--fs-xs); color: var(--text-secondary);">
+        <strong style="color: var(--text-primary);">On Award:</strong>
+        ${(rev.lines||[]).filter(l=>l.type==='Labor').reduce((s,l)=>s+(l.qty||1),0)} Placeholder ShiftAssignments will be seeded on ${project.code} with positionGroup derived from department.
+        Labor Coordinator fills each slot from the crew pool.
+      </div>
     </div>`;
 
   // -------- Row renderers --------
@@ -267,6 +300,7 @@
   const renderLabor = () => {
     const tb = document.getElementById('tb-labor'); if(!tb) return;
     const labor = (rev.lines||[]).filter(l=>l.type==='Labor');
+    const cols = editableByMe ? 7 : 6;
     tb.innerHTML = labor.map(l=>{
       const pos = PCG.api.getCrewPosition(l.crewPositionId);
       const rate = pos && pos.ratesByVersion && pos.ratesByVersion[0];
@@ -274,15 +308,70 @@
       const payRate  = rate?.payRate  ?? '—';
       const extRev = (l.unitPrice||0) * (l.qty||0) * (l.days||1);
       return `<tr>
-        <td><strong>${PCG.escapeHtml(pos?pos.name:l.description)}</strong><br><span class="muted" style="font-size:11px;">${PCG.escapeHtml(l.description)}</span></td>
-        <td class="mono">${l.qty}</td>
-        <td class="mono">${l.days}</td>
+        <td>
+          ${editableByMe ? `
+            <select onchange="updateLaborLine('${l.id}','crewPositionId',this.value)" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm); min-width:240px;">
+              <option value="">— Select position —</option>
+              ${(PCG.crewPositions||[]).map(p=>`<option value="${p.id}" ${p.id===l.crewPositionId?'selected':''}>${PCG.escapeHtml(p.name)}</option>`).join('')}
+            </select>
+          ` : `<strong>${PCG.escapeHtml(pos?pos.name:l.description)}</strong>`}
+          <div class="muted" style="font-size:11px; margin-top:2px;">${PCG.escapeHtml(l.description||'')} ${pos?`· <span class="pill gray plain" style="font-size:9px;">${PCG.escapeHtml((pos.department||'—').toUpperCase())}</span>`:''}</div>
+        </td>
+        <td class="mono">${editableByMe ? `<input type="number" min="1" value="${l.qty}" onchange="updateLaborLine('${l.id}','qty',parseInt(this.value,10))" style="width:48px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 6px; border-radius:var(--r-sm); font-family:var(--font-mono);"/>` : l.qty}</td>
+        <td class="mono">${editableByMe ? `<input type="number" min="1" step="0.25" value="${l.days}" onchange="updateLaborLine('${l.id}','days',parseFloat(this.value))" style="width:48px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 6px; border-radius:var(--r-sm); font-family:var(--font-mono);"/>` : l.days}</td>
         <td class="mono">${typeof billRate==='number'?PCG.money(billRate):billRate}</td>
         ${PCG.canSeeTier('T1_CREW_PAY_RATES')?`<td class="mono">${typeof payRate==='number'?PCG.money(payRate):payRate}</td>`:''}
-        <td class="mono">${PCG.money(extRev)}</td>
+        <td class="mono" style="font-weight:600;">${PCG.money(extRev)}</td>
+        ${editableByMe ? `<td><button class="btn sm ghost" onclick="removeLaborLine('${l.id}')" style="font-size:11px;">✕</button></td>`:''}
       </tr>`;
-    }).join('') || '<tr><td colspan="6" class="empty">No labor lines quoted yet.</td></tr>';
+    }).join('') || `<tr><td colspan="${cols}" class="empty">No labor lines quoted yet. ${editableByMe?'Click <strong>＋ Add Labor Line</strong> above.':''}</td></tr>`;
+
+    const addBtn = document.getElementById('addLaborBtn');
+    if(addBtn) addBtn.addEventListener('click', addLaborLine);
   };
+
+  function addLaborLine(){
+    rev.lines = rev.lines || [];
+    const newLine = {
+      id: 'qln.'+Math.random().toString(36).slice(2,8),
+      packageName: 'Labor',
+      type: 'Labor',
+      crewPositionId: '',
+      description: '',
+      qty: 1, rateTier:'day', unitPrice: 0, days: 1,
+      cost: 0, marginContribution: 0
+    };
+    rev.lines.push(newLine);
+    renderLabor();
+    renderTotals();
+  }
+
+  function updateLaborLine(id, field, value){
+    const l = (rev.lines||[]).find(x=>x.id===id);
+    if(!l) return;
+    l[field] = value;
+    // If position changed, sync unitPrice + description
+    if(field==='crewPositionId'){
+      const pos = PCG.api.getCrewPosition(value);
+      if(pos && pos.ratesByVersion && pos.ratesByVersion[0]){
+        l.unitPrice = pos.ratesByVersion[0].billRate || 0;
+        l.cost = pos.ratesByVersion[0].payRate || 0;
+      }
+      l.description = pos ? pos.displayName || pos.name : l.description;
+    }
+    renderLabor();
+    renderTotals();
+  }
+
+  function removeLaborLine(id){
+    rev.lines = (rev.lines||[]).filter(x=>x.id!==id);
+    renderLabor();
+    renderTotals();
+  }
+
+  window.addLaborLine = addLaborLine;
+  window.updateLaborLine = updateLaborLine;
+  window.removeLaborLine = removeLaborLine;
 
   // -------- Availability checks (uses engine) --------
   const runAvailChecks = () => {
@@ -382,22 +471,338 @@
     render(e.target.dataset.v);
   }));
 
-  // Wire buttons (no fake workflows per Rule 4 — show spec notes)
+  // Wire buttons
   document.getElementById('btn-recheck').addEventListener('click', ()=>{
     runAvailChecks();
     PCG.engines.notify.emit('AvailabilityRecheck', { quoteId: quote.id, lines: (rev.lines||[]).length });
   });
-  const notImpl = (label) => () => alert(`[Phase 2] "${label}" is not yet implemented. The spec defines this workflow but it is deliberately not wired in this build (Rule 4 — no fake workflows).`);
-  document.getElementById('btn-new-line').addEventListener('click', notImpl('Add Line (inventory picker)'));
-  document.getElementById('btn-copy-from').addEventListener('click', notImpl('Copy From Prior Quote'));
+
+  // --------------------------------------------------------------------
+  // Real Add-Line picker (Items / System Builder / Labor) — replaces
+  // prior Phase-2 notImpl stubs. Implements spec §5.3 + §L (v2.2).
+  // --------------------------------------------------------------------
+  let pkTab = 'items';
+  let pkQuery = '';
+  let pkCategory = '';
+
+  const modal = {
+    open: () => { document.getElementById('pk-bd').classList.add('show'); document.getElementById('pk-box').classList.add('show'); renderPicker(); },
+    close: () => { document.getElementById('pk-bd').classList.remove('show'); document.getElementById('pk-box').classList.remove('show'); }
+  };
+  window.closePicker = modal.close;
+
+  document.getElementById('btn-new-line').addEventListener('click', () => {
+    if(!editableByMe){ alert('This revision is read-only.'); return; }
+    pkTab = 'items'; pkQuery = ''; pkCategory = '';
+    document.querySelectorAll('#pk-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.pt==='items'));
+    modal.open();
+  });
+  document.querySelectorAll('#pk-tabs button').forEach(b => b.addEventListener('click', e => {
+    document.querySelectorAll('#pk-tabs button').forEach(x=>x.classList.toggle('on', x===e.target));
+    pkTab = e.target.dataset.pt;
+    renderPicker();
+  }));
+
+  function renderPicker(){
+    const body = document.getElementById('pk-body');
+    if(pkTab === 'items')   return renderItemsTab(body);
+    if(pkTab === 'systems') return renderSystemsTab(body);
+    if(pkTab === 'labor')   return renderLaborTab(body);
+  }
+
+  function renderItemsTab(body){
+    const cats = PCG.api.getInventoryCategories();
+    const items = PCG.api.getInventory({ q: pkQuery || undefined, category: pkCategory || undefined });
+    body.innerHTML = `
+      <div style="display:flex; gap:8px; margin-bottom:var(--sp-3); flex-wrap:wrap;">
+        <input id="pk-q" placeholder="Search model, manufacturer…" value="${PCG.escapeHtml(pkQuery)}"
+               style="flex:1; min-width:200px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:8px 12px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+        <select id="pk-cat" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:8px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+          <option value="">All categories</option>
+          ${cats.map(c=>`<option value="${c.id}" ${c.id===pkCategory?'selected':''}>${PCG.escapeHtml(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:var(--sp-2);">
+        ${items.length} ${items.length===1?'item':'items'} · click to add as Rental line
+      </div>
+      <div id="pk-item-rows">
+        ${items.length ? items.map(it=>{
+          const rate = (it.rates && (it.rates.day || it.rates.week)) || 0;
+          const cat = (PCG.inventoryCategories||[]).find(c=>c.id===it.categoryId);
+          return `
+            <div class="pinned" style="cursor:pointer; margin-bottom:6px;" onclick="addItem('${it.id}')">
+              <span class="icon">＋</span>
+              <div style="flex:1;">
+                <strong>${PCG.escapeHtml(it.name)}</strong>
+                <div class="muted" style="font-size:var(--fs-xs);">
+                  ${PCG.escapeHtml(it.manufacturer||'')} ${it.model?' · '+PCG.escapeHtml(it.model):''}
+                  ${cat?` · <span class="pill gray plain" style="font-size:9px;">${PCG.escapeHtml(cat.department||cat.name)}</span>`:''}
+                </div>
+              </div>
+              <div class="mono" style="color:var(--text-secondary); font-size:12px;">
+                ${rate?PCG.money(rate)+'/day':'—'}
+                <div class="muted" style="font-size:10px;">owned ${it.qty||0}</div>
+              </div>
+            </div>`;
+        }).join('') : PCG.states.empty('No matches.')}
+      </div>`;
+    document.getElementById('pk-q').addEventListener('input', e => {
+      pkQuery = e.target.value; renderItemsTab(body);
+      document.getElementById('pk-q').focus();
+    });
+    document.getElementById('pk-cat').addEventListener('change', e => { pkCategory = e.target.value; renderItemsTab(body); });
+  }
+
+  function renderSystemsTab(body){
+    const sysDefs = PCG.api.getSystemDefinitions();
+    body.innerHTML = `
+      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:var(--sp-3);">
+        Pre-defined systems from the System Builder library (spec §7 · §L). Inserting a system adds its required components as a grouped block. Optional components can be toggled.
+      </div>
+      ${sysDefs.map(sd => {
+        const reqCount = (sd.requiredComponents||[]).length;
+        const optCount = (sd.optionalComponents||[]).length;
+        return `
+          <div style="border:1px solid var(--border-accent); border-radius:var(--r-sm); padding:12px 14px; margin-bottom:var(--sp-3);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+              <strong style="flex:1;">${PCG.escapeHtml(sd.name)}</strong>
+              <span class="pill blue plain" style="font-size:10px;">${PCG.escapeHtml(sd.category)}</span>
+              <span class="muted" style="font-size:11px;">${sd.dayRate?PCG.money(sd.dayRate)+'/day':''}</span>
+            </div>
+            <div class="muted" style="font-size:var(--fs-xs); margin-bottom:8px;">
+              ${reqCount} required · ${optCount} optional · managed by ${PCG.escapeHtml((PCG.findPerson(sd.managedById)||{}).name || sd.managedById)}
+            </div>
+            ${optCount ? `
+              <div style="margin-bottom:8px;">
+                <div class="eyebrow" style="font-size:9px; margin-bottom:4px;">Optional components — toggle to include</div>
+                ${(sd.optionalComponents||[]).map((c,idx)=>{
+                  const inv = (PCG.inventory||[]).find(i=>i.id===c.modelId);
+                  return `<label style="display:inline-flex; align-items:center; gap:6px; margin-right:12px; font-size:var(--fs-xs);">
+                    <input type="checkbox" class="sysopt" data-sd="${sd.id}" data-model="${c.modelId}" />
+                    ${PCG.escapeHtml(inv?inv.name:c.modelId)} × ${c.qty}
+                    ${c.condition?` <span class="muted">(${PCG.escapeHtml(c.condition)})</span>`:''}
+                  </label>`;
+                }).join('')}
+              </div>` : ''}
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:var(--fs-xs); color:var(--text-tertiary);">Qty of systems:</label>
+              <input type="number" min="1" value="1" id="sysqty-${sd.id}" style="width:60px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 6px; border-radius:var(--r-sm); font-family:var(--font-mono);" />
+              <button class="btn sm primary" onclick="insertSystem('${sd.id}')" style="margin-left:auto;">Insert System →</button>
+            </div>
+          </div>`;
+      }).join('') || PCG.states.empty('No system definitions in the library.')}`;
+  }
+
+  function renderLaborTab(body){
+    const positions = (PCG.crewPositions||[]);
+    body.innerHTML = `
+      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:var(--sp-3);">
+        Add a labor line. On Award, each labor line seeds Placeholder ShiftAssignment(s) for Labor Coord to staff (spec §12.2).
+      </div>
+      ${positions.map(p=>{
+        const rate = p.ratesByVersion && p.ratesByVersion[0];
+        const billRate = rate && rate.billRate;
+        return `
+          <div class="pinned" style="cursor:pointer; margin-bottom:6px;" onclick="addLaborPos('${p.id}')">
+            <span class="icon">＋</span>
+            <div style="flex:1;">
+              <strong>${PCG.escapeHtml(p.displayName || p.name)}</strong>
+              <div class="muted" style="font-size:var(--fs-xs);">
+                <span class="pill gray plain" style="font-size:9px;">${PCG.escapeHtml((p.department||'—').toUpperCase())}</span>
+                ${p.union?` · ${PCG.escapeHtml(p.union)} ${PCG.escapeHtml(p.unionLocal||'')}`:''}
+              </div>
+            </div>
+            <div class="mono" style="color:var(--text-secondary); font-size:12px;">
+              ${typeof billRate==='number'?PCG.money(billRate)+'/hr':'—'}
+            </div>
+          </div>`;
+      }).join('')}`;
+  }
+
+  window.addItem = (itemId) => {
+    const inv = PCG.api.getInventoryItem(itemId);
+    if(!inv){ alert('Item not found'); return; }
+    const rate = (inv.rates && (inv.rates.day || inv.rates.week)) || 0;
+    const res = PCG.api.addQuoteLine(rev.id, {
+      packageName: 'Added Lines',
+      type: 'Rental',
+      inventoryItemId: inv.id,
+      description: inv.name,
+      qty: 1, rateTier: 'day', unitPrice: rate, days: 1,
+      cost: inv.perItemCost || Math.round(rate * 0.35)
+    });
+    if(!res.ok){ alert('Blocked: '+res.reason); return; }
+    modal.close();
+    render('working'); // refresh visible view
+    document.querySelectorAll('.qb-views button').forEach(b=>b.classList.toggle('on', b.dataset.v==='working'));
+  };
+
+  window.insertSystem = (sdId) => {
+    const q = parseInt(document.getElementById('sysqty-'+sdId).value,10) || 1;
+    const includeOptional = Array.from(document.querySelectorAll('.sysopt[data-sd="'+sdId+'"]:checked'))
+      .map(el => el.dataset.model);
+    const res = PCG.api.insertSystemDefinitionAsLines(rev.id, sdId, { sysQty: q, includeOptional });
+    if(!res.ok){ alert('Blocked: '+res.reason); return; }
+    modal.close();
+    render('working');
+    document.querySelectorAll('.qb-views button').forEach(b=>b.classList.toggle('on', b.dataset.v==='working'));
+    alert(`✓ Inserted ${res.added} line(s) from "${res.systemDefinition.name}".`);
+  };
+
+  window.addLaborPos = (positionId) => {
+    const pos = (PCG.crewPositions||[]).find(p=>p.id===positionId);
+    const rate = pos && pos.ratesByVersion && pos.ratesByVersion[0];
+    const res = PCG.api.addQuoteLine(rev.id, {
+      packageName: 'Labor',
+      type: 'Labor',
+      crewPositionId: positionId,
+      description: pos ? (pos.displayName || pos.name) : positionId,
+      qty: 1, rateTier: 'day',
+      unitPrice: (rate && rate.billRate) || 0,
+      days: 1,
+      cost: (rate && rate.payRate) || 0
+    });
+    if(!res.ok){ alert('Blocked: '+res.reason); return; }
+    modal.close();
+    render('labor');
+    document.querySelectorAll('.qb-views button').forEach(b=>b.classList.toggle('on', b.dataset.v==='labor'));
+  };
+
+  // --------------------------------------------------------------------
+  // Real Copy-From-Prior-Quote
+  // --------------------------------------------------------------------
+  const copy = {
+    open: () => { document.getElementById('cp-bd').classList.add('show'); document.getElementById('cp-box').classList.add('show'); renderCopy(); },
+    close: () => { document.getElementById('cp-bd').classList.remove('show'); document.getElementById('cp-box').classList.remove('show'); }
+  };
+  window.closeCopy = copy.close;
+
+  document.getElementById('btn-copy-from').addEventListener('click', () => {
+    if(!editableByMe){ alert('This revision is read-only.'); return; }
+    copy.open();
+  });
+
+  function renderCopy(){
+    const allQuotes = (PCG.api.getQuotes()||[]).filter(q => q.id !== quote.id);
+    const byClient = {};
+    allQuotes.forEach(q => {
+      const p = (PCG.projects||[]).find(x=>x.code===q.projectCode);
+      const clientName = (p && p.client) || 'Unknown';
+      (byClient[clientName] = byClient[clientName] || []).push(q);
+    });
+    const body = document.getElementById('cp-body');
+    body.innerHTML = `
+      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:var(--sp-3);">
+        Pick a prior quote to copy its line items into this revision. Recommended for recurring clients (spec §5.3).
+      </div>
+      ${Object.entries(byClient).map(([cn, qs]) => `
+        <div style="margin-bottom:var(--sp-4);">
+          <div class="eyebrow" style="margin-bottom:6px;">${PCG.escapeHtml(cn)}</div>
+          ${qs.map(q => {
+            const rcount = (PCG.quoteRevisions||[]).filter(r=>r.quoteId===q.id).length;
+            const activeRev = (PCG.quoteRevisions||[]).find(r=>r.id===q.activeRevisionId);
+            const ln = activeRev ? (activeRev.lines||[]).length : 0;
+            return `
+              <div class="pinned" style="margin-bottom:6px; cursor:pointer;" onclick="pickCopyQuote('${q.id}')">
+                <span class="icon mono" style="font-size:10px;">${q.quoteNo}</span>
+                <div style="flex:1;">
+                  <strong>${PCG.escapeHtml(q.projectCode)}</strong>
+                  <div class="muted" style="font-size:var(--fs-xs);">${rcount} rev · ${ln} lines · ${q.status}</div>
+                </div>
+                <span class="mono" style="color:var(--text-secondary); font-size:11px;">${PCG.money(q.totalRevenue)}</span>
+              </div>`;
+          }).join('')}
+        </div>`).join('') || PCG.states.empty('No prior quotes to copy from.')}`;
+  }
+
+  window.pickCopyQuote = (srcQuoteId) => {
+    const srcQ = (PCG.quotes||[]).find(q=>q.id===srcQuoteId);
+    const srcRev = (PCG.quoteRevisions||[]).find(r=>r.id===srcQ.activeRevisionId);
+    const mode = (rev.lines||[]).length === 0
+      ? 'replace'
+      : (confirm(`This revision already has ${rev.lines.length} lines. OK to replace them all with ${(srcRev.lines||[]).length} lines from ${srcQ.quoteNo}?\n\n(Cancel will append instead.)`) ? 'replace' : 'append');
+    const res = PCG.api.cloneRevisionLinesFrom(srcRev.id, rev.id, mode);
+    if(!res.ok){ alert('Blocked: '+res.reason); return; }
+    copy.close();
+    render('working');
+    document.querySelectorAll('.qb-views button').forEach(b=>b.classList.toggle('on', b.dataset.v==='working'));
+    alert(`✓ ${mode==='replace'?'Replaced':'Appended'} ${res.cloned} line(s) from ${srcQ.quoteNo}.`);
+  };
+
+  // --------------------------------------------------------------------
+  // Client Portal Preview (opens magic-link from most recent issue)
+  // --------------------------------------------------------------------
+  document.getElementById('btn-client-preview').addEventListener('click', () => {
+    const invites = PCG.api.getClientInvites({ quoteId: quote.id });
+    if(invites.length === 0){
+      alert('No client invite yet — click "Issue Proposal" first to generate the magic link.');
+      return;
+    }
+    window.open('client/index.html?token=' + invites[0].token, '_blank', 'noopener');
+  });
+
+  function showIssueBanner(invite) {
+    const url = 'client/index.html?token=' + invite.token;
+    document.getElementById('issue-banner').innerHTML = `
+      <div class="attn-item blue" style="margin-bottom:var(--sp-4);">
+        <div style="font-size:18px;">✉</div>
+        <div style="flex:1;">
+          <div class="ttl">Issued to client portal</div>
+          <div class="meta">Magic link: <code style="background:var(--surface-2); padding:2px 6px; border-radius:3px; font-size:11px; user-select:all;">${PCG.escapeHtml(url)}</code></div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn sm" onclick="navigator.clipboard.writeText(location.origin + location.pathname.replace(/[^/]+$/,'') + '${PCG.escapeHtml(url)}').then(()=>this.textContent='✓ Copied').catch(()=>alert('Copy failed'))">Copy URL</button>
+          <a class="btn sm primary" href="${url}" target="_blank" rel="noopener">Open Portal ↗</a>
+        </div>
+      </div>`;
+  }
+
+  // --------------------------------------------------------------------
+  // Issue Proposal → real client portal flow (replaces Phase-2 shortcut)
+  // Draft → Issued → (client approves in portal) → Awarded
+  // --------------------------------------------------------------------
   document.getElementById('btn-issue').addEventListener('click', ()=>{
-    if(rev.status==='Awarded'){ alert('Awarded revisions are immutable. Use Internal Correction or create a new Change Order.'); return; }
+    if(rev.status==='Awarded'){
+      if(confirm('Revision already Awarded. Open Assign Crew?')){
+        location.href = 'crew-assign.html?project=' + project.code;
+      }
+      return;
+    }
     try {
-      PCG.engines.pricing.enforceDiscountGuard(0.05); // < 10% threshold ok
-      alert('Proposal would be issued. (Phase 2 wires the PDF + Adaptive Card approval route.)');
-      PCG.engines.notify.emit('QuoteIssued', { quoteId: quote.id });
+      PCG.engines.pricing.enforceDiscountGuard(0.05);
+      const approvals = PCG.api.getClientApprovals({ quoteId: quote.id });
+      const alreadyApproved = approvals.find(a => a.action==='Approved');
+
+      if(alreadyApproved){
+        const laborCount = (rev.lines||[]).filter(l=>l.type==='Labor').reduce((s,l)=>s+(l.qty||1),0);
+        if(!confirm(`Client approved on ${PCG.fmtDate(alreadyApproved.at,{time:true})}. Award quote?\n\nThis creates the ScopeRecord and seeds ${laborCount} Placeholder ShiftAssignments for Labor Coord.`)) return;
+        const result = PCG.api.awardQuote(quote.id);
+        if(result.ok){
+          alert(`Quote awarded.\n✓ ScopeRecord frozen\n✓ ${result.seeded} ShiftAssignments seeded as Placeholder\nOpening Assign Crew →`);
+          location.href = 'crew-assign.html?project=' + project.code;
+        } else {
+          alert('Award failed: ' + result.reason);
+        }
+        return;
+      }
+
+      if(rev.status==='Issued'){
+        if(!confirm('Proposal already issued. Re-issue (generates a new magic link)?')) return;
+      } else {
+        if(!confirm('Issue this proposal to the client?\n\nWill generate a magic-link to the Client Portal — client reviews, approves or requests changes in the portal. On approval, you\'ll be able to Award.')) return;
+      }
+      const res = PCG.api.issueQuoteToClient(quote.id);
+      if(!res.ok){ alert('Issue failed: '+res.reason); return; }
+      showIssueBanner(res.invite);
+      rev.status = 'Issued'; rev.issuedAt = res.invite.issuedAt;
     } catch(e){ alert('Blocked: '+e.message); }
   });
+
+  // If this quote has already been issued, show the banner on load for quick access.
+  (function(){
+    const invites = PCG.api.getClientInvites({ quoteId: quote.id });
+    if(invites.length) showIssueBanner(invites[0]);
+  })();
 </script>
 </body>
 </html>

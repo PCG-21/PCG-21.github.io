@@ -142,8 +142,119 @@
     render();
     sel.addEventListener('change', render);
 
-    document.getElementById('btn-new-travel').addEventListener('click', ()=>alert('[Phase 3] Travel record creation — would pull from a confirmed ShiftAssignment.'));
-    document.getElementById('btn-export').addEventListener('click', ()=>alert('[Phase 3] CSV export — ties into per-diem reimbursement batch.'));
+    document.getElementById('btn-new-travel').addEventListener('click', () => {
+      if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS)){
+        alert('Only Labor Coord, Directors, or Admins can create travel records.'); return;
+      }
+      // Seed the picker from confirmed ShiftAssignments (spec: "pull from confirmed")
+      const elig = (PCG.shiftAssignments||[]).filter(a => a.crewMemberId &&
+        ['Confirmed','Acknowledged','Invited'].includes(a.status));
+      if(!elig.length){ alert('No confirmed assignments — confirm crew first before booking travel.'); return; }
+      const overlay = document.createElement('div');
+      overlay.className='modal-backdrop show'; overlay.style.zIndex=9998;
+      const box = document.createElement('div');
+      box.className='modal-box show';
+      box.style.cssText='max-width:560px; width:calc(100vw - 48px); z-index:9999;';
+      const close = () => { overlay.remove(); box.remove(); };
+      box.innerHTML = `
+        <button class="close" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+        <h3>Create travel record</h3>
+        <div class="muted" style="font-size:var(--fs-xs); margin:8px 0 var(--sp-3);">Pulls crew + show from a confirmed ShiftAssignment.</div>
+        <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Assignment</label>
+        <select id="tr-assn" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); margin-bottom:var(--sp-3);">
+          ${elig.map(a=>{
+            const c = PCG.findPerson(a.crewMemberId);
+            const pos = (PCG.crewPositions||[]).find(p=>p.id===a.positionId);
+            return `<option value="${a.id}">${PCG.escapeHtml(c?c.name:a.crewMemberId)} — ${PCG.escapeHtml(pos?pos.displayName||pos.name:a.positionId)} · ${a.showId}</option>`;
+          }).join('')}
+        </select>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3);">
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Departure City</label>
+            <input id="tr-dep" placeholder="e.g. DTW" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Arrival City</label>
+            <input id="tr-arr" placeholder="e.g. LAS" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Departure Time</label>
+            <input type="datetime-local" id="tr-dept" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Arrival Time</label>
+            <input type="datetime-local" id="tr-arrt" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Airline</label>
+            <input id="tr-airline" placeholder="Delta, United, SW…" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Flight Confirmation</label>
+            <input id="tr-pnr" placeholder="PNR / Conf #" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Hotel</label>
+            <input id="tr-hotel" placeholder="Hotel name" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Hotel Confirmation</label>
+            <input id="tr-hconf" placeholder="Conf #" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Per Diem $/day</label>
+            <input type="number" id="tr-pd" value="75" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+          <div>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Per Diem Days</label>
+            <input type="number" id="tr-pdd" value="3" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:var(--sp-4); justify-content:flex-end;">
+          <button class="btn ghost" id="tr-cancel">Cancel</button>
+          <button class="btn primary" id="tr-save">Create Travel Record →</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.body.appendChild(box);
+      overlay.addEventListener('click', close);
+      box.querySelector('.close').addEventListener('click', close);
+      box.querySelector('#tr-cancel').addEventListener('click', close);
+      box.querySelector('#tr-save').addEventListener('click', () => {
+        const aid = box.querySelector('#tr-assn').value;
+        const assn = (PCG.shiftAssignments||[]).find(a=>a.id===aid);
+        const res = PCG.api.createTravelRecord({
+          crewMemberId: assn.crewMemberId,
+          showId: assn.showId,
+          departureCity: box.querySelector('#tr-dep').value.trim(),
+          arrivalCity: box.querySelector('#tr-arr').value.trim(),
+          departureTime: box.querySelector('#tr-dept').value || null,
+          arrivalTime: box.querySelector('#tr-arrt').value || null,
+          airline: box.querySelector('#tr-airline').value.trim(),
+          flightConfirmation: box.querySelector('#tr-pnr').value.trim(),
+          hotelName: box.querySelector('#tr-hotel').value.trim(),
+          hotelConfirmation: box.querySelector('#tr-hconf').value.trim(),
+          perDiemRate: parseInt(box.querySelector('#tr-pd').value,10) || 75,
+          perDiemDays: parseInt(box.querySelector('#tr-pdd').value,10) || 0
+        });
+        if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+        close();
+        render();
+      });
+    });
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const res = PCG.api.exportTravelCSV(sel.value);
+      if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+      if(!res.count){ alert('No travel records to export.'); return; }
+      // Download the CSV
+      const blob = new Blob([res.csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pcg-travel-${sel.value}-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
   }
 </script>
 </body>

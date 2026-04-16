@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Intercom Plan</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .ic-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); }
+  .ic-channel {
+    background: var(--surface-1); border:1px solid var(--border-accent); border-radius: var(--r-md);
+    padding: 14px 16px; position:relative; overflow:hidden;
+  }
+  .ic-channel::before {
+    content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+    background: var(--pcg-bright-blue);
+  }
+  .ic-channel.type-ifb::before { background: var(--pcg-spotlight-purple); }
+  .ic-channel.type-program::before { background: var(--status-green); }
+  .ic-channel.type-point::before { background: var(--status-amber); }
+  .ic-channel h3 {
+    margin:0 0 6px; font-family: var(--font-display); font-size: 22px;
+    color: var(--text-primary); letter-spacing:0.02em;
+  }
+  .ic-channel .num {
+    position:absolute; top:10px; right:14px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);
+  }
+  .ic-users {
+    margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;
+  }
+  .ic-user {
+    background: var(--surface-2); color: var(--text-secondary);
+    padding: 3px 9px; border-radius: var(--r-pill);
+    font-size: 11px; font-family: var(--font-mono);
+  }
+  .bp-table { width:100%; border-collapse:collapse; font-size: var(--fs-sm); }
+  .bp-table th { background:var(--surface-2); color:var(--text-tertiary); font-family:var(--font-display);
+                 text-transform:uppercase; font-size:10px; letter-spacing:0.08em; padding:10px 12px; text-align:left; }
+  .bp-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+  .bp-table tr:hover td { background: var(--surface-2); }
+  .bp-table input, .bp-table select {
+    background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border);
+    padding:5px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm); font-family:inherit; width:100%;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Engineering · Tech Plan</div>
+          <h1>Intercom / Comms Plan</h1>
+          <div class="muted">
+            Channels, beltpack assignments, radio frequencies. Generates TD Package checklist items
+            (spec §M.5). Printable, distribution-ready.
+          </div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size:10px;">Show</span>
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+        </div>
+      </div>
+
+      <div id="planEmpty" style="display:none;">
+        <div class="card card-pad" style="text-align:center;">
+          <h3>No ShowTechPlan for this show yet.</h3>
+          <div class="muted" style="margin-bottom:var(--sp-4);">
+            Create one from the Video I/O page or here to start defining intercom channels.
+          </div>
+          <button class="btn primary" id="createPlanBtn">Create Tech Plan →</button>
+        </div>
+      </div>
+
+      <div id="planBody" style="display:none;">
+
+        <!-- System summary -->
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="card-header">
+            <div class="title">System</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="lastMod"></span>
+          </div>
+          <div class="card-body">
+            <div class="kpi-strip">
+              <div class="kpi"><div class="label">System Type</div><div class="value" style="font-size:18px;" id="kSysType">—</div><div class="sub" id="kSysModel">&nbsp;</div></div>
+              <div class="kpi blue"><div class="label">Channels</div><div class="value" id="kCh">—</div><div class="sub">defined</div></div>
+              <div class="kpi"><div class="label">Beltpacks</div><div class="value" id="kBp">—</div><div class="sub">assigned</div></div>
+              <div class="kpi"><div class="label">RF Freq</div><div class="value" id="kRf">—</div><div class="sub">wireless IFB</div></div>
+            </div>
+            <div style="margin-top:var(--sp-3);" class="muted" id="planNotes"></div>
+          </div>
+        </div>
+
+        <!-- Channels -->
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="card-header">
+            <div class="title">Channels</div>
+            <div style="margin-left:auto;" id="addChTrigger">
+              <button class="btn sm" onclick="toggleAddChannel(true)">＋ Add Channel</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="addChRow" style="display:none; background:var(--surface-2); padding:var(--sp-3); border-radius:var(--r-sm); margin-bottom:var(--sp-3);">
+              <div style="display:grid; grid-template-columns: 1fr 140px 1fr auto; gap:var(--sp-2); align-items:center;">
+                <input id="nc-label" placeholder="Channel label (e.g. SHOW, TECH, FLY)" style="background:var(--surface-1); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+                <select id="nc-type" style="background:var(--surface-1); color:var(--text-primary); border:1px solid var(--border); padding:6px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+                  <option>Party</option><option>IFB</option><option>Point-to-Point</option><option>Program</option>
+                </select>
+                <input id="nc-users" placeholder="Primary users (comma-separated)" style="background:var(--surface-1); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+                <div style="display:flex; gap:4px;"><button class="btn sm primary" onclick="saveChannel()">Add</button><button class="btn sm ghost" onclick="toggleAddChannel(false)">✕</button></div>
+              </div>
+            </div>
+            <div class="ic-grid" id="chanGrid"></div>
+          </div>
+        </div>
+
+        <!-- Beltpack assignments -->
+        <div class="card">
+          <div class="card-header">
+            <div class="title">Beltpack Assignments</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="bpCount"></span>
+          </div>
+          <table class="bp-table">
+            <thead><tr>
+              <th style="width:60px;">BP #</th><th>User / Role</th><th>Position</th><th>Channel</th><th style="width:50px;"></th>
+            </tr></thead>
+            <tbody id="bpTb"></tbody>
+          </table>
+          <div id="addBpRow" style="padding:var(--sp-3); border-top:1px solid var(--border); display:none;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:var(--sp-2); align-items:center;">
+              <input id="nb-user" placeholder="User label (e.g. Show Caller — C. Oliver)" />
+              <select id="nb-pos"></select>
+              <select id="nb-ch"></select>
+              <div style="display:flex; gap:4px;"><button class="btn sm primary" onclick="saveBeltpack()">Add</button><button class="btn sm ghost" onclick="toggleAddBeltpack(false)">✕</button></div>
+            </div>
+          </div>
+          <div style="padding:var(--sp-3); text-align:right;" id="addBpTrigger">
+            <button class="btn sm" onclick="toggleAddBeltpack(true)">＋ Assign Beltpack</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'intercom', crumbs:[{label:'Tech Planning'},{label:'Intercom'}]});
+
+  const canEdit = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS);
+
+  const showSel = document.getElementById('showSel');
+  const shows = PCG.api.getProjects()
+    .filter(p => p.show && !['Archived'].includes(p.show.lifecycleState));
+  showSel.innerHTML = shows.map(p => {
+    const has = !!PCG.api.getShowTechPlan(p.code);
+    return `<option value="${p.code}">${p.code} — ${p.name}${has?' ✓':''}</option>`;
+  }).join('');
+  const qShow = PCG.qs('showId') || PCG.qs('project') || 'GLBX-GSK26';
+  if(qShow) showSel.value = qShow;
+  let currentShow = showSel.value;
+  showSel.addEventListener('change', () => { currentShow = showSel.value; render(); });
+
+  function currentPlan(){ return PCG.api.getShowTechPlan(currentShow); }
+
+  document.getElementById('createPlanBtn').addEventListener('click', () => {
+    try { PCG.api.createShowTechPlan(currentShow); render(); } catch(e){ alert('Blocked: '+e.message); }
+  });
+
+  // Hide write triggers if can't edit
+  if(!canEdit){
+    ['addChTrigger','addBpTrigger'].forEach(id=>{
+      const el = document.getElementById(id); if(el) el.style.display='none';
+    });
+  }
+
+  function render(){
+    const plan = currentPlan();
+    if(!plan){
+      document.getElementById('planEmpty').style.display = 'block';
+      document.getElementById('planBody').style.display = 'none';
+      if(!canEdit) document.getElementById('createPlanBtn').style.display = 'none';
+      return;
+    }
+    document.getElementById('planEmpty').style.display = 'none';
+    document.getElementById('planBody').style.display = 'block';
+
+    const ic = plan.intercom;
+    const modBy = PCG.findPerson(plan.lastModifiedById);
+    document.getElementById('lastMod').textContent = `Last modified ${PCG.fmtDate(plan.lastModifiedAt||plan.createdAt,{time:true})}${modBy?' · '+modBy.name:''}`;
+
+    document.getElementById('kSysType').textContent = ic.systemType || '—';
+    document.getElementById('kSysModel').textContent = ic.systemModelId || '';
+    document.getElementById('kCh').textContent = (ic.channels||[]).length;
+    document.getElementById('kBp').textContent = (ic.beltpackAssignments||[]).length;
+    document.getElementById('kRf').textContent = (ic.radioFrequencies||[]).length;
+    document.getElementById('planNotes').textContent = ic.notes || '';
+
+    // Channels
+    const chans = ic.channels || [];
+    document.getElementById('chanGrid').innerHTML = chans.length ? chans.map(c => {
+      const typeCls = (c.channelType||'').toLowerCase().includes('ifb') ? 'type-ifb'
+                   : (c.channelType||'').toLowerCase().includes('program') ? 'type-program'
+                   : (c.channelType||'').toLowerCase().includes('point') ? 'type-point' : '';
+      return `
+        <div class="ic-channel ${typeCls}">
+          <div class="num">Ch ${c.channelNumber}</div>
+          <h3>${PCG.escapeHtml(c.channelLabel||'—')}</h3>
+          <span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(c.channelType||'Party')}</span>
+          <div class="ic-users">
+            ${(c.primaryUsers||[]).map(u=>`<span class="ic-user">${PCG.escapeHtml(u)}</span>`).join('')}
+          </div>
+          ${canEdit?`<div style="margin-top:10px; text-align:right;"><button class="btn sm ghost" onclick="delChannel('${c.id}')" style="font-size:11px;">Remove</button></div>`:''}
+        </div>`;
+    }).join('') : PCG.states.empty('No channels defined.');
+
+    // Beltpacks
+    const bps = ic.beltpackAssignments || [];
+    document.getElementById('bpCount').textContent = `${bps.length} beltpack${bps.length===1?'':'s'}`;
+    document.getElementById('bpTb').innerHTML = bps.length ? bps.map(b => {
+      const pos = PCG.api.getCrewPosition(b.positionId);
+      const ch = (ic.channels||[]).find(c=>c.id===b.channelId);
+      return `<tr>
+        <td class="mono muted">BP ${b.beltpackNumber}</td>
+        <td><strong>${PCG.escapeHtml(b.userLabel||'—')}</strong></td>
+        <td>${pos ? PCG.escapeHtml(pos.displayName||pos.name) : '<span class="muted">—</span>'}</td>
+        <td>${ch ? `<span class="pill blue plain" style="font-size:10px;">Ch ${ch.channelNumber} · ${PCG.escapeHtml(ch.channelLabel||'')}</span>` : '<span class="muted">unassigned</span>'}</td>
+        <td>${canEdit?`<button class="btn sm ghost" onclick="delBeltpack('${b.id}')" style="font-size:11px;">✕</button>`:''}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="5" class="empty">No beltpacks assigned yet.</td></tr>';
+
+    // Position + channel selectors in Add Beltpack form
+    document.getElementById('nb-pos').innerHTML = '<option value="">— position (optional) —</option>' +
+      (PCG.crewPositions||[]).map(p=>`<option value="${p.id}">${PCG.escapeHtml(p.displayName||p.name)}</option>`).join('');
+    document.getElementById('nb-ch').innerHTML = '<option value="">— channel —</option>' +
+      chans.map(c=>`<option value="${c.id}">Ch ${c.channelNumber} · ${PCG.escapeHtml(c.channelLabel||'')}</option>`).join('');
+  }
+
+  window.delChannel = (id) => {
+    if(!canEdit) return;
+    if(!confirm('Remove this channel? Beltpack assignments on it will be unassigned.')) return;
+    PCG.api.removeIntercomChannel(currentShow, id); render();
+  };
+  window.delBeltpack = (id) => {
+    if(!canEdit) return;
+    PCG.api.removeBeltpack(currentShow, id); render();
+  };
+
+  window.toggleAddChannel = (on) => {
+    document.getElementById('addChRow').style.display = on ? 'block' : 'none';
+    if(on) document.getElementById('nc-label').focus();
+  };
+  window.toggleAddBeltpack = (on) => {
+    document.getElementById('addBpRow').style.display = on ? 'block' : 'none';
+    document.getElementById('addBpTrigger').style.display = on ? 'none' : 'block';
+    if(on) document.getElementById('nb-user').focus();
+  };
+
+  window.saveChannel = () => {
+    const label = document.getElementById('nc-label').value.trim();
+    if(!label){ alert('Channel label is required.'); return; }
+    const users = document.getElementById('nc-users').value
+      .split(',').map(s=>s.trim()).filter(Boolean);
+    PCG.api.addIntercomChannel(currentShow, {
+      channelLabel: label,
+      channelType: document.getElementById('nc-type').value,
+      primaryUsers: users
+    });
+    document.getElementById('nc-label').value = '';
+    document.getElementById('nc-users').value = '';
+    toggleAddChannel(false);
+    render();
+  };
+
+  window.saveBeltpack = () => {
+    const user = document.getElementById('nb-user').value.trim();
+    if(!user){ alert('User label is required.'); return; }
+    PCG.api.assignBeltpack(currentShow, {
+      userLabel: user,
+      positionId: document.getElementById('nb-pos').value || null,
+      channelId: document.getElementById('nb-ch').value || null
+    });
+    document.getElementById('nb-user').value = '';
+    toggleAddBeltpack(false);
+    render();
+  };
+
+  render();
+</script>
+</body>
+</html>

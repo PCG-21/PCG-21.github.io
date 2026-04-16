@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Project Crew</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .pc-row {
+    display:grid; grid-template-columns: 44px 2fr 1.4fr 110px 130px 130px 110px 160px;
+    gap: var(--sp-3); align-items:center;
+    padding: 12px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm); cursor: pointer;
+  }
+  .pc-row:hover { background: var(--surface-2); }
+  .pc-row .av { width:32px; height:32px; border-radius:50%; background: var(--grad-show-light-blue); display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:11px; color:white; font-weight:600; }
+  .pc-row .unassigned { width:32px; height:32px; border-radius:50%; background:var(--surface-3); display:inline-flex; align-items:center; justify-content:center; font-size:16px; color: var(--text-tertiary); border: 1px dashed var(--border-strong); }
+  .pc-step-bar { display:flex; gap:2px; align-items:center; }
+  .pc-step { width:14px; height:6px; border-radius:3px; background: var(--surface-3); }
+  .pc-step.done    { background: var(--status-green); }
+  .pc-step.current { background: var(--pcg-bright-blue); box-shadow: 0 0 0 1px var(--pcg-bright-blue-l2); }
+  .pc-step.problem { background: var(--status-red); }
+  .dept-pill {
+    display:inline-block; padding: 2px 8px; border-radius: var(--r-pill);
+    font-size: 10px; font-family: var(--font-display);
+    letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid;
+  }
+  .dept-audio    { color:#2FBF71; border-color: rgba(47,191,113,0.5); background: rgba(47,191,113,0.1); }
+  .dept-video    { color:#F5B73C; border-color: rgba(245,183,60,0.5); background: rgba(245,183,60,0.1); }
+  .dept-lighting { color:#FA8DDC; border-color: rgba(217,47,180,0.5); background: rgba(217,47,180,0.1); }
+  .dept-core     { color:#B79AFD; border-color: rgba(122,65,229,0.5); background: rgba(122,65,229,0.1); }
+  .dept-other    { color:#AAB8CC; border-color: rgba(170,184,204,0.4); background: rgba(170,184,204,0.1); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div id="pheader"></div>
+      <div id="banners"></div>
+
+      <!-- Tabs: project-level scope -->
+      <nav class="tabs">
+        <a href="#" onclick="return false;" class="on">Crew</a>
+        <a href="playbook.html?project=${'${code}'}">Playbook</a>
+        <a href="scheduling.html">Scheduling Grid (All Shows)</a>
+        <a href="travel.html">Travel</a>
+        <a href="checklist.html?project=${'${code}'}">Checklists</a>
+      </nav>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-4); flex-wrap:wrap;">
+        <h3 style="margin-right:auto;">Crew Assignments</h3>
+        <div style="display:flex; gap:var(--sp-2); align-items:center; flex-wrap:wrap;">
+          <span class="eyebrow" style="font-size:10px;">FILTER</span>
+          <button class="chip on" data-f="all">All</button>
+          <button class="chip" data-f="unfilled">Unfilled</button>
+          <button class="chip" data-f="Invited">Invited</button>
+          <button class="chip" data-f="Confirmed">Confirmed</button>
+          <button class="chip" data-f="Acknowledged">Acknowledged</button>
+          <button class="chip" data-f="travel">Needs Travel</button>
+          <button class="btn sm ghost" id="sendLetters">Generate Crew Letters</button>
+          <button class="btn sm" id="addPos">＋ Add Position</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:grid; grid-template-columns: 44px 2fr 1.4fr 110px 130px 130px 110px 160px; gap: var(--sp-3); padding: 10px var(--sp-4); background: var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-tertiary);">
+          <div></div>
+          <div>Position / Crew</div>
+          <div>Dept · Union</div>
+          <div>Call</div>
+          <div>Confirmation</div>
+          <div>Travel</div>
+          <div>Letter</div>
+          <div>Actions</div>
+        </div>
+        <div id="rows"></div>
+      </div>
+
+      <!-- Summaries -->
+      <div class="split" style="margin-top:var(--sp-5);">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Per-Diem Summary</div><a class="btn sm ghost" style="margin-left:auto;" href="travel.html">Travel Detail</a></div>
+            <div class="card-body" id="perDiem"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Timesheet Status</div><a class="btn sm ghost" style="margin-left:auto;" href="timesheets.html">Review All</a></div>
+            <div class="card-body" id="tsStatus"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Labor Readiness</div></div>
+            <div class="card-body" id="labor"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Multi-Step Confirmation (§12.2)</div></div>
+            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
+              Placeholder → Invited → Applied → Approved → Confirmed → <strong>Acknowledged</strong> → Completed.
+              Crew letter generation requires Acknowledged. Any crew change flags letters as "Stale — resend needed".
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const code = PCG.qs('project','LCE-2026');
+  const p = PCG.api.getProject(code) || PCG.api.getProjects()[0];
+
+  PCG.mountShell({active:'portfolio', crumbs:[
+    {label:'Portfolio', href:'index.html'},
+    {label:p.code, href:`playbook.html?project=${p.code}`},
+    {label:'Crew'}
+  ]});
+
+  document.getElementById('pheader').innerHTML = PCG.projectHeader(p);
+  document.getElementById('banners').innerHTML = PCG.bannerRail(p.code);
+
+  const STEPS = ['Placeholder','Invited','Applied','Approved','Confirmed','Acknowledged','Completed'];
+  const crewList = PCG.api.getProjectCrew(p.code);
+
+  function deptClass(dept){
+    if(!dept) return 'dept-other';
+    const d = dept.toLowerCase();
+    if(d==='audio') return 'dept-audio';
+    if(d==='video') return 'dept-video';
+    if(d==='lighting') return 'dept-lighting';
+    if(d==='production' || d==='core') return 'dept-core';
+    return 'dept-other';
+  }
+
+  function stepBar(status){
+    const idx = STEPS.indexOf(status);
+    const problem = (status==='Cancelled' || status==='NoShow');
+    return `<div class="pc-step-bar">${STEPS.map((s,i)=>{
+      if(problem) return '<div class="pc-step problem"></div>';
+      const cls = i < idx ? 'done' : i === idx ? 'current' : '';
+      return `<div class="pc-step ${cls}" title="${s}"></div>`;
+    }).join('')}</div>`;
+  }
+
+  function travelBadge(t){
+    if(!t) return '<span class="muted" style="font-size:11px;">—</span>';
+    const flight = t.flightConfirmation || t.outboundFlight?.confirmation;
+    const hotel  = t.hotelConfirmation || t.hotel?.confirmationNumber;
+    if(flight && hotel) return '<span class="pill green" style="font-size:10px;">✓ BOOKED</span>';
+    if(flight || hotel) return '<span class="pill amber" style="font-size:10px;">PARTIAL</span>';
+    return '<span class="pill amber" style="font-size:10px;">NEEDED</span>';
+  }
+
+  function letterStatus(status){
+    if(status==='Acknowledged' || status==='Completed')
+      return '<span class="pill green" style="font-size:10px;">SENT · ACK</span>';
+    if(status==='Confirmed')
+      return '<span class="pill amber" style="font-size:10px;">READY TO SEND</span>';
+    return '<span class="muted" style="font-size:10px;">—</span>';
+  }
+
+  function render(filter){
+    const rows = crewList.filter(row => {
+      if(filter==='all') return true;
+      if(filter==='unfilled') return !row.crew;
+      if(filter==='travel')   return !row.travel && row.assignment.status !== 'Placeholder';
+      return row.assignment.status === filter;
+    });
+
+    document.getElementById('rows').innerHTML = rows.length ? rows.map(row => {
+      const a = row.assignment;
+      const initials = row.crew ? row.crew.name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase() : '?';
+      const posName = row.position ? row.position.name : a.positionId;
+      const dept    = row.position ? row.position.department : '—';
+      const union   = row.position && row.position.union ? `${row.position.unionLocal||'Union'}` : 'Non-Union';
+      const call    = a.callTime || '—';
+      const callDates = (a.dates||[]).length ? `${PCG.fmtShort(a.dates[0])} → ${PCG.fmtShort(a.dates[a.dates.length-1])}` : '—';
+
+      return `
+        <div class="pc-row">
+          <div>${row.crew ? `<div class="av">${initials}</div>` : '<div class="unassigned">?</div>'}</div>
+          <div>
+            <div style="font-weight:600;">${row.crew ? PCG.escapeHtml(row.crew.name) : '<span class="muted">Unassigned</span>'}</div>
+            <div class="muted" style="font-size:11px;">${PCG.escapeHtml(posName)}${row.crew && row.crew.employmentType ? ' · '+row.crew.employmentType : ''}</div>
+          </div>
+          <div>
+            <span class="dept-pill ${deptClass(dept)}">${PCG.escapeHtml(dept)}</span>
+            <div class="muted" style="font-size:10px; margin-top:2px;">${PCG.escapeHtml(union)}</div>
+          </div>
+          <div>
+            <div class="mono" style="font-weight:600;">${call}</div>
+            <div class="muted" style="font-size:10px;">${callDates}</div>
+          </div>
+          <div>
+            ${stepBar(a.status)}
+            <div class="muted" style="font-size:10px; margin-top:2px;">${a.status.toUpperCase()}${a.note ? ' · '+PCG.escapeHtml(a.note) : ''}</div>
+          </div>
+          <div>${travelBadge(row.travel)}</div>
+          <div>${letterStatus(a.status)}</div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
+            ${a.status==='Placeholder' ? '<button class="btn sm primary">Invite</button>'
+            : a.status==='Invited'    ? '<button class="btn sm primary">Confirm</button>'
+            : a.status==='Confirmed'  ? '<button class="btn sm">Send Letter</button>'
+            : a.status==='Acknowledged' || a.status==='Completed' ? '<button class="btn sm ghost">Details</button>'
+            : '<button class="btn sm ghost">Open</button>'}
+          </div>
+        </div>`;
+    }).join('') : PCG.states.empty('No crew matches this filter.');
+  }
+
+  render('all');
+  document.querySelectorAll('.chip[data-f]').forEach(c => c.addEventListener('click', e=>{
+    document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+    render(e.target.dataset.f);
+  }));
+
+  // KPIs
+  const counts = STEPS.reduce((acc,s)=> (acc[s]=crewList.filter(r=>r.assignment.status===s).length, acc), {});
+  const unfilled = crewList.filter(r=>!r.crew).length;
+  const needTravel = crewList.filter(r=>!r.travel && r.assignment.status!=='Placeholder').length;
+  const letters = crewList.filter(r=>r.assignment.status==='Acknowledged' || r.assignment.status==='Completed').length;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Positions</div><div class="value">${crewList.length}</div><div class="sub">total</div></div>
+    <div class="kpi ${unfilled?'red':''}"><div class="label">Unfilled</div><div class="value">${unfilled}</div><div class="sub">placeholder</div></div>
+    <div class="kpi amber"><div class="label">Invited</div><div class="value">${counts['Invited']||0}</div><div class="sub">awaiting reply</div></div>
+    <div class="kpi"><div class="label">Confirmed</div><div class="value" style="color:var(--status-green);">${counts['Confirmed']||0}</div><div class="sub">locked</div></div>
+    <div class="kpi"><div class="label">Acknowledged</div><div class="value">${counts['Acknowledged']||0}</div><div class="sub">letter-ready</div></div>
+    <div class="kpi ${needTravel?'amber':''}"><div class="label">Travel Needed</div><div class="value">${needTravel}</div><div class="sub">not booked</div></div>
+  `;
+
+  // Per-diem summary
+  const travels = (PCG.travelRecords||[]).filter(t=>t.showId===p.code);
+  document.getElementById('perDiem').innerHTML = travels.length ? `
+    <table class="pcg-table">
+      <thead><tr><th>Crew</th><th>Rate/Day</th><th>Days</th><th>Total</th><th>Source</th></tr></thead>
+      <tbody>${travels.map(t=>{
+        const c = PCG.findPerson(t.crewMemberId);
+        const total = (t.perDiemRate||0) * (t.perDiemDays||0);
+        return `<tr>
+          <td>${c?PCG.escapeHtml(c.name):'—'}</td>
+          <td class="mono">${PCG.money(t.perDiemRate)}</td>
+          <td class="mono">${t.perDiemDays||0}</td>
+          <td class="mono">${PCG.money(total)}</td>
+          <td>${t.perDiemReimbursementSource||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  ` : PCG.states.empty('No travel / per-diem records.');
+
+  // Timesheet status
+  const ts = PCG.api.getTimesheets({showId:p.code});
+  const tsBy = s => ts.filter(t=>t.status===s).length;
+  document.getElementById('tsStatus').innerHTML = ts.length ? `
+    <div class="grid-3">
+      <div class="card-pad" style="padding:12px 14px; border:1px solid var(--border); border-radius: var(--r-sm);">
+        <div class="eyebrow" style="font-size:10px;">Draft</div><div style="font-family:var(--font-display); font-size:24px;">${tsBy('Draft')}</div>
+      </div>
+      <div class="card-pad" style="padding:12px 14px; border:1px solid var(--border); border-radius: var(--r-sm);">
+        <div class="eyebrow" style="font-size:10px;">Submitted</div><div style="font-family:var(--font-display); font-size:24px; color:var(--status-amber);">${tsBy('Submitted')}</div>
+      </div>
+      <div class="card-pad" style="padding:12px 14px; border:1px solid var(--border); border-radius: var(--r-sm);">
+        <div class="eyebrow" style="font-size:10px;">Approved</div><div style="font-family:var(--font-display); font-size:24px; color:var(--status-green);">${tsBy('Approved')}</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="muted" style="font-size:var(--fs-xs);">Labor Coordinator reviews all timesheets before closeout. OT > 2h requires explicit approval note (spec §12.3).</div>
+  ` : PCG.states.empty('No timesheets captured yet. Show must reach Striking state.');
+
+  // Labor readiness (pull just the labor component)
+  const r = PCG.api.getReadiness(p.code);
+  const lab = r && r.components && r.components.labor;
+  document.getElementById('labor').innerHTML = lab ? `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      ${PCG.readinessBadge({overall:lab.status, components:{labor:lab}},{compact:true})}
+      <span class="mono muted" style="margin-left:auto; font-size:11px;">Score ${lab.score}</span>
+    </div>
+    <div style="font-size:var(--fs-sm);">
+      <div class="mono muted" style="font-size:11px;">${Math.round((lab.pctConfirmed||0)*100)}% confirmed</div>
+      ${(lab.blockers||[]).map(b=>`<div style="color:var(--status-red); margin-top:4px;">⛔ ${PCG.escapeHtml(b)}</div>`).join('')}
+      ${(lab.warnings||[]).map(w=>`<div style="color:var(--status-amber); margin-top:4px;">⚠ ${PCG.escapeHtml(w)}</div>`).join('')}
+    </div>
+  ` : PCG.states.empty('—');
+
+  document.getElementById('addPos').addEventListener('click', () => {
+    if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS)){
+      alert('Only Labor Coord, Directors, or Admins can add positions.'); return;
+    }
+    const overlay = document.createElement('div');
+    overlay.className='modal-backdrop show'; overlay.style.zIndex=9998;
+    const box = document.createElement('div');
+    box.className='modal-box show';
+    box.style.cssText='max-width:440px; width:calc(100vw - 48px); z-index:9999;';
+    const close = () => { overlay.remove(); box.remove(); };
+    box.innerHTML = `
+      <button class="close" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+      <h3>Add position to ${PCG.escapeHtml(p.code)}</h3>
+      <div class="muted" style="font-size:var(--fs-xs); margin:8px 0 var(--sp-3);">Creates a Placeholder ShiftAssignment — Labor Coord fills from the pool.</div>
+      <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Position</label>
+      <select id="ap-pos" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); margin-bottom:var(--sp-2);">
+        ${(PCG.crewPositions||[]).map(cp=>`<option value="${cp.id}">${PCG.escapeHtml(cp.displayName||cp.name)}</option>`).join('')}
+      </select>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3);">
+        <div>
+          <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Start Date</label>
+          <input type="date" id="ap-start" value="${p.dates && p.dates.loadIn ? p.dates.loadIn.slice(0,10) : ''}" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+        </div>
+        <div>
+          <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Days</label>
+          <input type="number" id="ap-days" min="1" value="1" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+        </div>
+        <div>
+          <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">Call Time</label>
+          <input type="time" id="ap-call" value="07:00" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:var(--sp-4); justify-content:flex-end;">
+        <button class="btn ghost" id="ap-cancel">Cancel</button>
+        <button class="btn primary" id="ap-save">Add Placeholder →</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.appendChild(box);
+    overlay.addEventListener('click', close);
+    box.querySelector('.close').addEventListener('click', close);
+    box.querySelector('#ap-cancel').addEventListener('click', close);
+    box.querySelector('#ap-save').addEventListener('click', () => {
+      const startDate = box.querySelector('#ap-start').value;
+      const numDays = parseInt(box.querySelector('#ap-days').value,10) || 1;
+      const dates = [];
+      for(let i=0;i<numDays;i++){ const d=new Date(startDate); d.setDate(d.getDate()+i); dates.push(d.toISOString().slice(0,10)); }
+      const res = PCG.api.createShiftAssignment({
+        showId: p.code,
+        positionId: box.querySelector('#ap-pos').value,
+        dates,
+        callTime: box.querySelector('#ap-call').value
+      });
+      if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+      close(); location.reload();
+    });
+  });
+  document.getElementById('sendLetters').addEventListener('click', ()=>{
+    // Opens the same letter-preview flow as Assign Crew. Production deployment
+    // wraps this in a Power Automate Word→PDF pipeline (OPEN DECISION #6).
+    location.href = 'crew-assign.html?project=' + p.code + '#letters';
+  });
+</script>
+</body>
+</html>

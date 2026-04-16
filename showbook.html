@@ -110,10 +110,16 @@
   const code = PCG.qs("project","LCE-2026");
   const p = PCG.findProject(code) || PCG.projects[0];
 
+  // If this show has a ShowTechPlan, surface quick links in the header.
+  const hasTechPlan = !!PCG.api.getShowTechPlan(p.code);
+  const techBtns = hasTechPlan
+    ? `<a class="btn" href="video-io.html?showId=${p.code}">Video I/O</a>
+       <a class="btn" href="intercom.html?showId=${p.code}">Intercom</a>`
+    : `<a class="btn ghost" href="video-io.html?showId=${p.code}">+ Tech Plan</a>`;
   PCG.mountShell({
     active: "showbook",
     crumbs: [{label:"Portfolio",href:"index.html"},{label:p.code,href:`project.html?project=${p.code}`},{label:"Show Book"}],
-    pageActions: `<a class="btn" href="playbook.html?project=${p.code}">Playbook</a>`
+    pageActions: `${techBtns} <a class="btn" href="playbook.html?project=${p.code}">Playbook</a>`
   });
 
   document.getElementById("sb-title").textContent = `${p.code} · ${p.name}`;

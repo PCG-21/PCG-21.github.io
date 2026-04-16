@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Video I/O Plan</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .io-table { width:100%; border-collapse: collapse; font-size: var(--fs-sm); }
+  .io-table th { background:var(--surface-2); color:var(--text-tertiary); font-family:var(--font-display);
+                 text-transform:uppercase; font-size:10px; letter-spacing:0.08em; padding:10px 12px; text-align:left; }
+  .io-table td { padding:10px 12px; border-bottom: 1px solid var(--border); }
+  .io-table tr:hover td { background: var(--surface-2); }
+  .io-table input, .io-table select {
+    background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border);
+    padding:5px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm); font-family:inherit; width:100%;
+  }
+  .sig-sdi { color:#5ad1ff; } .sig-hdmi { color:#b292ff; } .sig-ndi { color:#67e8a2; } .sig-fiber { color:#ffb84d; }
+  .route-matrix {
+    display:grid; grid-template-columns:160px repeat(var(--outs,3), 1fr); gap:2px;
+    background: var(--border); border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden;
+  }
+  .route-matrix > div { background: var(--surface-1); padding:8px 10px; font-size:11px; min-height: 34px; display:flex; align-items:center; }
+  .route-matrix .mhead { background: var(--surface-2); color:var(--text-tertiary); font-family:var(--font-display);
+                         text-transform:uppercase; font-size:10px; letter-spacing:0.08em; }
+  .route-matrix .mcell { justify-content:center; cursor:pointer; user-select:none; }
+  .route-matrix .mcell.on { background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue); font-weight:600; }
+  .route-matrix .mcell:hover { background: var(--surface-3); }
+  .route-matrix .mcell.on:hover { background: rgba(1,153,253,0.28); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Engineering · Tech Plan</div>
+          <h1>Video I/O Plan</h1>
+          <div class="muted">
+            Signal flow documentation: inputs, outputs, routing matrix. Generates TD Package checklist items
+            (spec §M). Not a replacement for Vectorworks — this is the planning and distribution layer.
+          </div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size:10px;">Show</span>
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+        </div>
+      </div>
+
+      <div id="planEmpty" style="display:none;">
+        <div class="card card-pad" style="text-align:center;">
+          <h3>No ShowTechPlan for this show yet.</h3>
+          <div class="muted" style="margin-bottom:var(--sp-4);">
+            Create one to document signal flow, I/O routing, and intercom configuration.
+          </div>
+          <button class="btn primary" id="createPlanBtn">Create Tech Plan →</button>
+        </div>
+      </div>
+
+      <div id="planBody" style="display:none;">
+
+        <!-- Switcher + notes -->
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="card-header">
+            <div class="title">Switcher / Head-End</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="lastMod"></span>
+          </div>
+          <div class="card-body">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-3);">
+              <div>
+                <div class="eyebrow" style="margin-bottom:4px;">Primary Switcher</div>
+                <div id="switcherName" style="font-size:var(--fs-md); color:var(--text-primary);"></div>
+              </div>
+              <div>
+                <div class="eyebrow" style="margin-bottom:4px;">Planner Notes</div>
+                <div id="planNotes" class="muted" style="font-size:var(--fs-sm);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inputs -->
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="card-header">
+            <div class="title">Inputs</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="inputCount"></span>
+          </div>
+          <table class="io-table">
+            <thead><tr>
+              <th style="width:50px;">#</th><th>Label</th><th style="width:90px;">Signal</th>
+              <th>Format</th><th>Source Device</th><th>Dest Device</th><th style="width:50px;"></th>
+            </tr></thead>
+            <tbody id="inputsTb"></tbody>
+          </table>
+          <div id="addInputRow" style="padding:var(--sp-3); border-top:1px solid var(--border); display:none;">
+            <div style="display:grid; grid-template-columns: 1fr 90px 1fr 1fr 1fr auto; gap:var(--sp-2); align-items:center;">
+              <input id="ni-label" placeholder="Label (e.g. Camera 2 SDI)" />
+              <select id="ni-signal">
+                <option>SDI</option><option>HDMI</option><option>NDI</option><option>DisplayPort</option><option>Fiber</option>
+              </select>
+              <input id="ni-format" placeholder="Format (e.g. 1080p59.94)" value="1080p59.94" />
+              <input id="ni-src" placeholder="Source device" />
+              <input id="ni-dst" placeholder="Destination device" />
+              <div style="display:flex; gap:4px;"><button class="btn sm primary" onclick="saveInput()">Add</button><button class="btn sm ghost" onclick="toggleAddInput(false)">✕</button></div>
+            </div>
+          </div>
+          <div style="padding:var(--sp-3); text-align:right;" id="addInputTrigger">
+            <button class="btn sm" onclick="toggleAddInput(true)">＋ Add Input</button>
+          </div>
+        </div>
+
+        <!-- Outputs -->
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="card-header">
+            <div class="title">Outputs</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="outputCount"></span>
+          </div>
+          <table class="io-table">
+            <thead><tr>
+              <th style="width:50px;">#</th><th>Label</th><th style="width:90px;">Signal</th>
+              <th>Format</th><th>Source Device</th><th>Destination</th><th style="width:50px;"></th>
+            </tr></thead>
+            <tbody id="outputsTb"></tbody>
+          </table>
+          <div id="addOutputRow" style="padding:var(--sp-3); border-top:1px solid var(--border); display:none;">
+            <div style="display:grid; grid-template-columns: 1fr 90px 1fr 1fr 1fr auto; gap:var(--sp-2); align-items:center;">
+              <input id="no-label" placeholder="Label (e.g. Confidence HDMI)" />
+              <select id="no-signal">
+                <option>SDI</option><option>HDMI</option><option>NDI</option><option>DisplayPort</option><option>Fiber</option>
+              </select>
+              <input id="no-format" placeholder="Format" value="1080p59.94" />
+              <input id="no-src" placeholder="Source (switcher AUX, PGM…)" />
+              <input id="no-dst" placeholder="Destination device" />
+              <div style="display:flex; gap:4px;"><button class="btn sm primary" onclick="saveOutput()">Add</button><button class="btn sm ghost" onclick="toggleAddOutput(false)">✕</button></div>
+            </div>
+          </div>
+          <div style="padding:var(--sp-3); text-align:right;" id="addOutputTrigger">
+            <button class="btn sm" onclick="toggleAddOutput(true)">＋ Add Output</button>
+          </div>
+        </div>
+
+        <!-- Routing matrix + routes list -->
+        <div class="split">
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Routing Matrix</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Click to toggle a route</span>
+            </div>
+            <div class="card-body" id="matrix"></div>
+          </div>
+          <aside>
+            <div class="card">
+              <div class="card-header"><div class="title">Named Routes</div></div>
+              <div class="card-body" id="routesList"></div>
+              <div style="padding: var(--sp-3); border-top:1px solid var(--border);">
+                <input id="nr-name" placeholder="Route name (e.g. PGM → Main Wall)" style="width:100%; margin-bottom:8px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+                <div style="display:flex; gap:6px; margin-bottom:8px;">
+                  <select id="nr-in"  style="flex:1; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+                  <select id="nr-out" style="flex:1; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+                </div>
+                <button class="btn sm primary" onclick="saveNamedRoute()" style="width:100%;">＋ Add Named Route</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'videoio', crumbs:[{label:'Tech Planning'},{label:'Video I/O'}]});
+
+  const canEdit = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS);
+
+  // Hide add controls if not editable
+  if(!canEdit){
+    const hide = (id) => { const el = document.getElementById(id); if(el) el.style.display = 'none'; };
+    // Will be applied after render
+    document.addEventListener('DOMContentLoaded', ()=>{ hide('addInputTrigger'); hide('addOutputTrigger'); });
+  }
+
+  const showSel = document.getElementById('showSel');
+  const shows = PCG.api.getProjects()
+    .filter(p => p.show && !['Archived'].includes(p.show.lifecycleState));
+  showSel.innerHTML = shows.map(p=>{
+    const has = !!PCG.api.getShowTechPlan(p.code);
+    return `<option value="${p.code}">${p.code} — ${p.name}${has?' ✓':''}</option>`;
+  }).join('');
+  const qShow = PCG.qs('showId') || PCG.qs('project') || 'GLBX-GSK26';
+  if(qShow) showSel.value = qShow;
+
+  let currentShow = showSel.value;
+  function currentPlan(){ return PCG.api.getShowTechPlan(currentShow); }
+
+  showSel.addEventListener('change', () => { currentShow = showSel.value; render(); });
+
+  document.getElementById('createPlanBtn').addEventListener('click', () => {
+    try {
+      PCG.api.createShowTechPlan(currentShow);
+      render();
+    } catch(e){ alert('Blocked: '+e.message); }
+  });
+
+  function render(){
+    const plan = currentPlan();
+    if(!plan){
+      document.getElementById('planEmpty').style.display = 'block';
+      document.getElementById('planBody').style.display = 'none';
+      if(!canEdit) document.getElementById('createPlanBtn').style.display = 'none';
+      return;
+    }
+    document.getElementById('planEmpty').style.display = 'none';
+    document.getElementById('planBody').style.display = 'block';
+
+    const vio = plan.videoIO;
+    const modBy = PCG.findPerson(plan.lastModifiedById);
+    document.getElementById('lastMod').textContent = `Last modified ${PCG.fmtDate(plan.lastModifiedAt||plan.createdAt,{time:true})}${modBy?' · '+modBy.name:''}`;
+    document.getElementById('switcherName').textContent = vio.switcherModelName || vio.switcherModelId || '—';
+    document.getElementById('planNotes').textContent = vio.notes || '—';
+
+    // Inputs
+    document.getElementById('inputCount').textContent = `${vio.inputs.length} input${vio.inputs.length===1?'':'s'}`;
+    document.getElementById('inputsTb').innerHTML = (vio.inputs||[]).map(pt=>`
+      <tr>
+        <td class="mono muted">IN ${pt.pointNumber}</td>
+        <td><strong>${PCG.escapeHtml(pt.label||'')}</strong></td>
+        <td><span class="sig-${(pt.signalType||'').toLowerCase()}">${PCG.escapeHtml(pt.signalType||'—')}</span></td>
+        <td class="mono" style="font-size:11px;">${PCG.escapeHtml(pt.signalFormat||'—')}</td>
+        <td>${PCG.escapeHtml(pt.sourceDevice||'—')}</td>
+        <td class="muted">${PCG.escapeHtml(pt.destinationDevice||'—')}</td>
+        <td>${canEdit?`<button class="btn sm ghost" onclick="delPoint('${pt.id}')" style="font-size:11px;">✕</button>`:''}</td>
+      </tr>`).join('') || '<tr><td colspan="7" class="empty">No inputs yet.</td></tr>';
+
+    // Outputs
+    document.getElementById('outputCount').textContent = `${vio.outputs.length} output${vio.outputs.length===1?'':'s'}`;
+    document.getElementById('outputsTb').innerHTML = (vio.outputs||[]).map(pt=>`
+      <tr>
+        <td class="mono muted">OUT ${pt.pointNumber}</td>
+        <td><strong>${PCG.escapeHtml(pt.label||'')}</strong></td>
+        <td><span class="sig-${(pt.signalType||'').toLowerCase()}">${PCG.escapeHtml(pt.signalType||'—')}</span></td>
+        <td class="mono" style="font-size:11px;">${PCG.escapeHtml(pt.signalFormat||'—')}</td>
+        <td>${PCG.escapeHtml(pt.sourceDevice||'—')}</td>
+        <td class="muted">${PCG.escapeHtml(pt.destinationDevice||'—')}</td>
+        <td>${canEdit?`<button class="btn sm ghost" onclick="delPoint('${pt.id}')" style="font-size:11px;">✕</button>`:''}</td>
+      </tr>`).join('') || '<tr><td colspan="7" class="empty">No outputs yet.</td></tr>';
+
+    // Matrix — clickable
+    renderMatrix();
+
+    // Named routes list
+    document.getElementById('routesList').innerHTML = (vio.routes||[]).length ? (vio.routes||[]).map(r=>{
+      const i = (vio.inputs||[]).find(x=>x.id===r.inputId);
+      const o = (vio.outputs||[]).find(x=>x.id===r.outputId);
+      return `<div class="pinned" style="margin-bottom:6px;">
+        <span class="icon">→</span>
+        <div style="flex:1;">
+          <strong>${PCG.escapeHtml(r.name||'Route')}</strong>
+          <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml((i?i.label:r.inputId))} → ${PCG.escapeHtml((o?o.label:r.outputId))}</div>
+        </div>
+        ${canEdit?`<button class="btn sm ghost" onclick="delRoute('${r.id}')" style="font-size:11px;">✕</button>`:''}
+      </div>`;
+    }).join('') : PCG.states.empty('No named routes yet.');
+
+    // Route dropdown options
+    document.getElementById('nr-in').innerHTML = '<option value="">— input —</option>' +
+      (vio.inputs||[]).map(i=>`<option value="${i.id}">IN ${i.pointNumber} · ${PCG.escapeHtml(i.label||'')}</option>`).join('');
+    document.getElementById('nr-out').innerHTML = '<option value="">— output —</option>' +
+      (vio.outputs||[]).map(o=>`<option value="${o.id}">OUT ${o.pointNumber} · ${PCG.escapeHtml(o.label||'')}</option>`).join('');
+  }
+
+  function renderMatrix(){
+    const plan = currentPlan(); if(!plan) return;
+    const vio = plan.videoIO;
+    const ins = vio.inputs || [];
+    const outs = vio.outputs || [];
+    const m = document.getElementById('matrix');
+    if(!outs.length || !ins.length){ m.innerHTML = PCG.states.empty('Add at least one input and one output.'); return; }
+    m.style.setProperty('--outs', outs.length);
+    let html = '<div class="route-matrix" style="--outs:'+outs.length+';">';
+    html += '<div class="mhead">Inputs ↓ / Outputs →</div>';
+    outs.forEach(o => html += `<div class="mhead" title="${PCG.escapeHtml(o.label||'')}">OUT ${o.pointNumber}<br><span class="muted" style="font-size:10px;">${PCG.escapeHtml(o.label||'')}</span></div>`);
+    ins.forEach(i => {
+      html += `<div><strong>IN ${i.pointNumber}</strong> <span class="muted" style="font-size:10px;">${PCG.escapeHtml(i.label||'')}</span></div>`;
+      outs.forEach(o => {
+        const routed = (vio.routes||[]).some(r=>r.inputId===i.id && r.outputId===o.id);
+        html += `<div class="mcell ${routed?'on':''}" onclick="${canEdit?`toggleMatrix('${i.id}','${o.id}')`:''}">${routed?'●':'·'}</div>`;
+      });
+    });
+    html += '</div>';
+    m.innerHTML = html;
+  }
+
+  window.toggleMatrix = (inId, outId) => {
+    if(!canEdit) return;
+    const plan = currentPlan(); if(!plan) return;
+    const existing = (plan.videoIO.routes||[]).find(r=>r.inputId===inId && r.outputId===outId);
+    if(existing){
+      PCG.api.removeVideoRoute(currentShow, existing.id);
+    } else {
+      const i = plan.videoIO.inputs.find(x=>x.id===inId);
+      const o = plan.videoIO.outputs.find(x=>x.id===outId);
+      PCG.api.addVideoRoute(currentShow, {
+        name: (i?i.label:'IN') + ' → ' + (o?o.label:'OUT'),
+        inputId: inId, outputId: outId
+      });
+    }
+    render();
+  };
+
+  window.delPoint = (id) => {
+    if(!canEdit) return;
+    if(!confirm('Remove this I/O point? Routes using it will also be removed.')) return;
+    PCG.api.removeVideoIOPoint(currentShow, id);
+    render();
+  };
+
+  window.delRoute = (id) => {
+    if(!canEdit) return;
+    PCG.api.removeVideoRoute(currentShow, id);
+    render();
+  };
+
+  window.toggleAddInput = (on) => {
+    document.getElementById('addInputRow').style.display = on ? 'block' : 'none';
+    document.getElementById('addInputTrigger').style.display = on ? 'none' : 'block';
+    if(on) document.getElementById('ni-label').focus();
+  };
+  window.toggleAddOutput = (on) => {
+    document.getElementById('addOutputRow').style.display = on ? 'block' : 'none';
+    document.getElementById('addOutputTrigger').style.display = on ? 'none' : 'block';
+    if(on) document.getElementById('no-label').focus();
+  };
+
+  window.saveInput = () => {
+    const label = document.getElementById('ni-label').value.trim();
+    if(!label){ alert('Label is required.'); return; }
+    PCG.api.addVideoIOPoint(currentShow, {
+      label,
+      signalType: document.getElementById('ni-signal').value,
+      signalFormat: document.getElementById('ni-format').value,
+      sourceDevice: document.getElementById('ni-src').value,
+      destinationDevice: document.getElementById('ni-dst').value,
+      pointType: 'Input'
+    });
+    ['ni-label','ni-src','ni-dst'].forEach(id=>document.getElementById(id).value='');
+    toggleAddInput(false);
+    render();
+  };
+
+  window.saveOutput = () => {
+    const label = document.getElementById('no-label').value.trim();
+    if(!label){ alert('Label is required.'); return; }
+    PCG.api.addVideoIOPoint(currentShow, {
+      label,
+      signalType: document.getElementById('no-signal').value,
+      signalFormat: document.getElementById('no-format').value,
+      sourceDevice: document.getElementById('no-src').value,
+      destinationDevice: document.getElementById('no-dst').value,
+      pointType: 'Output'
+    });
+    ['no-label','no-src','no-dst'].forEach(id=>document.getElementById(id).value='');
+    toggleAddOutput(false);
+    render();
+  };
+
+  window.saveNamedRoute = () => {
+    const name = document.getElementById('nr-name').value.trim();
+    const inId = document.getElementById('nr-in').value;
+    const outId = document.getElementById('nr-out').value;
+    if(!name || !inId || !outId){ alert('Name, input, and output are all required.'); return; }
+    PCG.api.addVideoRoute(currentShow, { name, inputId: inId, outputId: outId });
+    document.getElementById('nr-name').value = '';
+    render();
+  };
+
+  render();
+</script>
+</body>
+</html>

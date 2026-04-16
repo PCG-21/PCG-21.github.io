@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Messages</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .compose-card {
+    background: var(--surface-1); border: 1px solid var(--border-accent);
+    border-radius: var(--r-md); padding: var(--sp-5); margin-bottom: var(--sp-5);
+  }
+  .compose-card label {
+    display: block; font-family: var(--font-display);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-tertiary); margin-bottom: 4px;
+  }
+  .compose-card input, .compose-card select, .compose-card textarea {
+    width: 100%; background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 8px 10px; font-size: var(--fs-sm); font-family: inherit;
+    margin-bottom: var(--sp-3);
+  }
+  .compose-card textarea { min-height: 120px; resize: vertical; }
+  .compose-card .recip-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3);
+  }
+
+  .recip-chips {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    padding: 6px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    min-height: 44px; margin-bottom: var(--sp-3);
+  }
+  .recip-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--surface-3);
+    border-radius: var(--r-pill); font-size: 11px;
+  }
+  .recip-chip .x { cursor: pointer; color: var(--text-tertiary); }
+
+  .channel-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 12px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border);
+    font-family: var(--font-display); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-secondary); cursor: pointer;
+  }
+  .channel-pill.on {
+    border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue);
+    background: rgba(1,153,253,0.1);
+  }
+
+  .msg-row {
+    display: grid; grid-template-columns: 120px 1fr 200px 120px;
+    gap: var(--sp-3); align-items: start;
+    padding: 12px var(--sp-4); border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .msg-row:hover { background: var(--surface-2); }
+  .msg-row .ts { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+  .msg-row .subj { font-weight: 600; margin-bottom: 2px; }
+  .msg-row .preview { color: var(--text-secondary); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Crew Communication</div>
+          <h1>Messages</h1>
+          <div class="muted">Broadcast show info to confirmed crew. Lands in the Crew PWA inbox; can also push email / SMS.</div>
+        </div>
+      </div>
+
+      <!-- Compose -->
+      <div class="compose-card">
+        <div class="eyebrow" style="margin-bottom:var(--sp-3); color: var(--pcg-bright-blue);">COMPOSE</div>
+
+        <div class="recip-row">
+          <div>
+            <label>Show</label>
+            <select id="showSel"></select>
+          </div>
+          <div>
+            <label>Recipients</label>
+            <select id="toAll">
+              <option value="all">All crew on this show</option>
+              <option value="confirmed">Confirmed crew only</option>
+              <option value="invited">Invited (not yet confirmed)</option>
+              <option value="pick">Pick specific crew</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="pickerWrap" style="display:none;">
+          <label>Specific Recipients (click to toggle)</label>
+          <div class="recip-chips" id="pickerChips"></div>
+        </div>
+
+        <label>Subject</label>
+        <input id="subj" placeholder="e.g. Start Time and Point of Contact — Sunday 4/13" />
+
+        <label>Body</label>
+        <textarea id="body" placeholder="Your start time for Sunday is 11 am. On-site lead is Chris Taylor. Message him when you arrive at dock 3.&#10;&#10;Parking: Lot B off Atwater. Badge at security hut."></textarea>
+
+        <div style="display:flex; align-items:center; gap: var(--sp-3); flex-wrap:wrap;">
+          <label style="margin:0;">Channel:</label>
+          <div style="display:flex; gap:6px;">
+            <span class="channel-pill on" data-ch="inapp">📱 In-App</span>
+            <span class="channel-pill" data-ch="email">✉ Email</span>
+            <span class="channel-pill" data-ch="sms">💬 SMS</span>
+          </div>
+          <div class="muted" style="font-size:11px; margin-left:auto;" id="recipCount">—</div>
+          <button class="btn" onclick="document.getElementById('subj').value=''; document.getElementById('body').value=''">Clear</button>
+          <button class="btn primary" id="sendBtn">Send →</button>
+        </div>
+      </div>
+
+      <!-- Template quick-picks -->
+      <div class="card" style="margin-bottom: var(--sp-5);">
+        <div class="card-header"><div class="title">Quick Templates</div></div>
+        <div class="card-body">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3);">
+            <button class="btn ghost" onclick="tpl('uniform')">📋 Uniform / Dress Code</button>
+            <button class="btn ghost" onclick="tpl('parking')">🅿 Parking &amp; Load-In</button>
+            <button class="btn ghost" onclick="tpl('call')">⏰ Call Time Update</button>
+            <button class="btn ghost" onclick="tpl('entry')">🚪 Crew Entrance</button>
+            <button class="btn ghost" onclick="tpl('badge')">🎫 Badging / Credentials</button>
+            <button class="btn ghost" onclick="tpl('contact')">☎ Point of Contact</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sent history -->
+      <div class="card">
+        <div class="card-header"><div class="title">Sent Messages</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="sentCount"></span></div>
+        <div style="display:grid; grid-template-columns: 120px 1fr 200px 120px; gap:var(--sp-3); padding:10px var(--sp-4); background:var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary);">
+          <div>When</div><div>Message</div><div>Recipients</div><div>Channel</div>
+        </div>
+        <div id="sentList"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'scheduling', crumbs:[{label:'Messages'}]});
+
+  const canSend = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM);
+
+  if(!canSend){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    // Shows
+    const shows = PCG.api.getProjects().filter(p=>p.show && !['Archived'].includes(p.show.lifecycleState));
+    const showSel = document.getElementById('showSel');
+    showSel.innerHTML = shows.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('');
+    const qShow = PCG.qs('project');
+    if(qShow) showSel.value = qShow;
+
+    let channel = 'inapp';
+    let pickedCrew = [];
+
+    const recipsEl = document.getElementById('toAll');
+    const pickerWrap = document.getElementById('pickerWrap');
+    const pickerChips = document.getElementById('pickerChips');
+
+    function computeRecipients(){
+      const showCode = showSel.value;
+      const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===showCode && s.crewMemberId);
+      const mode = recipsEl.value;
+      let ids = [];
+      if(mode === 'all') ids = assns.map(a=>a.crewMemberId);
+      else if(mode === 'confirmed') ids = assns.filter(a=>['Confirmed','Acknowledged','Completed'].includes(a.status)).map(a=>a.crewMemberId);
+      else if(mode === 'invited') ids = assns.filter(a=>['Invited','Applied','Approved'].includes(a.status)).map(a=>a.crewMemberId);
+      else if(mode === 'pick') ids = pickedCrew.slice();
+      return Array.from(new Set(ids));
+    }
+
+    function renderPicker(){
+      if(recipsEl.value !== 'pick'){ pickerWrap.style.display = 'none'; return; }
+      pickerWrap.style.display = 'block';
+      const showCode = showSel.value;
+      const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===showCode && s.crewMemberId);
+      const uniq = Array.from(new Set(assns.map(a=>a.crewMemberId)));
+      pickerChips.innerHTML = uniq.map(id=>{
+        const m = PCG.findPerson(id);
+        const on = pickedCrew.includes(id);
+        return `<span class="recip-chip" style="cursor:pointer; ${on?'background:var(--pcg-bright-blue); color:#001a2a;':''}" onclick="togglePick('${id}')">${m?PCG.escapeHtml(m.name):PCG.escapeHtml(id)}</span>`;
+      }).join('') || '<span class="muted" style="font-size:var(--fs-xs); padding:4px;">No crew assigned to this show yet.</span>';
+    }
+
+    function updateCount(){
+      const n = computeRecipients().length;
+      document.getElementById('recipCount').innerHTML = `→ <strong>${n}</strong> recipient${n===1?'':'s'}`;
+    }
+
+    window.togglePick = (id) => {
+      pickedCrew = pickedCrew.includes(id) ? pickedCrew.filter(x=>x!==id) : pickedCrew.concat([id]);
+      renderPicker(); updateCount();
+    };
+
+    // Channel pills
+    document.querySelectorAll('.channel-pill').forEach(p=>p.addEventListener('click', e=>{
+      document.querySelectorAll('.channel-pill').forEach(x=>x.classList.toggle('on', x===e.target));
+      channel = e.target.dataset.ch;
+    }));
+
+    // Templates
+    window.tpl = (k) => {
+      const t = {
+        uniform: { s:'Uniform / Dress Code', b:'Attire for this show is plain black polo, black pants, closed-toe black shoes. Pack extra layers — venue runs cold.' },
+        parking: { s:'Parking & Load-In', b:'Enter via [dock location]. Crew parking at [lot]. Badge at security hut. Dock window is [time] — please do not arrive before that.' },
+        call:    { s:'Call Time Update — please acknowledge', b:'Heads up: your call time has changed. New call is [time]. Please confirm by tapping Acknowledge in the Crew app. No action required otherwise.' },
+        entry:   { s:'Crew Entrance', b:'We will be entering through the [specific dock/entrance]. Please use the badges at the security desk.' },
+        badge:   { s:'Badging / Credentials', b:'Credentials are handed out at the show office starting [time]. Bring photo ID.' },
+        contact: { s:'Point of Contact', b:'On-site lead is [name]. Message them when you arrive at [dock/room]. For scheduling issues contact Labor Coord.' }
+      }[k];
+      document.getElementById('subj').value = t.s;
+      document.getElementById('body').value = t.b;
+    };
+
+    // Send
+    document.getElementById('sendBtn').addEventListener('click', ()=>{
+      const subj = document.getElementById('subj').value.trim();
+      const body = document.getElementById('body').value.trim();
+      if(!subj || !body){ alert('Subject and body required.'); return; }
+      const ids = computeRecipients();
+      if(!ids.length){ alert('No recipients. Pick a show with assigned crew or a different recipient filter.'); return; }
+      const msg = PCG.api.sendMessage({
+        showId: showSel.value,
+        subject: subj, body: body,
+        toCrewIds: ids,
+        toAll: recipsEl.value === 'all',
+        channel
+      });
+      alert(`✓ Sent to ${ids.length} crew member(s).\nChannel: ${channel.toUpperCase()}\nMessage ID: ${msg.id}\n\nRecipients will see it in the Crew PWA inbox on next open.`);
+      document.getElementById('subj').value='';
+      document.getElementById('body').value='';
+      renderSent();
+    });
+
+    showSel.addEventListener('change', ()=>{ renderPicker(); updateCount(); });
+    recipsEl.addEventListener('change', ()=>{ renderPicker(); updateCount(); });
+
+    // Sent list
+    function renderSent(){
+      const list = PCG.api.getMessages();
+      document.getElementById('sentCount').textContent = `${list.length} sent`;
+      document.getElementById('sentList').innerHTML = list.length ? list.map(m=>{
+        const from = PCG.findPerson(m.fromId);
+        return `<div class="msg-row">
+          <div>
+            <div class="ts">${PCG.fmtShort(m.sentAt)}</div>
+            <div class="ts">${PCG.fmtTime(m.sentAt)}</div>
+          </div>
+          <div>
+            <div class="subj">${PCG.escapeHtml(m.subject)}</div>
+            <div class="preview">${PCG.escapeHtml((m.body||'').slice(0,100))}${(m.body||'').length>100?'…':''}</div>
+            <div class="muted" style="font-size:11px; margin-top:4px;">from ${from?PCG.escapeHtml(from.name):m.fromId} · ${PCG.escapeHtml(m.showId||'—')}</div>
+          </div>
+          <div>
+            ${m.toAll
+              ? '<span class="pill blue plain" style="font-size:10px;">ALL CREW</span>'
+              : `<span class="pill gray plain" style="font-size:10px;">${(m.toCrewIds||[]).length} recipients</span>`}
+          </div>
+          <div><span class="pill ${m.channel==='sms'?'red':m.channel==='email'?'amber':'blue'} plain" style="font-size:10px;">${(m.channel||'inapp').toUpperCase()}</span></div>
+        </div>`;
+      }).join('') : PCG.states.empty('No messages sent yet. Compose one above.');
+    }
+
+    renderSent(); updateCount();
+  }
+</script>
+</body>
+</html>

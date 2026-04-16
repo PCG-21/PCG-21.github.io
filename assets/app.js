@@ -3,6 +3,23 @@
    Rule 8: Always uses PCG.api.* — never touches raw data.
    ========================================================================== */
 (function(){
+  // ----- Demo PIN gate (outer access lock for hosted preview) -----
+  // Runs before anything else so users without the PIN never see ops data.
+  // Bypass: ?bypass_pin=true in URL, or sessionStorage.setItem('pcg_demo_pin','1').
+  try {
+    const path = location.pathname || '';
+    const skipGate = path.endsWith('pin-gate.html')
+                  || /[?&]bypass_pin=true\b/.test(location.search);
+    if (!skipGate && !sessionStorage.getItem('pcg_demo_pin')) {
+      const ret = encodeURIComponent((path.split('/').pop() || '') + location.search);
+      location.replace('pin-gate.html?return=' + ret);
+      return;
+    }
+    if (/[?&]bypass_pin=true\b/.test(location.search)) {
+      sessionStorage.setItem('pcg_demo_pin', '1');
+    }
+  } catch (e) { /* sessionStorage may throw in privacy mode — fall through */ }
+
   window.PCG = window.PCG || {};
 
   // ----- Helpers (formatting + URL) -----
@@ -51,47 +68,80 @@
   // ----- Navigation manifest (role-driven) -----
   // Each entry declares which groups can see it. API enforces data; nav just hides.
   PCG.NAV = [
-    { label:'My Home', items:[
-      { id:'myhome',    label:'My Home',      href:'home.html',           icon:'⌂', groups:'*' }
+    { label:'Home', items:[
+      { id:'myhome',    label:'My Home',      href:'home.html',         icon:'⌂', groups:'*' },
+      { id:'search',    label:'Search',       href:'search.html',       icon:'⌕', groups:'*' },
+      { id:'action',    label:'Action Queue', href:'action-queue.html', icon:'◎', groups:'*' }
     ]},
-    { label:'Operations', items:[
-      { id:'portfolio', label:'Portfolio',    href:'index.html',          icon:'▦', groups:'*' },
-      { id:'action',    label:'Action Queue', href:'action-queue.html',   icon:'◎', groups:'*' },
-      { id:'playbook',  label:'Playbook',     href:'playbook.html?project=LCE-2026', icon:'☰', groups:'*' },
-      { id:'checklist', label:'Checklists',   href:'checklist.html?project=LCE-2026', icon:'☑', groups:'*' },
-      { id:'breakouts', label:'Breakouts',    href:'breakouts.html?project=SAE-WCX-2026', icon:'⊟', groups:'*' },
-      { id:'showbook',  label:'Show Book',    href:'showbook.html?project=LCE-2026', icon:'❏', groups:'*' },
-      { id:'venues',    label:'Venues',       href:'venue.html',          icon:'🏛', groups:'*' }
+    { label:'Projects', items:[
+      { id:'portfolio',    label:'Portfolio',     href:'index.html',                        icon:'▦', groups:'*' },
+      { id:'projects',     label:'All Projects',  href:'projects.html',                     icon:'▤', groups:'*' },
+      { id:'playbook',     label:'Playbook',      href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },
+      { id:'field-notes',  label:'Field Notes',   href:'field-notes.html?project=LCE-2026', icon:'✎', groups:'*' },
+      { id:'checklist',    label:'Checklists',    href:'checklist.html?project=LCE-2026',   icon:'☑', groups:'*' },
+      { id:'closeout',     label:'Closeout',      href:'closeout.html?project=GLBX-GSK26',  icon:'✓', groups:'*' },
+      { id:'breakouts',    label:'Breakouts',     href:'breakouts.html?project=SAE-WCX-2026', icon:'⊟', groups:'*' },
+      { id:'showbook',     label:'Show Book',     href:'showbook.html?project=LCE-2026',    icon:'❏', groups:'*' }
     ]},
     { label:'Sales & Quoting', items:[
-      { id:'pif',       label:'PIF Intake',   href:'pif.html',            icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.LEADERSHIP] },
-      { id:'quote',     label:'Quote Builder',href:'quote.html?id=q.LCE-2026.v3', icon:'§', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING] }
+      { id:'pitch',   label:'Pitches',        href:'pitch.html',   icon:'★', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
+      { id:'pif',     label:'PIF Intake',     href:'pif.html',     icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
+      { id:'quote',   label:'Quote Builder',  href:'quote.html?id=q.LCE-2026.v3', icon:'§', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING] },
+      { id:'clients', label:'Clients',        href:'clients.html', icon:'◉', groups:'*' }
     ]},
-    { label:'Show Run', items:[
-      { id:'ros',       label:'Run of Show',  href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' }
-    ]},
-    { label:'Inventory & Warehouse', items:[
-      { id:'eqlpc',      label:'EQLPC Command Center', href:'eqlpc.html',        icon:'◇', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS] },
-      { id:'warehouse',  label:'Warehouse Home',       href:'warehouse.html',    icon:'□', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS] },
-      { id:'warehouse-tv',label:'Warehouse TV Mode',   href:'warehouse-tv.html', icon:'▣', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS] },
-      { id:'qc',         label:'QC Scan',              href:'qc-scan.html?pullSheet=ps.sae.breakout',icon:'◆', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
-      { id:'ic',         label:'IC Return Scan',       href:'ic-scan.html?manifest=man.lce.out1', icon:'◈', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] }
+    { label:'Show Run & Execution', items:[
+      { id:'ros',        label:'Run of Show',  href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' },
+      { id:'add-order',  label:'Add Orders',   href:'add-order.html',              icon:'＋', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS] }
     ]},
     { label:'Crew & Labor', items:[
-      { id:'scheduling', label:'Scheduling Grid', href:'scheduling.html',  icon:'▥', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
-      { id:'travel',     label:'Travel & Per Diem', href:'travel.html',     icon:'✈', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ACCOUNTING] }
+      { id:'labor-home',   label:'Labor Home',        href:'labor-home.html',    icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS] },
+      { id:'crew-assign',  label:'Assign Crew',       href:'crew-assign.html',   icon:'✔', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS] },
+      { id:'project-crew', label:'Project Crew',      href:'project-crew.html?project=LCE-2026', icon:'◴', groups:'*' },
+      { id:'scheduling',   label:'Scheduling Grid',   href:'scheduling.html',    icon:'▥', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
+      { id:'crew-profile', label:'Crew Profiles',     href:'crew-profile.html?id=p.pshah', icon:'☰', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
+      { id:'travel',       label:'Travel & Per Diem', href:'travel.html',        icon:'✈', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ACCOUNTING] },
+      { id:'timesheets',   label:'Timesheets',        href:'timesheets.html',    icon:'◱', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS] },
+      { id:'messages',     label:'Crew Messages',     href:'messages.html',      icon:'✉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM] }
+    ]},
+    { label:'Warehouse & Inventory', items:[
+      { id:'wh-sup-home',  label:'Warehouse Lead',    href:'wh-sup-home.html', icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
+      { id:'wh-tech-home', label:'Warehouse Tech',    href:'wh-tech-home.html', icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
+      { id:'eqlpc',        label:'EQLPC',             href:'eqlpc.html',     icon:'◇', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS] },
+      { id:'inventory',    label:'Inventory',         href:'inventory.html', icon:'▣', groups:'*' },
+      { id:'pull-sheet',   label:'Pull Sheets',       href:'pull-sheet.html?id=ps.sae.breakout', icon:'☱', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS] },
+      { id:'kits',         label:'System Builder',    href:'kits.html',      icon:'◆', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS] },
+      { id:'service',      label:'Service / R&M',     href:'service.html',   icon:'⚒', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS] },
+      { id:'logistics',    label:'Logistics',         href:'logistics.html', icon:'🚚', groups:'*' }
+    ]},
+    { label:'Venues', items:[
+      { id:'venues',   label:'Venue Library',  href:'venue.html', icon:'🏛', groups:'*' }
     ]},
     { label:'Finance', items:[
-      { id:'finance',    label:'Finance Dashboard', href:'finance.html',   icon:'◉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE] },
+      { id:'finance',    label:'Finance Dashboard', href:'finance.html',     icon:'◉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE, PCG.GROUPS.LEADERSHIP] },
       { id:'procurement',label:'Procurement / RPO', href:'procurement.html', icon:'⊙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE] }
     ]},
     { label:'Departments', items:[
-      { id:'creative',   label:'Creative',  href:'creative.html', icon:'◆', groups:'*' },
-      { id:'tech',       label:'Technical', href:'tech.html',     icon:'▲', groups:'*' }
+      { id:'creative',  label:'Creative · Bldg B', href:'creative.html', icon:'◆', groups:'*' },
+      { id:'tech',      label:'Technical',         href:'tech.html',     icon:'▲', groups:'*' }
     ]},
-    { label:'Field', items:[
-      { id:'driver',     label:'Driver (mobile)', href:'driver.html?manifest=man.sae.out1', icon:'🚚', groups:'*' },
-      { id:'crew-pwa',   label:'Crew PWA',        href:'crew/index.html', icon:'☷', groups:'*' }
+    { label:'Tech Planning', items:[
+      { id:'videoio',  label:'Video I/O Plan', href:'video-io.html?showId=GLBX-GSK26', icon:'▤', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
+      { id:'intercom', label:'Intercom',       href:'intercom.html?showId=GLBX-GSK26', icon:'📻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] }
+    ]},
+    { label:'Safety', items:[
+      { id:'incidents', label:'Incidents', href:'incidents.html', icon:'⚠', groups:'*' }
+    ]},
+    { label:'Leadership', items:[
+      { id:'reports', label:'Reports',            href:'reports.html', icon:'📊', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.AE] },
+      { id:'audit',   label:'Audit Trail',        href:'audit.html',   icon:'◻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING] },
+      { id:'admin',   label:'Admin · Governance', href:'admin.html',   icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS] }
+    ]},
+    { label:'Field Surfaces', items:[
+      { id:'qc',       label:'QC Scan',         href:'qc-scan.html?pullSheet=ps.sae.breakout', icon:'◆', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
+      { id:'ic',       label:'IC Return Scan',  href:'ic-scan.html?manifest=man.lce.out1',     icon:'◈', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
+      { id:'whtv',     label:'Warehouse TV',    href:'warehouse-tv.html',     icon:'▣', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS] },
+      { id:'driver',   label:'Driver (mobile)', href:'driver.html?manifest=man.sae.out1', icon:'🚚', groups:'*' },
+      { id:'crew-pwa', label:'Crew PWA',        href:'crew/index.html',                  icon:'☷', groups:'*' }
     ]}
   ];
 
@@ -181,6 +231,23 @@
     if(sel) sel.addEventListener('change', e => {
       PCG.switchPersona(e.target.value);
       location.reload();
+    });
+    // wire topbar search input
+    const searchInput = document.querySelector('.topbar .search input');
+    if(searchInput){
+      searchInput.addEventListener('keydown', e => {
+        if(e.key === 'Enter' && searchInput.value.trim()){
+          location.href = 'search.html?q=' + encodeURIComponent(searchInput.value.trim());
+        }
+      });
+    }
+    // global `/` shortcut to focus search
+    document.addEventListener('keydown', e => {
+      if(e.key === '/' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA'){
+        e.preventDefault();
+        const si = document.querySelector('.topbar .search input');
+        if(si) si.focus();
+      }
     });
   };
 

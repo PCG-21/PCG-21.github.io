@@ -185,43 +185,121 @@
       </tr>`;
     }).join('');
 
-    // Substitution modal
+    // Substitution modal — REAL flow: picks substitute, computes cost delta,
+    // writes SubstitutionProposal entity, creates PM WorkItem, emits event.
+    let activeConflictIdx = null;
     window.openSub = (idx)=>{
+      activeConflictIdx = idx;
       const c = window.__conf_list[idx];
       const inv = PCG.api.getInventory().find(i=>i.id===c.itemId);
       const subs = (PCG.inventory||[])
-        .filter(i => i.id!==c.itemId && i.categoryId===inv.categoryId)
-        .slice(0,4);
+        .filter(i => i.id!==c.itemId && i.categoryId===(inv && inv.categoryId))
+        .slice(0,6);
       document.getElementById('mbody').innerHTML = `
         <div class="eyebrow" style="margin-bottom:6px;">Original Item</div>
         <div style="margin-bottom:var(--sp-3);"><strong>${PCG.escapeHtml(c.itemName)}</strong> <span class="muted">× ${c.totalAllocated} · deficit ${c.deficit}</span></div>
         <div class="eyebrow" style="margin-bottom:6px;">Suggested Substitutions (category match)</div>
-        ${subs.length?subs.map(s=>`
-          <div class="pinned" style="margin-bottom:6px;">
-            <span class="icon">→</span>
-            <div style="flex:1;"><strong>${PCG.escapeHtml(s.name)}</strong><div class="muted" style="font-size:var(--fs-xs);">Available: ${s.qty} · ${PCG.escapeHtml(s.manufacturer||'')}</div></div>
-            <button class="btn sm primary" onclick="proposeSub('${s.id}')">Propose</button>
-          </div>`).join('') : PCG.states.empty('No category substitutions. Create RPO.')}
+        ${subs.length?subs.map(s=>{
+          const origRate = (inv && inv.rates && inv.rates.day) || 0;
+          const subRate  = (s.rates && s.rates.day) || 0;
+          const delta = (subRate - origRate) * (c.deficit || 1);
+          const pill = delta === 0 ? '<span class="pill gray plain" style="font-size:10px;">$0 TRANSPARENT</span>' :
+                       delta > 0 ? `<span class="pill amber plain" style="font-size:10px;">+${PCG.money(delta)} ESCALATE</span>` :
+                       `<span class="pill green plain" style="font-size:10px;">${PCG.money(delta)} CREDIT</span>`;
+          return `
+            <div class="pinned" style="margin-bottom:6px;">
+              <span class="icon">→</span>
+              <div style="flex:1;">
+                <strong>${PCG.escapeHtml(s.name)}</strong>
+                <div class="muted" style="font-size:var(--fs-xs);">Available: ${s.qty} · ${PCG.escapeHtml(s.manufacturer||'')}</div>
+              </div>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                ${pill}
+                <button class="btn sm primary" onclick="proposeSub('${s.id}')">Propose</button>
+              </div>
+            </div>`;
+        }).join('') : PCG.states.empty('No category substitutions. Create RPO instead.')}
         <div class="divider"></div>
-        <div class="muted" style="font-size:var(--fs-xs);">Once proposed, PM approves operational swap. Cost delta &gt; $0 escalates to AE for absorb-vs-CO decision (§7.3).</div>
+        <label class="eyebrow" style="font-size:10px; display:block; margin-bottom:4px;">Reason / Operational Note</label>
+        <textarea id="subReason" placeholder="Why this substitution? e.g. 'J8 stock exhausted on LCE overlap — Q1 coverage acceptable for this room size'" style="width:100%; min-height:60px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-sm); padding:8px; font-family:inherit; font-size:var(--fs-sm);"></textarea>
+        <div class="muted" style="font-size:var(--fs-xs); margin-top:6px;">PM will see this in their action queue. Cost delta &gt; $0 auto-escalates to AE (§7.3).</div>
       `;
       document.getElementById('bd').classList.add('show');
       document.getElementById('mbox').classList.add('show');
     };
     window.proposeSub = (subId)=>{
-      PCG.engines.notify.emit('SubstitutionProposed', { subId });
-      alert('Substitution proposed. PM approval request queued. (Phase 2 wires the full SubstitutionProposal entity + PM action queue item.)');
+      const c = window.__conf_list[activeConflictIdx];
+      const reason = (document.getElementById('subReason')||{}).value || '';
+      const res = PCG.api.proposeSubstitution({
+        showId: (c.conflictingShows && c.conflictingShows[0] && c.conflictingShows[0].showId) || c.showId,
+        originalItemId: c.itemId,
+        substituteItemId: subId,
+        qty: c.deficit || 1,
+        reason: reason
+      });
+      if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+      alert(`✓ Substitution proposed.\n\nPM notified · WorkItem created · Cost delta ${PCG.money(res.proposal.costDelta)}${res.proposal.requiresApproval!=='PM'?' · Requires '+res.proposal.requiresApproval+' approval':''}.`);
       closeModal();
+      renderRecentProposals();
     };
+
     window.createRPO = (idx)=>{
       const c = window.__conf_list[idx];
-      alert(`RPO draft would be created for ${c.itemName} (deficit ${c.deficit}). Phase 2 wires the full RPO draft → vendor selection → approval workflow.`);
+      const showId = (c.conflictingShows && c.conflictingShows[0] && c.conflictingShows[0].showId) || c.showId;
+      if(!confirm(`Draft Sub-Rental for ${c.itemName} (deficit ${c.deficit}) on ${showId}?\n\nCreates an RPO in Draft status — next step is vendor selection in Procurement.`)) return;
+      const res = PCG.api.draftSubRentalFromDeficit({
+        showId,
+        itemId: c.itemId,
+        qty: c.deficit || 1
+      });
+      if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+      alert(`✓ RPO draft ${res.subRental.id} created.\nQty ${res.subRental.qty} · Estimated ${PCG.money(res.subRental.quotedCost)} · Hold until ${PCG.fmtShort(res.subRental.holdExpiry)}\n\nOpening Procurement →`);
+      location.href = 'procurement.html';
     };
+
     window.closeModal = ()=>{
       document.getElementById('bd').classList.remove('show');
       document.getElementById('mbox').classList.remove('show');
     };
     document.getElementById('bd').addEventListener('click', closeModal);
+
+    // Replace the hardcoded "Recent Substitutions" card with live data
+    function renderRecentProposals(){
+      const proposals = PCG.api.getSubstitutionProposals({}).slice(0, 6);
+      const tgt = document.querySelector('.card .card-header .title');
+      // Find the Recent Substitutions card by title text
+      const cards = document.querySelectorAll('aside .card');
+      let recentCard = null;
+      cards.forEach(c => {
+        const t = c.querySelector('.title');
+        if(t && t.textContent.indexOf('Substitution') !== -1) recentCard = c;
+      });
+      if(!recentCard) return;
+      const body = recentCard.querySelector('.card-body');
+      if(!body) return;
+      if(!proposals.length){
+        body.innerHTML = PCG.states.empty('No substitutions on file yet.');
+        return;
+      }
+      body.innerHTML = proposals.map(p=>{
+        const delta = p.costDelta === 0 ? 'transparent' :
+                      p.costDelta > 0 ? '+'+PCG.money(p.costDelta)+' escalate' :
+                      PCG.money(p.costDelta)+' credit';
+        const statusPill = p.status === 'Approved'
+          ? '<span class="pill green plain" style="font-size:10px;">APPROVED</span>'
+          : '<span class="pill amber plain" style="font-size:10px;">PROPOSED</span>';
+        return `
+          <div class="change-ribbon">
+            <div class="when">${PCG.fmtShort(p.proposedAt)}</div>
+            <div>
+              <strong>${PCG.escapeHtml(p.originalName)} → ${PCG.escapeHtml(p.substituteName)}</strong>
+              <div class="meta">${PCG.escapeHtml(p.showId)} · ${delta} · ${statusPill}</div>
+              ${p.reason?`<div class="muted" style="font-size:10px; margin-top:2px;">${PCG.escapeHtml(p.reason.slice(0,120))}${p.reason.length>120?'…':''}</div>`:''}
+            </div>
+          </div>`;
+      }).join('');
+    }
+    renderRecentProposals();
   }
 </script>
 </body>
