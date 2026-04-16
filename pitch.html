@@ -7,55 +7,85 @@
 <link rel="stylesheet" href="assets/tokens.css" />
 <link rel="stylesheet" href="assets/app.css" />
 <style>
-  .pitch-list {
-    display: grid; gap: var(--sp-3);
-  }
+  .pitch-list { display: grid; gap: 6px; padding: 8px; }
   .pitch-card {
-    display:grid; grid-template-columns: 1fr auto; gap: var(--sp-3);
-    padding: var(--sp-4); border: 1px solid var(--border);
-    border-radius: var(--r-md); background: var(--surface-1);
+    display: block; padding: 12px 14px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--surface-1);
     cursor: pointer; transition: border-color var(--t-fast);
   }
   .pitch-card:hover { border-color: var(--border-accent); }
-  .pitch-card.active { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.06); }
+  .pitch-card.active { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.05); }
+  .pitch-card .ttl { font-weight: 600; color: var(--text-primary); font-size: 13px; margin-bottom: 4px; }
+  .pitch-card .meta { color: var(--text-tertiary); font-size: 11px; }
 
-  .deck-page {
-    background: white; color: #111;
-    border-radius: var(--r-md); padding: var(--sp-6);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    margin-bottom: var(--sp-4); font-family: var(--font-body);
-    position: relative; overflow: hidden;
+  .eng-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--sp-2); margin-bottom: var(--sp-4);
   }
-  .deck-page.dark {
-    background: linear-gradient(135deg, #012D4B 0%, #013558 50%, #7A41E5 140%);
-    color: white;
+  .eng-kpi {
+    background: var(--surface-2); border-radius: var(--r-sm); padding: 10px 14px;
   }
-  .deck-page.dark::after {
-    content: ""; position: absolute; right: -60px; top: -60px;
-    width: 360px; height: 360px; border-radius: 55% 45% 50% 50%;
-    background: linear-gradient(135deg, rgba(217,47,180,0.5), rgba(122,65,229,0.5));
-    opacity: 0.7; filter: blur(2px);
-  }
-  .deck-page h2 { font-family: var(--font-display); font-size: 36px; text-transform: uppercase; letter-spacing: 0.02em; color: #013558; margin-bottom: var(--sp-3); }
-  .deck-page.dark h2 { color: white; }
-  .deck-page .eyebrow { font-family: var(--font-display); font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: #0199FD; }
-  .deck-page.dark .eyebrow { color: #9DD4FF; }
-  .deck-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5);
-    font-size: 14px; line-height: 1.6;
-  }
-  .deck-grid .k { font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: #6E7D94; margin-bottom: 4px; }
-  .deck-grid .v { font-size: 16px; color: #111; }
-  .deck-page.dark .deck-grid .v { color: white; }
-  .deck-page.dark .deck-grid .k { color: #9DD4FF; }
+  .eng-kpi .label { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); }
+  .eng-kpi .value { font-family: var(--font-mono); font-size: 20px; color: var(--text-primary); font-weight: 600; margin-top: 2px; }
+  .eng-kpi .sub   { color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
 
-  .vp-list li {
-    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.15);
-    font-size: 15px;
+  .heatmap { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .heatmap .row {
+    display: grid; grid-template-columns: 180px 1fr 70px;
+    align-items: center; gap: 10px; font-size: var(--fs-sm);
   }
-  .deck-page:not(.dark) .vp-list li { border-bottom-color: #E5E9EF; color: #111; }
-  .vp-list li::before { content: "▸ "; color: #0199FD; margin-right: 6px; }
-  .deck-page.dark .vp-list li::before { color: #9DD4FF; }
+  .heatmap .bar {
+    height: 10px; border-radius: 4px; background: var(--surface-3); position: relative; overflow: hidden;
+  }
+  .heatmap .bar-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .heatmap .bar.skipped { background: rgba(200,50,50,0.12); }
+  .heatmap .mono-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); text-align: right; }
+
+  .section-edit {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 16px 20px; margin-bottom: 12px;
+  }
+  .section-edit .sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .section-edit .sec-head .eyebrow { flex: 1; }
+  .section-edit .sec-body {
+    width: 100%; background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 10px 12px; font-family: inherit; font-size: var(--fs-sm); min-height: 72px; resize: vertical;
+  }
+
+  .opt-row {
+    display: grid; grid-template-columns: 1fr 100px 80px 40px;
+    gap: 8px; padding: 8px 12px; align-items: center;
+    border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  }
+  .opt-row.recommended { background: rgba(1,153,253,0.04); }
+  .opt-row.selected { background: rgba(28,139,76,0.08); }
+
+  .comment-card {
+    background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 10px 14px; margin-bottom: 8px; font-size: var(--fs-sm);
+  }
+  .comment-card.pcg { background: rgba(1,153,253,0.06); }
+  .comment-card .meta { color: var(--text-tertiary); font-size: 10px; margin-bottom: 4px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .evt-row {
+    display: grid; grid-template-columns: 120px 120px 1fr;
+    gap: 10px; font-size: var(--fs-xs); color: var(--text-secondary);
+    padding: 6px 0; border-bottom: 1px dashed var(--border);
+  }
+  .evt-row .mono { font-family: var(--font-mono); }
+  .evt-pill {
+    display: inline-block; padding: 1px 6px; border-radius: var(--r-pill);
+    font-size: 9px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .evt-Opened { background: rgba(1,153,253,0.16); color: var(--pcg-bright-blue); }
+  .evt-SectionViewed { background: var(--surface-3); color: var(--text-secondary); }
+  .evt-CommentAdded { background: rgba(212,163,47,0.16); color: var(--status-amber); }
+  .evt-OptionSelected { background: rgba(122,65,229,0.16); color: var(--pcg-spotlight-purple); }
+  .evt-CTAClicked { background: rgba(28,139,76,0.18); color: var(--status-green); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -67,31 +97,23 @@
       <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
         <div>
           <div class="eyebrow">Sales · Pre-Quote</div>
-          <h1>Creative Proposals</h1>
-          <div class="muted">Pitch the creative + scope + budget before committing a line-item quote. Accepted pitches convert to a quote with stage-set + department lines pre-seeded.</div>
+          <h1>Pitches</h1>
+          <div class="muted">Section-based proposals with live engagement tracking. Client opens your link → every section-view, comment, and option-select lights up here.</div>
         </div>
         <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
-          <button class="btn sm primary" onclick="newPitch()">＋ New Pitch</button>
+          <button class="btn sm primary" id="newBtn">＋ New Pitch</button>
         </div>
       </div>
 
-      <div class="split">
+      <div class="split" style="grid-template-columns: 280px 1fr;">
         <aside>
           <div class="card">
             <div class="card-header"><div class="title">Pitch Library</div></div>
-            <div id="pitchList" class="pitch-list" style="padding: var(--sp-3);"></div>
+            <div id="pitchList" class="pitch-list"></div>
           </div>
         </aside>
 
-        <div>
-          <div id="deck"></div>
-          <div style="display:flex; gap:var(--sp-2); margin-top: var(--sp-4);">
-            <button class="btn" onclick="window.print()">⎙ Export as PDF</button>
-            <button class="btn primary" id="convertBtn">Convert to Quote →</button>
-            <button class="btn ghost">Email to Client</button>
-            <button class="btn ghost">Duplicate</button>
-          </div>
-        </div>
+        <div id="pitchDetail"></div>
       </div>
 
     </div>
@@ -105,175 +127,317 @@
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
 <script>
-  PCG.mountShell({active:'portfolio', crumbs:[{label:'Sales', href:'#'}, {label:'Pitches'}]});
+  PCG.mountShell({active:'pitch', crumbs:[{label:'Sales'},{label:'Pitches'}]});
 
   const canEdit = PCG.hasAnyPermission(PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN);
-  const pitches = PCG.api.getPitches();
-  let currentId = PCG.qs('id') || (pitches[0] && pitches[0].id);
+  if(!canEdit){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    let currentId = PCG.qs('id') || (PCG.api.getPitches()[0] && PCG.api.getPitches()[0].id);
 
-  function renderList(){
-    document.getElementById('pitchList').innerHTML = pitches.map(p => {
-      const client = PCG.api.getClient(p.clientId);
-      const tone = { Accepted:'green', Converted:'green', Draft:'amber', Declined:'red', Sent:'blue' }[p.status] || 'gray';
-      return `<div class="pitch-card ${p.id===currentId?'active':''}" onclick="setPitch('${p.id}')">
-        <div>
-          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-            <span class="pill ${tone}" style="font-size:10px;">${PCG.escapeHtml(p.status.toUpperCase())}</span>
-            ${p.convertedQuoteId ? '<span class="pill blue plain" style="font-size:10px;">→ QUOTE</span>' : ''}
+    function renderList(){
+      const pitches = PCG.api.getPitches();
+      document.getElementById('pitchList').innerHTML = pitches.length ? pitches.map(p => {
+        const client = PCG.api.getClient(p.clientId);
+        const summary = PCG.api.getPitchEngagementSummary(p.id);
+        const opens = summary ? summary.opens : 0;
+        const tone = { Accepted:'green', Opened:'blue', Issued:'blue', Draft:'amber', Declined:'red' }[p.status] || 'gray';
+        return `<div class="pitch-card ${p.id===currentId?'active':''}" onclick="setPitch('${p.id}')">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <span class="pill ${tone} plain" style="font-size:9px;">${p.status.toUpperCase()}</span>
+            ${p.convertedQuoteId ? '<span class="pill green plain" style="font-size:9px;">→ QUOTE</span>' : ''}
           </div>
-          <div style="font-weight:600;">${PCG.escapeHtml(p.title)}</div>
-          <div class="muted" style="font-size:11px; margin-top:4px;">
-            ${client ? PCG.escapeHtml(client.name) : PCG.escapeHtml(p.clientId||'')} · ${PCG.escapeHtml(p.stageSetName||'—')}
-          </div>
-          <div class="muted mono" style="font-size:11px; margin-top:2px;">
-            ${PCG.canSeeTier('T2_MARGINS') && p.estimatedBudgetLow ? '$'+(p.estimatedBudgetLow/1000).toFixed(0)+'k – $'+(p.estimatedBudgetHigh/1000).toFixed(0)+'k' : '—'}
-          </div>
-        </div>
-      </div>`;
-    }).join('') || PCG.states.empty('No pitches yet.');
-  }
-
-  function renderDeck(){
-    const p = PCG.api.getPitch(currentId);
-    if(!p){ document.getElementById('deck').innerHTML = PCG.states.empty('Select a pitch.'); return; }
-    const client = PCG.api.getClient(p.clientId);
-    const ae = PCG.findPerson(p.aeId);
-
-    document.getElementById('deck').innerHTML = `
-      <!-- Slide 1 — Cover -->
-      <div class="deck-page dark">
-        <div class="eyebrow">CREATIVE PROPOSAL</div>
-        <h2 style="font-size: 44px; margin-top: 10px;">${PCG.escapeHtml(p.title)}</h2>
-        <div style="font-family: var(--font-display); font-size: 18px; color: #9DD4FF; letter-spacing: 0.04em;">
-          Lights. Camera. Showtime — done right.
-        </div>
-        <div style="margin-top: var(--sp-6); font-size: 14px; font-family: var(--font-mono); color: rgba(255,255,255,0.85); position: relative;">
-          <div>CLIENT · ${PCG.escapeHtml(client ? client.name : p.clientId||'')}</div>
-          <div>ACCOUNT EXECUTIVE · ${PCG.escapeHtml(ae ? ae.name : '—')}</div>
-          <div>STAGE SET · ${PCG.escapeHtml(p.stageSetName||'—')}</div>
-          <div>SHOW DATES · ${p.keyDates && p.keyDates.showStart ? PCG.fmtDate(p.keyDates.showStart) + ' → ' + PCG.fmtDate(p.keyDates.showEnd) : '—'}</div>
-          <div style="margin-top: var(--sp-3); opacity: 0.7;">Prepared ${PCG.fmtDate(p.createdAt)} · Premier Creative Group</div>
-        </div>
-      </div>
-
-      <!-- Slide 2 — Concept / Creative Direction -->
-      <div class="deck-page">
-        <div class="eyebrow">CONCEPT</div>
-        <h2>Creative Direction</h2>
-        <p style="font-size: 18px; color: #444; line-height: 1.55;">${PCG.escapeHtml(p.creativeDirection || 'Creative direction not yet captured.')}</p>
-        <div style="margin-top: var(--sp-5);">
-          <div class="eyebrow" style="margin-bottom: 8px;">SHOW TYPE &amp; SCALE</div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4);">
-            <div><div class="k" style="font-family:var(--font-display); font-size:10px; color:#6E7D94; text-transform:uppercase; letter-spacing:0.14em;">Type</div><div class="v" style="font-size:18px; font-weight:600;">${PCG.escapeHtml(p.showType||'—')}</div></div>
-            <div><div class="k" style="font-family:var(--font-display); font-size:10px; color:#6E7D94; text-transform:uppercase; letter-spacing:0.14em;">Attendance</div><div class="v" style="font-size:18px; font-weight:600;">${p.estimatedAttendance ? p.estimatedAttendance.toLocaleString() : '—'}</div></div>
-            <div><div class="k" style="font-family:var(--font-display); font-size:10px; color:#6E7D94; text-transform:uppercase; letter-spacing:0.14em;">Breakouts</div><div class="v" style="font-size:18px; font-weight:600;">${p.breakoutCount||0}</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slide 3 — Value Propositions -->
-      <div class="deck-page dark">
-        <div class="eyebrow">WHAT YOU GET</div>
-        <h2>Value Propositions</h2>
-        <ul class="vp-list" style="list-style: none; padding: 0; margin: var(--sp-4) 0 0;">
-          ${(p.valueProps||[]).map(v => `<li>${PCG.escapeHtml(v)}</li>`).join('')}
-        </ul>
-      </div>
-
-      <!-- Slide 4 — Stage Set -->
-      <div class="deck-page">
-        <div class="eyebrow">STAGE SET</div>
-        <h2>${PCG.escapeHtml(p.stageSetName||'—')}</h2>
-        <p style="color:#444; font-size:15px;">Named PCG stage package. Industry-standard build, quick in/out, brand-swappable panels. See System Builder for full BOM + compatibility rules.</p>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-top: var(--sp-4);">
-          ${['Scalable','Adaptable','Brandable','Shippable','Sustainable','Affordable'].map(f=>`
-            <div style="padding: var(--sp-3); background: #F7F8FA; border-radius: var(--r-sm); font-family:var(--font-display); font-size:14px; text-transform:uppercase; letter-spacing:0.08em; color: #013558; display:flex; align-items:center; gap:8px;">
-              <span style="color: #0199FD;">●</span>${PCG.escapeHtml(f)}
-            </div>`).join('')}
-        </div>
-      </div>
-
-      <!-- Slide 5 — Scope / Deliverables -->
-      <div class="deck-page">
-        <div class="eyebrow">SCOPE</div>
-        <h2>Deliverables</h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: var(--sp-4); font-size:15px;">
-          ${(p.deliverables||[]).map(d=>`
-            <div style="padding: 12px 14px; background: #F7F8FA; border-left: 3px solid #7A41E5; border-radius: 4px;">${PCG.escapeHtml(d)}</div>`).join('')}
-        </div>
-      </div>
-
-      <!-- Slide 6 — Budget & Key Dates -->
-      <div class="deck-page dark">
-        <div class="eyebrow">COMMERCIALS</div>
-        <h2>Budget &amp; Key Dates</h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); margin-top: var(--sp-4); position: relative;">
-          <div>
-            <div class="k" style="font-family:var(--font-display); font-size:10px; color:#9DD4FF; text-transform:uppercase; letter-spacing:0.14em;">Estimated Budget Range</div>
-            <div style="font-family:var(--font-display); font-size: 44px; font-weight: 600; color: white; margin-top: 8px;">
-              ${PCG.canSeeTier('T2_MARGINS') && p.estimatedBudgetLow
-                ? '$'+(p.estimatedBudgetLow/1000).toFixed(0)+'k – $'+(p.estimatedBudgetHigh/1000).toFixed(0)+'k'
-                : '—'}
-            </div>
-            <div style="font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 8px;">Final pricing in signed quote</div>
-          </div>
-          <div>
-            <div class="k" style="font-family:var(--font-display); font-size:10px; color:#9DD4FF; text-transform:uppercase; letter-spacing:0.14em;">Key Dates</div>
-            <div style="font-family: var(--font-mono); font-size: 14px; color: white; margin-top: 8px; line-height: 1.9;">
-              LOAD-IN · ${p.keyDates && p.keyDates.loadIn ? PCG.fmtDate(p.keyDates.loadIn) : '—'}<br>
-              SHOW · ${p.keyDates && p.keyDates.showStart ? PCG.fmtDate(p.keyDates.showStart) + ' → ' + PCG.fmtDate(p.keyDates.showEnd) : '—'}<br>
-              LOAD-OUT · ${p.keyDates && p.keyDates.loadOut ? PCG.fmtDate(p.keyDates.loadOut) : '—'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slide 7 — Next Steps -->
-      <div class="deck-page">
-        <div class="eyebrow">NEXT</div>
-        <h2>Next Steps</h2>
-        <p style="font-size: 16px; color: #444; line-height: 1.6;">${PCG.escapeHtml(p.nextSteps || 'Review proposal → confirm direction → convert to signed quote.')}</p>
-        <div style="margin-top: var(--sp-5); padding-top: var(--sp-4); border-top: 1px solid #E5E9EF; display:flex; align-items:center; gap: var(--sp-3); font-family:var(--font-mono); font-size: 12px; color: #6E7D94;">
-          <span>PREMIER CREATIVE GROUP</span>
-          <span>·</span>
-          <span>${PCG.escapeHtml(ae ? ae.name : '')}${ae ? ' · '+PCG.escapeHtml(ae.role||''):''}</span>
-          <span style="margin-left:auto;">${PCG.escapeHtml(p.id)}</span>
-        </div>
-      </div>
-    `;
-
-    // Convert button state
-    const btn = document.getElementById('convertBtn');
-    if(p.convertedQuoteId){
-      btn.textContent = 'View Converted Quote →';
-      btn.onclick = () => location.href = `quote.html?id=${p.convertedQuoteId}`;
-    } else if(p.status === 'Accepted' || p.status === 'Converted'){
-      btn.textContent = 'Convert to Quote →';
-      btn.onclick = () => {
-        const r = PCG.api.convertPitchToQuote(p.id);
-        if(r.ok){ alert('Pitch marked converted. Quote skeleton created — open Quote Builder to add lines.'); renderList(); renderDeck(); }
-        else alert(r.reason);
-      };
-    } else {
-      btn.textContent = 'Mark Accepted';
-      btn.onclick = () => { p.status = 'Accepted'; p.acceptedAt = new Date().toISOString(); renderList(); renderDeck(); };
+          <div class="ttl">${PCG.escapeHtml(p.projectIdea)}</div>
+          <div class="meta">${client ? PCG.escapeHtml(client.name) : PCG.escapeHtml(p.clientId||'')} · v${p.currentVersion}</div>
+          <div class="meta mono" style="margin-top:2px;">${p.pitchNo}${opens?` · ${opens} open${opens===1?'':'s'}`:''}</div>
+        </div>`;
+      }).join('') : PCG.states.empty('No pitches yet.');
     }
-  }
 
-  window.setPitch = (id) => { currentId = id; renderList(); renderDeck(); };
-  window.newPitch = () => {
-    const title = prompt('New pitch title?','New Proposal — Client Name');
-    if(!title) return;
-    const p = PCG.api.createPitch({
-      title, clientId:'c.microsoft', showType:'GeneralSession',
-      stageSetName:'Marquee', valueProps:[], deliverables:[], creativeDirection:''
+    function renderDetail(){
+      const p = PCG.api.getPitch(currentId);
+      if(!p){ document.getElementById('pitchDetail').innerHTML = PCG.states.empty('Select or create a pitch.'); return; }
+      const summary = PCG.api.getPitchEngagementSummary(p.id);
+      const client = PCG.api.getClient(p.clientId);
+      const contact = (PCG.clientContacts||[]).find(c=>c.id===p.clientContactId);
+      const ae = PCG.findPerson(p.aeId);
+      const shareUrl = p.shareToken ? `pitch-view.html?token=${p.shareToken}` : null;
+
+      document.getElementById('pitchDetail').innerHTML = `
+        <!-- Header -->
+        <div class="card card-pad" style="margin-bottom: var(--sp-4);">
+          <div style="display:flex; align-items:flex-start; gap:var(--sp-3);">
+            <div style="flex:1;">
+              <div class="eyebrow" style="margin-bottom:4px;">${p.pitchNo} · v${p.currentVersion} · ${p.status.toUpperCase()}</div>
+              <h2 style="margin:0 0 6px;">${PCG.escapeHtml(p.projectIdea)}</h2>
+              <div class="muted" style="font-size:var(--fs-sm);">
+                For <strong>${client ? PCG.escapeHtml(client.name) : PCG.escapeHtml(p.clientId||'')}</strong>${contact?' · '+PCG.escapeHtml(contact.name):''} · AE ${ae?PCG.escapeHtml(ae.name):'—'}
+              </div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:6px;">${PCG.escapeHtml(p.targetDates||'')}</div>
+              ${p.estimatedBudget ? `<div class="mono" style="font-size:var(--fs-sm); margin-top:8px; color: var(--pcg-bright-blue);">Budget Range · ${PCG.money(p.estimatedBudget.low)} – ${PCG.money(p.estimatedBudget.high)}</div>` : ''}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+              ${shareUrl ? `
+                <a class="btn sm primary" href="${shareUrl}" target="_blank" rel="noopener">Open Client View ↗</a>
+                <button class="btn sm ghost" onclick="copyShare()">📋 Copy Share Link</button>
+              ` : `<button class="btn sm primary" onclick="issuePitch()">Issue to Client →</button>`}
+              ${p.convertedQuoteId
+                ? `<a class="btn sm" href="quote.html?id=${p.convertedQuoteId}">View Quote →</a>`
+                : (p.status === 'Accepted' ? `<button class="btn sm" onclick="convertToQuote()">Convert to Quote →</button>` : '')}
+              <button class="btn sm ghost" onclick="duplicatePitch()">Duplicate</button>
+            </div>
+          </div>
+          ${shareUrl ? `
+            <div style="margin-top:var(--sp-3); padding-top:var(--sp-3); border-top:1px solid var(--border); display:flex; gap:10px; align-items:center;">
+              <span class="mono" style="font-size:11px; color: var(--text-tertiary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="shareUrlDisp">${PCG.escapeHtml(shareUrl)}</span>
+              <span class="muted" style="font-size:11px;">Issued ${p.issuedAt?PCG.fmtDate(p.issuedAt,{time:true}):'—'}</span>
+            </div>` : ''}
+        </div>
+
+        <!-- Engagement summary -->
+        ${summary ? `
+        <div class="card">
+          <div class="card-header">
+            <div class="title">Engagement</div>
+            ${summary.lastActivityAt ? `<span class="muted" style="margin-left:auto; font-size: var(--fs-xs);">Last activity ${PCG.fmtDate(summary.lastActivityAt,{time:true})} (${PCG.ago(summary.lastActivityAt)})</span>` : ''}
+          </div>
+          <div class="card-body">
+            <div class="eng-strip">
+              <div class="eng-kpi"><div class="label">Opens</div><div class="value">${summary.opens}</div><div class="sub">${summary.firstOpenedAt?'first '+PCG.fmtShort(summary.firstOpenedAt):'not opened yet'}</div></div>
+              <div class="eng-kpi"><div class="label">Comments</div><div class="value">${summary.commentCount}</div><div class="sub">${p.comments&&p.comments.length?'inbound + reply':'none'}</div></div>
+              <div class="eng-kpi"><div class="label">Option Picked</div><div class="value" style="font-size: 14px;">${summary.selectedOptionId ? PCG.escapeHtml((p.options.find(o=>o.id===summary.selectedOptionId)||{}).label||'—') : '—'}</div><div class="sub">${summary.optionSelections} selections</div></div>
+              <div class="eng-kpi"><div class="label">CTA</div><div class="value">${summary.ctaClicks}</div><div class="sub">${p.status==='Accepted'?'✓ accepted':'not accepted'}</div></div>
+              <div class="eng-kpi"><div class="label">Total Events</div><div class="value">${summary.totalEvents}</div><div class="sub">tracked</div></div>
+            </div>
+
+            <div style="margin-top: var(--sp-3);">
+              <div class="eyebrow" style="margin-bottom:6px;">Time per section</div>
+              ${renderHeatmap(p, summary)}
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Sections editor -->
+        <div class="card" style="margin-top: var(--sp-4);">
+          <div class="card-header"><div class="title">Sections</div><button class="btn sm" onclick="addSection()" style="margin-left:auto;">＋ Section</button></div>
+          <div class="card-body">
+            ${(p.sections||[]).map(s => renderSection(s, p)).join('')}
+          </div>
+        </div>
+
+        <!-- Options / stage concepts -->
+        <div class="card" style="margin-top: var(--sp-4);">
+          <div class="card-header"><div class="title">Options (A/B)</div><button class="btn sm" onclick="addOption()" style="margin-left:auto;">＋ Option</button></div>
+          <div class="card-body">
+            ${(p.options||[]).length ? `
+              <div class="opt-row" style="font-family: var(--font-display); font-size: 10px; text-transform: uppercase; color: var(--text-tertiary); border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                <div>Option</div><div style="text-align:right;">Δ Price</div><div style="text-align:center;">Flag</div><div></div>
+              </div>
+              ${(p.options||[]).map(o => {
+                const sc = o.stageConceptId ? PCG.api.getStageConcept(o.stageConceptId) : null;
+                return `
+                <div class="opt-row ${o.recommended?'recommended':''} ${p.selectedOptionId===o.id?'selected':''}">
+                  <div>
+                    <strong>${PCG.escapeHtml(o.label)}</strong>${sc?` · ${PCG.escapeHtml(sc.name)}`:''}
+                    <div class="muted" style="font-size:10px;">${(o.inclusions||[]).slice(0,3).join(' · ')}</div>
+                  </div>
+                  <div class="mono" style="text-align:right;">${o.priceDelta===0?'Included':o.priceDelta>0?'+'+PCG.money(o.priceDelta):PCG.money(o.priceDelta)}</div>
+                  <div style="text-align:center;">
+                    ${o.recommended?'<span class="pill blue plain" style="font-size:9px;">REC</span>':''}
+                    ${p.selectedOptionId===o.id?'<span class="pill green plain" style="font-size:9px;">CLIENT PICKED</span>':''}
+                  </div>
+                  <div><button class="btn sm ghost" onclick="removeOption('${o.id}')" style="font-size: 11px;">✕</button></div>
+                </div>`;
+              }).join('')}
+            ` : PCG.states.empty('No options yet. Add Miyra / Marquee / Lumen stage concepts or custom A/B options.')}
+          </div>
+        </div>
+
+        <!-- Comments + Version history -->
+        <div class="split" style="margin-top: var(--sp-4);">
+          <div>
+            <div class="card">
+              <div class="card-header"><div class="title">Comment Thread</div><span class="muted" style="margin-left:auto; font-size: var(--fs-xs);">${(p.comments||[]).length} msg</span></div>
+              <div class="card-body">
+                ${(p.comments||[]).length ? (p.comments||[]).map(c => {
+                  const sec = (p.sections||[]).find(x=>x.id===c.sectionId);
+                  return `<div class="comment-card ${c.fromSide}">
+                    <div class="meta">${PCG.escapeHtml(c.fromName||'')} · ${sec?PCG.escapeHtml(sec.title):PCG.escapeHtml(c.sectionId||'')} · ${PCG.fmtDate(c.at,{time:true})}</div>
+                    <div>${PCG.escapeHtml(c.body)}</div>
+                  </div>`;
+                }).join('') : PCG.states.empty('No comments yet — client can comment per section from the client view.')}
+              </div>
+            </div>
+          </div>
+          <aside>
+            <div class="card">
+              <div class="card-header"><div class="title">Version History</div></div>
+              <div class="card-body" style="font-size: var(--fs-sm);">
+                ${(p.versionHistory||[]).slice().reverse().map(v => `
+                  <div class="change-ribbon" style="margin-bottom: 6px;">
+                    <div class="when">v${v.v}</div>
+                    <div><strong>${PCG.escapeHtml(v.change)}</strong><div class="meta">${PCG.fmtDate(v.at,{time:true})}${v.author?' · '+PCG.escapeHtml((PCG.findPerson(v.author)||{}).name||v.author):''}</div></div>
+                  </div>`).join('') || PCG.states.empty('No versions.')}
+              </div>
+            </div>
+            <div class="card" style="margin-top: var(--sp-4);">
+              <div class="card-header"><div class="title">Event Log</div></div>
+              <div class="card-body" style="font-size: var(--fs-xs); max-height: 380px; overflow-y: auto;">
+                ${(p.engagementEvents||[]).slice().reverse().slice(0, 30).map(e => `
+                  <div class="evt-row">
+                    <div class="mono">${PCG.fmtShort(e.at)} ${PCG.fmtTime(e.at)}</div>
+                    <div><span class="evt-pill evt-${e.type}">${e.type}</span></div>
+                    <div>${e.sectionId ? PCG.escapeHtml(((p.sections||[]).find(s=>s.id===e.sectionId)||{}).title||e.sectionId) : ''} ${e.meta && e.meta.durationSec ? ' · '+e.meta.durationSec+'s' : ''} ${e.meta && e.meta.optionId ? ' · '+PCG.escapeHtml(((p.options||[]).find(o=>o.id===e.meta.optionId)||{}).label||e.meta.optionId) : ''} ${e.meta && e.meta.action ? ' · '+PCG.escapeHtml(e.meta.action) : ''}</div>
+                  </div>`).join('') || PCG.states.empty('No events yet.')}
+              </div>
+            </div>
+          </aside>
+        </div>`;
+    }
+
+    function renderSection(s, p){
+      return `
+        <div class="section-edit">
+          <div class="sec-head">
+            <span class="eyebrow">${PCG.escapeHtml(s.type)}</span>
+            <input type="text" value="${PCG.escapeHtml(s.title)}" onchange="updateSection('${s.id}','title',this.value)"
+                   style="flex:2; background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px 8px; font-size: var(--fs-sm); font-weight: 600;" />
+            <button class="btn sm ghost" onclick="removeSection('${s.id}')" style="font-size: 11px;">✕</button>
+          </div>
+          ${s.type === 'Options' ? `<div class="muted" style="font-size: var(--fs-xs);">Options are managed in the Options card below.</div>` : `
+            <textarea class="sec-body" onchange="updateSection('${s.id}','body',this.value)" placeholder="Write the section body — shown to client on pitch-view.html">${PCG.escapeHtml(s.body||'')}</textarea>
+          `}
+        </div>`;
+    }
+
+    function renderHeatmap(p, summary){
+      const maxDur = Math.max(1, ...(summary.sectionsByTime||[]).map(s=>s.durationSec));
+      const rows = (p.sections||[]).map(s => {
+        const data = (summary.sectionsByTime||[]).find(x=>x.sectionId===s.id);
+        const skipped = !data;
+        const dur = data ? data.durationSec : 0;
+        const pct = Math.min(100, (dur / maxDur) * 100);
+        return `<div class="row">
+          <div>${PCG.escapeHtml(s.title)} ${s.id===(summary.mostViewedSection&&summary.mostViewedSection.sectionId)?'<span class="pill purple plain" style="font-size:9px; margin-left:4px;">TOP</span>':''}</div>
+          <div class="bar ${skipped?'skipped':''}">${skipped?'':`<div class="bar-fill" style="width: ${pct}%;"></div>`}</div>
+          <div class="mono-time">${skipped ? 'skipped' : dur + 's'}</div>
+        </div>`;
+      }).join('');
+      return `<div class="heatmap">${rows}</div>`;
+    }
+
+    window.setPitch = (id) => { currentId = id; renderList(); renderDetail(); };
+
+    window.updateSection = (sid, field, val) => {
+      const res = PCG.api.updatePitchSection(currentId, sid, { [field]: val });
+      if(!res.ok){ alert('Blocked'); return; }
+      // No full re-render to preserve input focus
+    };
+
+    window.removeSection = (sid) => {
+      if(!confirm('Remove this section?')) return;
+      const p = PCG.api.getPitch(currentId);
+      p.sections = (p.sections||[]).filter(s => s.id !== sid);
+      p.currentVersion = (p.currentVersion||1)+1;
+      p.versionHistory.push({ v:p.currentVersion, at:new Date().toISOString(), author:PCG.user.id, change:'Removed a section' });
+      renderDetail();
+    };
+
+    window.addSection = () => {
+      const type = prompt('Section type (Overview / System Design / Visuals / Schedule / Options / Pricing / Team / CTA / Custom):','Custom');
+      if(!type) return;
+      const title = prompt('Title:', type);
+      if(!title) return;
+      const p = PCG.api.getPitch(currentId);
+      p.sections = p.sections || [];
+      p.sections.push({ id:'sec.'+Math.random().toString(36).slice(2,6), type, title, body:'' });
+      p.currentVersion = (p.currentVersion||1)+1;
+      p.versionHistory.push({ v:p.currentVersion, at:new Date().toISOString(), author:PCG.user.id, change:'Added "'+title+'" section' });
+      renderDetail();
+    };
+
+    window.addOption = () => {
+      const label = prompt('Option label (e.g. "Miyra Stage Set"):');
+      if(!label) return;
+      const p = PCG.api.getPitch(currentId);
+      p.options = p.options || [];
+      p.options.push({
+        id:'opt.'+Math.random().toString(36).slice(2,6),
+        label, stageConceptId:null, priceDelta:0, recommended: p.options.length===0,
+        inclusions:[], exclusions:[]
+      });
+      renderDetail();
+    };
+
+    window.removeOption = (oid) => {
+      if(!confirm('Remove this option?')) return;
+      const p = PCG.api.getPitch(currentId);
+      p.options = (p.options||[]).filter(o => o.id !== oid);
+      if(p.selectedOptionId === oid) p.selectedOptionId = null;
+      renderDetail();
+    };
+
+    window.issuePitch = () => {
+      if(!confirm('Generate a client share link and mark pitch Issued?\n\nThe client receives a magic-link URL — no login required. Every open, section-view, comment, and option pick is tracked live.')) return;
+      const res = PCG.api.issuePitch(currentId);
+      if(!res.ok){ alert('Blocked'); return; }
+      alert(`✓ Pitch issued.\n\nMagic link:\n${res.url}\n\nCopy this URL and send it to ${((PCG.api.getClient(PCG.api.getPitch(currentId).clientId)||{}).name)||'the client'}.`);
+      renderList(); renderDetail();
+    };
+
+    window.copyShare = () => {
+      const p = PCG.api.getPitch(currentId);
+      const url = location.origin + location.pathname.replace(/[^/]+$/,'') + 'pitch-view.html?token='+p.shareToken;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('✓ Link copied to clipboard:\n'+url);
+      }).catch(() => {
+        prompt('Copy this link:', url);
+      });
+    };
+
+    window.convertToQuote = () => {
+      if(!confirm('Convert this pitch to a line-item quote?')) return;
+      const res = PCG.api.convertPitchToQuote(currentId);
+      if(!res.ok){ alert('Blocked: '+(res.reason||'unknown')); return; }
+      alert('✓ Pitch marked accepted. Opening Quote Builder to add lines...');
+      // Create a new empty quote shell if no conversion target — for demo, just navigate
+      const p = PCG.api.getPitch(currentId);
+      if(p.convertedQuoteId) location.href = 'quote.html?id=' + p.convertedQuoteId;
+      else location.href = 'quote.html?id=q.LCE-2026.v3'; // fallback to most recent
+    };
+
+    window.duplicatePitch = () => {
+      const src = PCG.api.getPitch(currentId);
+      const copyName = prompt('New pitch title:', 'Copy of '+src.projectIdea);
+      if(!copyName) return;
+      const res = PCG.api.createPitch({
+        projectIdea: copyName,
+        clientId: src.clientId,
+        clientContactId: src.clientContactId,
+        targetDates: src.targetDates,
+        estimatedBudget: src.estimatedBudget ? { ...src.estimatedBudget } : null,
+        sections: JSON.parse(JSON.stringify(src.sections||[])),
+        options: JSON.parse(JSON.stringify(src.options||[]))
+      });
+      if(!res.ok){ alert('Blocked'); return; }
+      currentId = res.pitch.id;
+      renderList(); renderDetail();
+    };
+
+    document.getElementById('newBtn').addEventListener('click', () => {
+      const title = prompt('Project idea (short title):');
+      if(!title) return;
+      const client = prompt('Client ID (c.littlecae / c.microsoft / c.globex / c.accrue / c.sae / c.lincoln / c.mvp-collab):','c.microsoft');
+      if(!client) return;
+      const res = PCG.api.createPitch({ projectIdea: title, clientId: client });
+      if(!res.ok){ alert('Blocked'); return; }
+      currentId = res.pitch.id;
+      renderList(); renderDetail();
     });
-    currentId = p.id;
-    pitches.push(p);
-    renderList(); renderDeck();
-  };
 
-  renderList(); renderDeck();
+    renderList(); renderDetail();
+  }
 </script>
 </body>
 </html>

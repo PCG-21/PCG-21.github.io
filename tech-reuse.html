@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Tech Plan Historical Reuse</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .plan-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 14px 18px; margin-bottom: 10px;
+    cursor: pointer; transition: border-color 0.15s, transform 0.15s;
+  }
+  .plan-card:hover { border-color: var(--border-accent); transform: translateY(-1px); }
+  .plan-card.selected { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.04); }
+  .plan-card h3 { margin: 0 0 4px; font-family: var(--font-display); font-size: 16px; }
+  .signal-row {
+    display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 10px; align-items: center; padding: 8px 12px;
+    border-bottom: 1px solid var(--border); font-size: 12px;
+  }
+  .signal-row .arrow { color: var(--pcg-spotlight-purple); font-family: var(--font-mono); }
+  .signal-row .in { color: var(--status-green); font-family: var(--font-mono); }
+  .signal-row .proc { padding: 4px 8px; background: var(--surface-2); border-radius: var(--r-sm); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; color: var(--text-secondary); }
+  .signal-row .out { color: var(--pcg-bright-blue); font-family: var(--font-mono); }
+  .diff-row {
+    display: grid; grid-template-columns: 100px 1fr;
+    gap: 10px; padding: 6px 12px; font-size: var(--fs-sm); border-bottom: 1px dashed var(--border);
+  }
+  .diff-row.added    { background: rgba(28,139,76,0.06); border-left: 3px solid var(--status-green); }
+  .diff-row.removed  { background: rgba(178,56,56,0.06); border-left: 3px solid var(--status-red); text-decoration: line-through; opacity: 0.85; }
+  .diff-row.changed  { background: rgba(212,163,47,0.06); border-left: 3px solid var(--status-amber); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Tech Planning · Historical Reuse</div>
+          <h1>Prior Plans</h1>
+          <div class="muted">"We did this venue before. Find what we used last time." TDs clone prior plans in 30 seconds, system diffs the changes (spec §ZZ).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size:10px;">SEARCH BY</span>
+          <select id="searchType" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+            <option value="venue">Venue</option>
+            <option value="showType">Show Type</option>
+            <option value="td">TD</option>
+            <option value="department">Department</option>
+          </select>
+          <select id="searchValue" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); min-width: 220px;"></select>
+        </div>
+      </div>
+
+      <div class="split" style="grid-template-columns: 1fr 1.3fr;">
+        <!-- LEFT: Matching historical plans -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Matching Plans</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="matchCount">—</span>
+            </div>
+            <div id="planList" style="padding: var(--sp-3);"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">How Reuse Works</div></div>
+            <div class="card-body" style="font-size: var(--fs-xs); line-height: 1.7; color: var(--text-secondary);">
+              <ol style="margin: 0; padding-left: 18px;">
+                <li>Search by venue / show type / TD / department</li>
+                <li>Pick a prior plan matching your scenario</li>
+                <li>Clone the full plan — IO points, channels, routes, device config all copied</li>
+                <li>Adjust for the new show</li>
+                <li>System tracks <code>clonedFromPlanId</code> and shows a <strong>diff</strong> vs source plan</li>
+                <li>Pre-show checklist auto-generates from every AudioSignalRoute</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Selected plan detail -->
+        <div>
+          <div id="planDetail"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'videoio', crumbs:[{label:'Tech Planning'},{label:'Historical Reuse'}]});
+
+  // Build historical plan library — seeded + some prior-year synthesized
+  const historicalPlans = [
+    {
+      id: 'stp.glbx.gsk26',
+      showName: 'Globex GSK Expo 2026',
+      showCode: 'GLBX-GSK26',
+      showDate: '2026-04-09',
+      tdName: 'Chris Taylor',
+      venueId: 'v.caesars-forum',
+      venueName: 'Caesars Forum Conference Center',
+      showType: 'GeneralSession',
+      videoInputCount: 4,
+      videoOutputCount: 3,
+      videoRoutes: 2,
+      intercomChannels: 3,
+      beltpacks: 6,
+      consoleModel: 'Yamaha QL5',
+      switcherModel: 'Ross Carbonite Ultra 12',
+      audioChannels: 32,
+      preShowChecklistPct: 100,
+      signalRoutes: [
+        { id:'sr.1', routeName:'Main PA Feed',       inputs:['CH 1 Presenter Lav 1','CH 2 Presenter Lav 2','CH 3-4 Handhelds','CH 5 Podium'],               destination:'L+R → J8 Array', routeType:'Matrix',  processing:'SubGroup 1 (Speech) · EQ flat +3dB 80Hz · gate', level:'+4dBu nominal' },
+        { id:'sr.2', routeName:'Playback Stereo',    inputs:['CH 8 Playback L','CH 9 Playback R','CH 10-11 Video Embed'],                                 destination:'L+R + Record',   routeType:'SubGroup', processing:'Stereo bus · no processing', level:'0 VU' },
+        { id:'sr.3', routeName:'Monitor Mix 1',      inputs:['CH 1-5 Speech sub'],                                                                        destination:'AUX 1 → Stage Wedges', routeType:'Aux',  processing:'High-pass 120Hz', level:'-3dB nominal' },
+        { id:'sr.4', routeName:'Press / Broadcast',  inputs:['All channels (mirror of main)'],                                                            destination:'AUX 5 → Press Feed',   routeType:'Matrix', processing:'Speech sub only', level:'+4dBu nominal' }
+      ],
+      notesPreview: 'Ross Carbonite Ultra 12 primary switcher with Graphite backup on rack 2. 2-wire Clear-Com Channel A, 4-wire Dante matrix on Channels B+C. RF scan clean on both bands.'
+    },
+    {
+      id: 'stp.lce.2025',
+      showName: 'LCE Conference 2025',
+      showCode: 'LCE-2025',
+      showDate: '2025-04-14',
+      tdName: 'Chris Taylor',
+      venueId: 'v.caesars-forum',
+      venueName: 'Caesars Forum Conference Center',
+      showType: 'GeneralSession',
+      videoInputCount: 4,
+      videoOutputCount: 3,
+      videoRoutes: 2,
+      intercomChannels: 3,
+      beltpacks: 6,
+      consoleModel: 'Yamaha CL5',
+      switcherModel: 'Barco E2',
+      audioChannels: 24,
+      preShowChecklistPct: 95,
+      signalRoutes: [
+        { id:'sr.1', routeName:'Main PA Feed',       inputs:['CH 1 Lav 1','CH 2 Lav 2','CH 3-4 HH','CH 5-7 Q&A Mics'],     destination:'L+R → J8 Array', routeType:'Matrix', processing:'Speech sub · comp 4:1', level:'+4dBu' },
+        { id:'sr.2', routeName:'Playback Stereo',    inputs:['CH 8-9 Playback L/R'],                                        destination:'L+R + Record',   routeType:'SubGroup', processing:'Stereo bus', level:'0 VU' },
+        { id:'sr.3', routeName:'Broadcast Split',    inputs:['Mirror of Main'],                                             destination:'AUX 5 → Press',  routeType:'Matrix',   processing:'Flat', level:'+4dBu' }
+      ],
+      notesPreview: 'Barco E2 for video mgmt (upgraded to Ross for 2026). QL5 audio console. Caesars Forum house rigging — truss points confirmed 30 days ahead.'
+    },
+    {
+      id: 'stp.sae.2025',
+      showName: 'SAE WCX 2025',
+      showCode: 'SAE-WCX-2025',
+      showDate: '2025-04-15',
+      tdName: 'Tyler Scheff',
+      venueId: 'v.huntington',
+      venueName: 'Huntington Place (Detroit)',
+      showType: 'BreakoutConference',
+      videoInputCount: 2,
+      videoOutputCount: 12,
+      videoRoutes: 12,
+      intercomChannels: 2,
+      beltpacks: 4,
+      consoleModel: 'Yamaha QL1 (per room)',
+      switcherModel: 'BMD ATEM Mini Pro (per room)',
+      audioChannels: 8,
+      preShowChecklistPct: 100,
+      signalRoutes: [
+        { id:'sr.1', routeName:'Room-Local PA', inputs:['Room handheld','Podium mic'], destination:'Room speakers', routeType:'Direct', processing:'None', level:'+4dBu' }
+      ],
+      notesPreview: 'Breakout-heavy: 31 rooms each with standard kit. Local PA + LCD + 2 wireless mics. IATSE 38 crew.'
+    },
+    {
+      id: 'stp.lin.nyc.2025',
+      showName: 'Lincoln Summer Drive Event 2025',
+      showCode: 'LIN-NYC-25',
+      showDate: '2025-06-12',
+      tdName: 'Chris Taylor',
+      venueId: 'venue.jacob-javits',
+      venueName: 'Javits Center',
+      showType: 'ProductLaunch',
+      videoInputCount: 6,
+      videoOutputCount: 4,
+      videoRoutes: 5,
+      intercomChannels: 4,
+      beltpacks: 8,
+      consoleModel: 'Yamaha CL5',
+      switcherModel: 'Ross Carbonite Ultra 12',
+      audioChannels: 40,
+      preShowChecklistPct: 100,
+      signalRoutes: [
+        { id:'sr.1', routeName:'Main PA Feed',     inputs:['CH 1-4 Presenter Lavs','CH 5-6 Handhelds'],        destination:'L+R → J8 Array',      routeType:'Matrix',   processing:'Speech sub · VCA 1', level:'+4dBu' },
+        { id:'sr.2', routeName:'Reveal Moment',    inputs:['CH 12-15 Playback L/R/SL/SR'],                     destination:'L+R + Sub Send',       routeType:'SubGroup', processing:'Stereo + sub · slam 2dB',  level:'+6 for reveal' },
+        { id:'sr.3', routeName:'IMAG / Broadcast', inputs:['Mirror of Speech sub'],                            destination:'AUX 5 → IMAG + Press', routeType:'Matrix',   processing:'Flat', level:'+4dBu' },
+        { id:'sr.4', routeName:'Dealer Panel',     inputs:['CH 16-20 Panel HHs'],                              destination:'AUX 2 → Lobby Fill',   routeType:'Aux',      processing:'Comp + HPF', level:'-3dB' }
+      ],
+      notesPreview: 'Launch reveal with 4-surface playback. IATSE Local 1 — advance rigging chief 2 weeks. WiFi locked — request SSID from Javits IT 48h ahead.'
+    }
+  ];
+
+  // Populate search filters
+  function rebuildSearchValues(){
+    const type = document.getElementById('searchType').value;
+    const sel = document.getElementById('searchValue');
+    let opts = [];
+    if(type === 'venue'){
+      const venues = {};
+      historicalPlans.forEach(p => { venues[p.venueId] = p.venueName; });
+      opts = Object.entries(venues).map(([k,v]) => ({ v:k, l:v }));
+    } else if(type === 'showType'){
+      const types = new Set(historicalPlans.map(p => p.showType));
+      opts = Array.from(types).map(t => ({ v:t, l:t }));
+    } else if(type === 'td'){
+      const tds = new Set(historicalPlans.map(p => p.tdName));
+      opts = Array.from(tds).map(t => ({ v:t, l:t }));
+    } else if(type === 'department'){
+      opts = [{ v:'Audio', l:'Audio' },{ v:'Video', l:'Video' },{ v:'Intercom', l:'Intercom' }];
+    }
+    sel.innerHTML = '<option value="__all__">All</option>' + opts.map(o => `<option value="${PCG.escapeHtml(o.v)}">${PCG.escapeHtml(o.l)}</option>`).join('');
+    // Default to Caesars Forum for demo (matches most interesting dataset)
+    if(type === 'venue') sel.value = 'v.caesars-forum';
+  }
+
+  function filteredPlans(){
+    const type = document.getElementById('searchType').value;
+    const val = document.getElementById('searchValue').value;
+    if(!val || val === '__all__') return historicalPlans;
+    if(type === 'venue')    return historicalPlans.filter(p => p.venueId === val);
+    if(type === 'showType') return historicalPlans.filter(p => p.showType === val);
+    if(type === 'td')       return historicalPlans.filter(p => p.tdName === val);
+    return historicalPlans;
+  }
+
+  let currentPlanId = null;
+
+  function render(){
+    const plans = filteredPlans();
+    document.getElementById('matchCount').textContent = `${plans.length} match${plans.length===1?'':'es'}`;
+    document.getElementById('planList').innerHTML = plans.length ? plans.map(p => {
+      const ageMonths = Math.round((Date.now() - new Date(p.showDate).getTime()) / (86400000*30));
+      return `
+        <div class="plan-card ${p.id===currentPlanId?'selected':''}" onclick="selectPlan('${p.id}')">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span class="pill ${p.preShowChecklistPct===100?'green':'amber'} plain" style="font-size: 9px;">${p.preShowChecklistPct}% CHECKED</span>
+            <span class="muted" style="font-size: 11px;">${ageMonths} mo ago</span>
+          </div>
+          <h3>${PCG.escapeHtml(p.showName)}</h3>
+          <div class="muted" style="font-size: 12px;">${PCG.escapeHtml(p.venueName)} · TD ${PCG.escapeHtml(p.tdName)}</div>
+          <div style="margin-top: 6px; display: flex; gap: 10px; font-size: 11px; color: var(--text-tertiary); flex-wrap: wrap;">
+            <span>🎵 ${p.audioChannels}ch · ${PCG.escapeHtml(p.consoleModel)}</span>
+            <span>📺 ${p.videoInputCount}i/${p.videoOutputCount}o · ${PCG.escapeHtml(p.switcherModel)}</span>
+            <span>📞 ${p.intercomChannels} ch · ${p.beltpacks} bp</span>
+          </div>
+        </div>`;
+    }).join('') : PCG.states.empty('No matching plans in the library.');
+
+    if(currentPlanId) renderDetail();
+    else if(plans[0]) selectPlan(plans[0].id);
+    else document.getElementById('planDetail').innerHTML = `<div class="card card-pad">${PCG.states.empty('Select a matching plan to clone.')}</div>`;
+  }
+
+  window.selectPlan = (id) => { currentPlanId = id; render(); };
+
+  function renderDetail(){
+    const p = historicalPlans.find(x => x.id === currentPlanId);
+    if(!p) return;
+    document.getElementById('planDetail').innerHTML = `
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="card-header">
+          <div class="title">${PCG.escapeHtml(p.showName)}</div>
+          <span class="muted" style="margin-left: auto; font-size: var(--fs-xs);">${PCG.escapeHtml(p.showCode)} · ${PCG.fmtDate(p.showDate)}</span>
+        </div>
+        <div class="card-body">
+          <div class="kpi-strip" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="kpi"><div class="label">Audio</div><div class="value" style="font-size: 18px;">${p.audioChannels}ch</div><div class="sub">${PCG.escapeHtml(p.consoleModel)}</div></div>
+            <div class="kpi"><div class="label">Video I/O</div><div class="value" style="font-size: 18px;">${p.videoInputCount}/${p.videoOutputCount}</div><div class="sub">${p.videoRoutes} routes</div></div>
+            <div class="kpi"><div class="label">Switcher</div><div class="value" style="font-size: 13px;">${PCG.escapeHtml(p.switcherModel)}</div><div class="sub">primary</div></div>
+            <div class="kpi"><div class="label">Intercom</div><div class="value" style="font-size: 18px;">${p.intercomChannels}ch · ${p.beltpacks}bp</div><div class="sub">&nbsp;</div></div>
+          </div>
+          <div class="muted" style="font-size: var(--fs-sm); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border);">
+            <strong>Notes:</strong> ${PCG.escapeHtml(p.notesPreview)}
+          </div>
+        </div>
+      </div>
+
+      <!-- Signal flow routes (spec §ZZ.2) -->
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="card-header"><div class="title">Audio Signal Routes (§ZZ.2)</div>
+          <span class="muted" style="margin-left: auto; font-size: var(--fs-xs);">${p.signalRoutes.length} route${p.signalRoutes.length===1?'':'s'} · replaces the Excel signal flow chart</span>
+        </div>
+        <div>
+          <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; padding: 8px 12px; background: var(--surface-2); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary);">
+            <div>Sources</div><div>→</div><div>Processing / Bus</div><div>→</div><div>Destination</div>
+          </div>
+          ${p.signalRoutes.map(r => `
+            <div class="signal-row">
+              <div class="in">${r.inputs.map(i => PCG.escapeHtml(i)).join('<br>')}</div>
+              <div class="arrow">→</div>
+              <div class="proc"><strong>${PCG.escapeHtml(r.routeName)}</strong><br><span style="font-weight: 400; color: var(--text-tertiary); font-size: 10px; text-transform: none; letter-spacing: 0;">${PCG.escapeHtml(r.processing)}<br>${PCG.escapeHtml(r.level)}</span></div>
+              <div class="arrow">→</div>
+              <div class="out">${PCG.escapeHtml(r.destination)}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Clone action + diff preview -->
+      <div class="card">
+        <div class="card-header"><div class="title">Clone Into New Plan</div></div>
+        <div class="card-body">
+          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: var(--sp-3);">
+            <select id="cloneTarget" style="flex: 1; background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); padding: 8px 10px; border-radius: var(--r-sm); font-size: var(--fs-sm);">
+              <option value="new">— Create NEW plan on a show —</option>
+              ${PCG.api.getProjects().filter(p => p.show && !['Archived'].includes(p.show.lifecycleState)).map(pr => `<option value="${pr.code}">Attach to ${pr.code} — ${PCG.escapeHtml(pr.name)}</option>`).join('')}
+            </select>
+            <button class="btn primary" onclick="doClone()">Clone Plan →</button>
+          </div>
+          <div class="muted" style="font-size: var(--fs-xs);">All IO points · channels · signal routes · device config will be copied. Pre-show checklist auto-generates from each route. You'll get a diff vs the source plan as you edit.</div>
+        </div>
+      </div>
+
+      <!-- Example Diff (shows what the post-clone diff will look like) -->
+      <div class="card" style="margin-top: var(--sp-4);">
+        <div class="card-header"><div class="title">Example Diff · Plan vs Source (§ZZ.3)</div></div>
+        <div style="padding: 10px 0;">
+          <div class="diff-row added"><div><span class="pill green plain" style="font-size: 9px;">+ ADDED</span></div><div><strong>AUX 6 · Livestream Feed</strong> — matrix route to Livestream SDI (2026 only)</div></div>
+          <div class="diff-row added"><div><span class="pill green plain" style="font-size: 9px;">+ ADDED</span></div><div><strong>CH 16-20</strong> · Dealer panel wireless pack (+5 channels vs 2025)</div></div>
+          <div class="diff-row changed"><div><span class="pill amber plain" style="font-size: 9px;">△ CHANGED</span></div><div><strong>Switcher</strong>: Barco E2 → Ross Carbonite Ultra 12 (2026 upgrade)</div></div>
+          <div class="diff-row changed"><div><span class="pill amber plain" style="font-size: 9px;">△ CHANGED</span></div><div><strong>Console</strong>: Yamaha CL5 → QL5 (2026)</div></div>
+          <div class="diff-row removed"><div><span class="pill red plain" style="font-size: 9px;">− REMOVED</span></div><div><strong>Q&A Mics CH 6-7</strong> — were present in 2025, not in new plan. <span style="color: var(--status-amber);">Intentional?</span></div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  window.doClone = () => {
+    const p = historicalPlans.find(x => x.id === currentPlanId);
+    const target = document.getElementById('cloneTarget').value;
+    const targetLabel = target === 'new' ? 'a new show' : target;
+    alert(`✓ Cloned "${p.showName}" plan into ${targetLabel}.\n\n• All ${p.videoInputCount} video inputs + ${p.videoOutputCount} outputs + ${p.videoRoutes} routes copied\n• All ${p.audioChannels} audio channels + ${p.signalRoutes.length} signal routes copied\n• ${p.intercomChannels} intercom channels + ${p.beltpacks} beltpacks copied\n• Pre-show checklist auto-generated (${p.signalRoutes.length} verify steps + IO smoke test)\n• clonedFromPlanId = ${p.id}\n\nDiff tracking active — changes vs source are highlighted as you edit.\n\nOpening Video IO plan…`);
+    location.href = 'video-io.html';
+  };
+
+  document.getElementById('searchType').addEventListener('change', () => { rebuildSearchValues(); render(); });
+  document.getElementById('searchValue').addEventListener('change', render);
+
+  rebuildSearchValues();
+  render();
+</script>
+</body>
+</html>

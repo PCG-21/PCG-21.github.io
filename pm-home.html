@@ -29,6 +29,12 @@
 
       <div class="split">
         <div>
+          <!-- Active tours I'm on -->
+          <div class="card" id="tourCard" style="margin-bottom:var(--sp-5); display:none;">
+            <div class="card-header"><div class="title">🚌 My Tours</div></div>
+            <div class="card-body" id="myTours"></div>
+          </div>
+
           <!-- My Shows with readiness -->
           <div class="card" style="margin-bottom:var(--sp-5);">
             <div class="card-header"><div class="title">My Active Shows · Readiness</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="myCount"></span></div>
@@ -90,6 +96,39 @@
     .sort((a,b)=>new Date(a.dates.loadIn)-new Date(b.dates.loadIn));
 
   document.getElementById('myCount').textContent = `${mine.length} show${mine.length===1?'':'s'}`;
+
+  // My Tours — tours this user is Tour PM on, or any tour if Admin/Director
+  const myTours = (PCG.api.getTours ? PCG.api.getTours() : [])
+    .filter(t => t.primaryPMId === me.id
+                 || PCG.api.hasPermission(PCG.GROUPS.ADMIN)
+                 || PCG.api.hasPermission(PCG.GROUPS.DIRECTORS));
+  if(myTours.length){
+    document.getElementById('tourCard').style.display = 'block';
+    document.getElementById('myTours').innerHTML = myTours.map(t => {
+      const stops = PCG.api.getTourStops(t.id);
+      const active = stops.find(s => s.stopStatus === 'Active');
+      const next = stops.find(s => s.stopStatus === 'Upcoming' || s.stopStatus === 'Prepping');
+      const complete = stops.filter(s => s.stopStatus === 'Complete').length;
+      const issues = stops.flatMap(s => (s.issues || []));
+      const client = PCG.api.getClient(t.clientId);
+      return `
+        <a href="tour-view.html?id=${t.id}" class="pinned" style="text-decoration:none; color:inherit; margin-bottom: 8px;">
+          <span class="icon">🚌</span>
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span class="pill ${t.status==='Executing'?'blue':'gray'} plain" style="font-size: 9px;">${t.status.toUpperCase()}</span>
+              ${issues.length?`<span class="pill amber plain" style="font-size: 9px;">⚠ ${issues.length} issue${issues.length===1?'':'s'}</span>`:''}
+              <strong>${PCG.escapeHtml(t.name)}</strong>
+            </div>
+            <div class="muted" style="font-size: 11px; margin-top: 2px;">
+              ${client ? PCG.escapeHtml(client.name) : '—'} · ${stops.length} stops · ${complete} complete
+              ${active ? ' · NOW: <strong>'+PCG.escapeHtml(active.city)+'</strong>' : ''}
+              ${next ? ' · NEXT: '+PCG.escapeHtml(next.city)+' ('+PCG.fmtShort(next.loadInDate)+')' : ''}
+            </div>
+          </div>
+        </a>`;
+    }).join('');
+  }
 
   const showsWithR = mine.map(p => ({ p, r: PCG.api.getReadiness(p.code) }));
   const totBlocked = showsWithR.filter(x=>x.r && x.r.overall==='Blocked').length;

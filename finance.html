@@ -38,6 +38,16 @@
           </div>
 
           <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">🚌 Tour Revenue Rollup</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Per-stop billing · tour-level aggregate (spec §II.7)</span>
+            </div>
+            <table class="pcg-table">
+              <thead><tr><th>Tour</th><th>Client</th><th>Stops</th><th style="text-align:right;">Quoted Rev (all stops)</th><th style="text-align:right;">Actual (complete)</th><th style="text-align:right;">Travel+Freight</th><th style="text-align:right;">Est. Margin</th></tr></thead>
+              <tbody id="tour-rev-rows"></tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
             <div class="card-header"><div class="title">Invoice Milestones</div></div>
             <table class="pcg-table">
               <thead><tr><th>Project</th><th>Type</th><th style="text-align:right;">Amount</th><th>Due</th><th>Received</th><th>QB Ref</th><th>Status</th></tr></thead>
@@ -108,18 +118,37 @@
   } else {
     const projects = PCG.api.getProjects();
     let tQ=0, tC=0, tB=0;
+    // Roll up ALL quotes for each project (master + department children + add orders)
+    // LCE project: master P01-5437 ($397,799.61) + 6 dept children (already rolled up in master) + 2 add orders ($375 + $0)
+    function projectTotalQuoteValue(projectCode) {
+      const all = (PCG.quotes||[]).filter(q => q.projectCode === projectCode);
+      const masters = all.filter(q => !q.parentQuoteId);
+      const addOrders = all.filter(q => q.quoteType === 'AddOrder');
+      // Master totals already include dept sub-quotes (since we seed master=sum of depts)
+      const base = masters.reduce((s, q) => s + (q.totalRevenue || 0), 0);
+      const adds = addOrders.reduce((s, q) => s + (q.totalRevenue || 0), 0);
+      return { base, adds, total: base + adds, count: all.length, masters: masters.length, adds_count: addOrders.length, depts: all.filter(q=>q.quoteType==='DepartmentChild').length };
+    }
     const rows = projects.map(p=>{
-      const quote = PCG.api.getQuotes(p.code)[0];
-      const rev   = quote ? PCG.api.getQuoteRevision(quote.activeRevisionId) : null;
-      const sum   = (rev && rev.totalRevenue) || 0;
-      const c = Math.round(sum*0.72), b = Math.round(sum*0.5);
+      const tally = projectTotalQuoteValue(p.code);
+      const sum = tally.total;
+      // More realistic commit ratio based on lifecycle state
+      const ratio = p.show && p.show.lifecycleState==='Closing' ? 0.98
+                  : p.show && p.show.lifecycleState==='OnShow' ? 0.89
+                  : p.show && p.show.lifecycleState==='InPrep' ? 0.65
+                  : p.show && p.show.lifecycleState==='Awarded' ? 0.5 : 0.0;
+      const c = Math.round(sum*ratio), b = Math.round(sum*ratio*0.65);
       tQ+=sum; tC+=c; tB+=b;
+      const tour = p.tourId ? (PCG.api.getTour ? PCG.api.getTour(p.tourId) : null) : null;
       return `<tr onclick="location.href='project.html?project=${p.code}&tab=financials'">
-        <td class="mono">${p.code}</td>
-        <td>${PCG.escapeHtml(p.name)}</td>
+        <td class="mono">${p.code}${tour?'<div style="font-size: 9px; color: var(--pcg-spotlight-purple); margin-top: 2px;">🚌 stop ' + (p.tourStopNumber||'?') + '</div>':''}</td>
+        <td>
+          ${PCG.escapeHtml(p.name)}
+          ${tally.depts ? `<div class="muted" style="font-size: 10px; margin-top: 2px;">+${tally.depts} dept children${tally.adds_count?' · +'+tally.adds_count+' add order'+(tally.adds_count===1?'':'s'):''}</div>` : tally.adds_count?`<div class="muted" style="font-size: 10px; margin-top: 2px;">+${tally.adds_count} add order${tally.adds_count===1?'':'s'}</div>`:''}
+        </td>
         <td>${PCG.escapeHtml(p.client||'—')}</td>
         <td>${PCG.lifecyclePill(p.show&&p.show.lifecycleState)}</td>
-        <td class="mono" style="text-align:right;">${sum?PCG.money(sum):'—'}</td>
+        <td class="mono" style="text-align:right;">${sum?PCG.money(sum):'—'}${tally.adds?`<div style="font-size: 10px; color: var(--status-amber);">+${PCG.money(tally.adds)} adds</div>`:''}</td>
         <td class="mono" style="text-align:right;">${c?PCG.money(c):'—'}</td>
         <td class="mono" style="text-align:right;">${b?PCG.money(b):'—'}</td>
         <td class="mono">${p.customerPO||'—'}</td>
@@ -143,6 +172,24 @@
       <div class="kpi red"><div class="label">Unpaid Milestones</div><div class="value">${openMilestones.length}</div><div class="sub">across portfolio</div></div>
       <div class="kpi"><div class="label">Shows in Closing</div><div class="value">${projects.filter(p=>p.show&&p.show.lifecycleState==='Closing').length}</div><div class="sub">QB handoff due</div></div>
     `;
+
+    // Tour revenue rollup (spec §II.7)
+    const tours = (PCG.api.getTours && PCG.api.getTours()) || [];
+    document.getElementById('tour-rev-rows').innerHTML = tours.length ? tours.map(t => {
+      const fin = PCG.api.getTourFinancialSummary(t.id);
+      const client = PCG.api.getClient(t.clientId);
+      const stops = PCG.api.getTourStops(t.id);
+      const complete = stops.filter(s => s.stopStatus === 'Complete').length;
+      return `<tr onclick="location.href='tour-view.html?id=${t.id}'">
+        <td><strong>${PCG.escapeHtml(t.name)}</strong><div class="muted" style="font-size:10px; margin-top:2px;">${t.tourType||'—'} · ${PCG.fmtShort(t.startDate)} → ${PCG.fmtShort(t.endDate)}</div></td>
+        <td>${client?PCG.escapeHtml(client.name):'—'}</td>
+        <td class="mono">${complete}/${stops.length}</td>
+        <td class="mono" style="text-align:right;">${fin?PCG.money(fin.totalQuotedRevenue):'—'}</td>
+        <td class="mono" style="text-align:right;">${fin?PCG.money(fin.totalActualRevenue):'—'}</td>
+        <td class="mono" style="text-align:right;">${fin?PCG.money((fin.totalTravelCost||0)+(fin.totalFreightCost||0)):'—'}</td>
+        <td class="mono" style="text-align:right; color: var(--status-green);">${fin&&fin.overallMargin?PCG.pct(fin.overallMargin):'—'}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="7" class="empty">No tours in portfolio.</td></tr>';
 
     // Milestones
     document.getElementById('im-rows').innerHTML = (PCG.invoiceMilestones||[]).map(m=>{

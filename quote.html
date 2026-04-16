@@ -42,10 +42,21 @@
       <div class="modal-box" id="pk-box" style="max-width:780px; width:calc(100vw - 48px);">
         <button class="close" onclick="closePicker()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
         <h3 id="pk-title">Add line to quote</h3>
-        <div class="qb-views" id="pk-tabs" style="margin-top:var(--sp-3);">
-          <button class="on" data-pt="items">Items</button>
+        <div class="qb-views" id="pk-tabs" style="margin-top:var(--sp-3); flex-wrap: wrap;">
+          <button class="on" data-pt="items">Items · Rental</button>
           <button data-pt="systems">System Builder</button>
           <button data-pt="labor">Labor</button>
+          <button data-pt="travel">Travel</button>
+          <button data-pt="transport">Transport</button>
+          <button data-pt="subrental">Sub-Rental</button>
+          <button data-pt="purchase">Purchase / Buyout</button>
+          <button data-pt="service">Service</button>
+          <button data-pt="heavy">Heavy Equip</button>
+          <button data-pt="fee">Fee</button>
+          <button data-pt="discount">Discount</button>
+          <button data-pt="bundle">Bundle</button>
+          <button data-pt="consumable">Consumable</button>
+          <button data-pt="misc">Misc / Header / Note / Assumption</button>
         </div>
         <div id="pk-body" style="margin-top:var(--sp-3); max-height: 60vh; overflow:auto;"></div>
       </div>
@@ -60,6 +71,9 @@
 
       <!-- Permission-aware margin banner -->
       <div id="margin-banner"></div>
+
+      <!-- §YY Margin Risk Warnings (real-time) -->
+      <div id="margin-warnings"></div>
 
       <!-- View container -->
       <div class="card" style="overflow:hidden;">
@@ -138,6 +152,28 @@
         <div class="i"><span class="k">You may edit?</span><span class="v">${editableByMe?'<span class="pill green">YES</span>':'<span class="pill gray">READ-ONLY</span>'}</span></div>
       </div>
     </section>`;
+
+  // -------- §YY Margin risk warnings (real-time) --------
+  function renderMarginWarnings(){
+    if(!canSeeMargin){ document.getElementById('margin-warnings').innerHTML=''; return; }
+    const warnings = PCG.engines.pricing.computeMarginWarnings(rev);
+    if(!warnings.length){ document.getElementById('margin-warnings').innerHTML=''; return; }
+    document.getElementById('margin-warnings').innerHTML = `
+      <div class="card" style="margin-bottom: var(--sp-4); border: 1px solid ${warnings.some(w=>w.level==='high')?'var(--status-red)':'var(--status-amber)'};">
+        <div class="card-header" style="background: ${warnings.some(w=>w.level==='high')?'rgba(178,56,56,0.08)':'rgba(212,163,47,0.08)'};">
+          <div class="title">⚠ Margin Risk · ${warnings.length} trigger${warnings.length===1?'':'s'}</div>
+          <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Spec §YY — real-time evaluation on every line change</span>
+        </div>
+        <div class="card-body" style="padding: 12px 16px;">
+          ${warnings.slice(0,6).map(w => `
+            <div style="padding: 6px 0; border-bottom: 1px dashed var(--border); display:grid; grid-template-columns: 80px 120px 1fr; gap:10px; align-items:center; font-size:var(--fs-sm);">
+              <span class="pill ${w.level==='high'?'red':'amber'} plain" style="font-size:10px;">${w.level.toUpperCase()}</span>
+              <span class="mono" style="font-size:10px; color: var(--text-tertiary);">${w.kind}</span>
+              <span>${PCG.escapeHtml(w.message)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
 
   // -------- Margin banner / permission cue --------
   document.getElementById('margin-banner').innerHTML = canSeeMargin ? '' : `
@@ -420,6 +456,10 @@
   // -------- Totals --------
   const renderTotals = () => {
     const t = PCG.engines.pricing.computeRevisionTotals(rev.lines);
+    // Sync revision object so margin warnings use fresh values
+    rev.totalRevenue = t.totalRevenue;
+    rev.totalCost = t.totalCost;
+    rev.margin = t.margin;
     const el = document.getElementById('qb-totals');
     el.innerHTML = `
       <div class="cell">Revenue<strong>${PCG.money(t.totalRevenue)}</strong></div>
@@ -428,6 +468,7 @@
       <div class="cell">Lines<strong>${(rev.lines||[]).length}</strong></div>
       <div class="cell">Revision<strong>v${rev.revisionNumber}</strong></div>
     `;
+    renderMarginWarnings();
   };
 
   // -------- Guards + Revisions + Corrections --------
@@ -505,10 +546,328 @@
 
   function renderPicker(){
     const body = document.getElementById('pk-body');
-    if(pkTab === 'items')   return renderItemsTab(body);
-    if(pkTab === 'systems') return renderSystemsTab(body);
-    if(pkTab === 'labor')   return renderLaborTab(body);
+    if(pkTab === 'items')       return renderItemsTab(body);
+    if(pkTab === 'systems')     return renderSystemsTab(body);
+    if(pkTab === 'labor')       return renderLaborTab(body);
+    if(pkTab === 'travel')      return renderTravelTab(body);
+    if(pkTab === 'transport')   return renderTransportTab(body);
+    if(pkTab === 'subrental')   return renderSubRentalTab(body);
+    if(pkTab === 'purchase')    return renderPurchaseTab(body);
+    if(pkTab === 'service')     return renderServiceTab(body);
+    if(pkTab === 'heavy')       return renderHeavyTab(body);
+    if(pkTab === 'fee')         return renderFeeTab(body);
+    if(pkTab === 'discount')    return renderDiscountTab(body);
+    if(pkTab === 'bundle')      return renderBundleTab(body);
+    if(pkTab === 'consumable')  return renderConsumableTab(body);
+    if(pkTab === 'misc')        return renderMiscTab(body);
   }
+
+  // ============= QUICK-FORM helpers — used for all non-tree tabs =============
+  function quickForm(body, title, helpText, fields, onSubmit) {
+    body.innerHTML = `
+      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:var(--sp-3);">${helpText}</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:var(--sp-2);">
+        ${fields.map(f => `
+          <div ${f.full?'style="grid-column: 1 / -1;"':''}>
+            <label style="display:block; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:3px;">${PCG.escapeHtml(f.label)}</label>
+            ${f.type === 'select' ? `
+              <select id="qf-${f.id}" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+                ${f.options.map(o => `<option value="${PCG.escapeHtml(o.value)}" ${o.selected?'selected':''}>${PCG.escapeHtml(o.label)}</option>`).join('')}
+              </select>
+            ` : f.type === 'textarea' ? `
+              <textarea id="qf-${f.id}" placeholder="${PCG.escapeHtml(f.placeholder||'')}" style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm); font-family:inherit; min-height:60px; resize:vertical;">${PCG.escapeHtml(f.default||'')}</textarea>
+            ` : `
+              <input type="${f.type||'text'}" id="qf-${f.id}" placeholder="${PCG.escapeHtml(f.placeholder||'')}" value="${PCG.escapeHtml(f.default!=null?String(f.default):'')}"
+                     ${f.type==='number'?'step="any"':''}
+                     style="width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+            `}
+          </div>`).join('')}
+      </div>
+      <div style="display:flex; gap:8px; margin-top:var(--sp-4); justify-content:flex-end;">
+        <button class="btn ghost" onclick="closePicker()">Cancel</button>
+        <button class="btn primary" id="qf-save">Add ${PCG.escapeHtml(title)} Line →</button>
+      </div>`;
+    document.getElementById('qf-save').addEventListener('click', () => {
+      const values = {};
+      fields.forEach(f => {
+        const el = document.getElementById('qf-'+f.id);
+        values[f.id] = f.type==='number' ? parseFloat(el.value) || 0 : el.value;
+      });
+      onSubmit(values);
+    });
+  }
+
+  function addTyped(line, afterAction) {
+    const res = PCG.api.addQuoteLine(rev.id, line);
+    if(!res.ok){ alert('Blocked: '+res.reason); return; }
+    modal.close();
+    render('working');
+    document.querySelectorAll('.qb-views button').forEach(b=>b.classList.toggle('on', b.dataset.v==='working'));
+    if(afterAction) afterAction();
+  }
+
+  function renderTravelTab(body){
+    quickForm(body, 'Travel', 'Travel line — Airfare, Hotel, Per Diem, Car, Parking, Catering, Baggage. Multiply qty × days × unit (rate tier Day) or qty × unit (Each).', [
+      { id:'travelType', label:'Travel Type', type:'select', options:[
+        { value:'Airfare',  label:'Airfare (Each)' },
+        { value:'Hotel',    label:'Hotel (per Day)' },
+        { value:'PerDiem',  label:'Per Diem (per Day)' },
+        { value:'CarRental',label:'Car Rental (per Day)' },
+        { value:'Parking',  label:'Parking (per Day)' },
+        { value:'Catering', label:'Catering (Each)' },
+        { value:'Baggage',  label:'Baggage (Each)' }
+      ]},
+      { id:'desc', label:'Description', type:'text', placeholder:'e.g. Hotel — Caesar\'s Palace (13 crew)', full:true },
+      { id:'qty',  label:'Qty (travelers)', type:'number', default:13 },
+      { id:'days', label:'Days', type:'number', default:7 },
+      { id:'rate', label:'Unit Price', type:'number', default:220 },
+      { id:'billing', label:'Billing', type:'select', options:[
+        { value:'PassThrough', label:'Pass-through (no markup)' },
+        { value:'MarkupPct',   label:'Markup %' },
+        { value:'FlatAllowance',label:'Flat allowance' },
+        { value:'ClientPays',  label:'Client pays direct' }
+      ]}
+    ], (v) => {
+      const isEach = v.travelType === 'Airfare' || v.travelType === 'Catering' || v.travelType === 'Baggage';
+      addTyped({
+        packageName:'Travel · '+v.travelType, type:'Travel',
+        travelType: v.travelType,
+        description: v.desc || v.travelType,
+        qty: v.qty || 1,
+        rateTier: isEach ? 'Each' : 'day',
+        days: isEach ? 0 : (v.days || 1),
+        unitPrice: v.rate,
+        cost: v.billing==='PassThrough' ? v.rate : 0,
+        billingMethod: v.billing
+      });
+    });
+  }
+
+  function renderTransportTab(body){
+    quickForm(body, 'Transport', 'Truck, semi, trailer, or third-party carrier. Billed as flat Each (round trip) or per-day.', [
+      { id:'mode', label:'Freight Mode', type:'select', options:[
+        { value:'Semi 53\' w/o Lift Gate (Round Trip)', label:'Semi 53\' no lift (Round Trip) — $12k' },
+        { value:'Semi 53\' w/ Lift Gate (Round Trip)',  label:'Semi 53\' w/ lift (Round Trip) — $13.5k' },
+        { value:'26\' Box (Round Trip)',                label:'26\' Box Truck (Round Trip) — $4.8k' },
+        { value:'Third-Party Carrier',                  label:'Third-Party Carrier (custom)' },
+        { value:'Air Freight',                          label:'Air Freight' },
+        { value:'Rail Freight',                         label:'Rail Freight' }
+      ]},
+      { id:'qty', label:'# Trucks / Legs', type:'number', default:4 },
+      { id:'rate', label:'Unit Price', type:'number', default:12000 },
+      { id:'notes', label:'Carrier / Notes', type:'text', placeholder:'e.g. Solotech Transport LLC', full:true }
+    ], (v) => {
+      addTyped({
+        packageName:'Logistics · Transport', type:'Transport',
+        description: v.mode + (v.notes ? ' · '+v.notes : ''),
+        qty: v.qty || 1, rateTier:'Each', unitPrice: v.rate, days: 0,
+        cost: Math.round(v.rate * 0.7)
+      });
+    });
+  }
+
+  function renderSubRentalTab(body){
+    const vendors = [
+      { value:'solotech', label:'Solotech' }, { value:'prg', label:'PRG' },
+      { value:'michigan-vp', label:'Michigan Video Production' }, { value:'other', label:'Other (type in notes)' }
+    ];
+    quickForm(body, 'Sub-Rental', 'External equipment rental (RPO). Creates a draft SubRental record.', [
+      { id:'desc', label:'Equipment Description', type:'text', placeholder:'e.g. L-Acoustics KSL package', full:true },
+      { id:'vendor', label:'Vendor', type:'select', options: vendors },
+      { id:'qty',  label:'Qty', type:'number', default:1 },
+      { id:'days', label:'Days', type:'number', default:5 },
+      { id:'unitPrice', label:'Client-Facing Rate', type:'number', default:2100 },
+      { id:'vendorCost', label:'Vendor Cost', type:'number', default:1800 }
+    ], (v) => {
+      addTyped({
+        packageName:'Sub-Rental', type:'SubRental',
+        description: v.desc, vendorId: v.vendor,
+        qty: v.qty, rateTier:'day', days: v.days, unitPrice: v.unitPrice,
+        cost: 0, vendorCost: v.vendorCost
+      });
+    });
+  }
+
+  function renderPurchaseTab(body){
+    quickForm(body, 'Purchase', 'Buyout / consumable purchase — billed to client, NOT returnable. Adds to Expected ROI tracking.', [
+      { id:'desc', label:'Item Description', type:'text', placeholder:'e.g. Custom branded lanyards × 500', full:true },
+      { id:'qty', label:'Qty', type:'number', default:1 },
+      { id:'unitPrice', label:'Unit Price (client)', type:'number', default:0 },
+      { id:'unitCost',  label:'Unit Cost (PCG pays)', type:'number', default:0 },
+      { id:'vendor', label:'Vendor / Source', type:'text', placeholder:'e.g. 4imprint', full:true }
+    ], (v) => {
+      addTyped({
+        packageName:'Purchase / Buyout', type:'Purchase',
+        description: v.desc + (v.vendor?' · '+v.vendor:''),
+        qty: v.qty, rateTier:'Each', days:0, unitPrice: v.unitPrice,
+        cost: v.unitCost, returnExpected: false
+      });
+    });
+  }
+
+  function renderServiceTab(body){
+    quickForm(body, 'Service', 'Sub-contracted or billable service — no allocation, no pull-sheet, no physical return.', [
+      { id:'desc', label:'Service Description', type:'text', placeholder:'e.g. Creative design (32hr)', full:true },
+      { id:'qty', label:'Qty / Hours', type:'number', default:1 },
+      { id:'unitPrice', label:'Billing Rate', type:'number', default:150 },
+      { id:'unitCost', label:'Subcontract Cost', type:'number', default:100 },
+      { id:'vendor', label:'Provider', type:'text', placeholder:'e.g. PCG Creative Team' }
+    ], (v) => {
+      addTyped({
+        packageName:'Service', type:'Service',
+        description: v.desc + (v.vendor?' · '+v.vendor:''),
+        qty: v.qty, rateTier:'Each', days:0, unitPrice: v.unitPrice,
+        cost: v.unitCost
+      });
+    });
+  }
+
+  function renderHeavyTab(body){
+    quickForm(body, 'Heavy Equipment', 'Heavy equipment — scissor lift, boom, forklift, condor. Usually vendor-delivered (not pulled from PCG warehouse).', [
+      { id:'desc', label:'Equipment', type:'text', placeholder:'e.g. 40\' Scissor Lift (JLG 4069LE)', full:true },
+      { id:'qty', label:'Qty', type:'number', default:1 },
+      { id:'days', label:'Days', type:'number', default:3 },
+      { id:'unitPrice', label:'Daily Rate (client)', type:'number', default:425 },
+      { id:'vendorCost', label:'Vendor Cost', type:'number', default:325 },
+      { id:'vendor', label:'Vendor', type:'text', placeholder:'e.g. Sunbelt Rentals', full:true }
+    ], (v) => {
+      addTyped({
+        packageName:'Heavy Equipment', type:'HeavyEquipment',
+        description: v.desc + (v.vendor?' · '+v.vendor:''),
+        qty: v.qty, rateTier:'day', days: v.days, unitPrice: v.unitPrice,
+        cost: 0, vendorCost: v.vendorCost
+      });
+    });
+  }
+
+  function renderFeeTab(body){
+    quickForm(body, 'Fee', 'Service fee / admin fee / prep fee. Can be flat $ or % of a base. Fee stacking: in order added.', [
+      { id:'desc', label:'Fee Label', type:'text', placeholder:'e.g. Production Prep Fee', full:true },
+      { id:'feeType', label:'Fee Type', type:'select', options:[
+        { value:'FlatAmount', label:'Flat $' },
+        { value:'Percentage', label:'Percentage (%)' }
+      ]},
+      { id:'feeBase', label:'Fee Base (for %)', type:'select', options:[
+        { value:'TotalEquipment', label:'Total Equipment' },
+        { value:'TotalLabor',     label:'Total Labor' },
+        { value:'TotalRevenue',   label:'Total Revenue' },
+        { value:'Fixed',          label:'Fixed (for Flat $)', selected:true }
+      ]},
+      { id:'amount', label:'Amount or %', type:'number', default:500 }
+    ], (v) => {
+      addTyped({
+        packageName:'Fees', type:'Fee',
+        description: v.desc, feeType: v.feeType, feeBase: v.feeBase,
+        feePercent: v.feeType === 'Percentage' ? v.amount/100 : null,
+        feeAmount:  v.feeType === 'FlatAmount' ? v.amount : null,
+        qty:1, rateTier:'Each', days:0,
+        unitPrice: v.feeType === 'FlatAmount' ? v.amount : 0,
+        cost: 0
+      });
+    });
+  }
+
+  function renderDiscountTab(body){
+    quickForm(body, 'Discount', 'Discount line — applied to line / section / total. >10% triggers Director approval guard.', [
+      { id:'desc', label:'Discount Label', type:'text', placeholder:'e.g. Partner Discount', full:true },
+      { id:'scope', label:'Scope', type:'select', options:[
+        { value:'Line',    label:'Line-level' },
+        { value:'Section', label:'Section-level' },
+        { value:'Total',   label:'Quote Total' }
+      ]},
+      { id:'dType', label:'Type', type:'select', options:[
+        { value:'Amount',  label:'Flat Dollar $' },
+        { value:'Percent', label:'Percentage %' }
+      ]},
+      { id:'amount', label:'Amount or %', type:'number', default:57500 }
+    ], (v) => {
+      const isPct = v.dType==='Percent';
+      addTyped({
+        packageName:'Discount', type:'Discount',
+        description: v.desc,
+        discountScope: v.scope, discountType: v.dType,
+        discountPercent: isPct ? -Math.abs(v.amount)/100 : null,
+        discountAmount:  isPct ? null : -Math.abs(v.amount),
+        qty:1, rateTier:'Each', days:0, unitPrice: -Math.abs(v.amount), cost:0
+      });
+    });
+  }
+
+  function renderBundleTab(body){
+    quickForm(body, 'Bundle', 'Per-unit bundle — e.g. "Standard Breakout Kit × 18 rooms". Price is per bundle unit.', [
+      { id:'desc', label:'Bundle Name', type:'text', placeholder:'e.g. Breakout Standard Kit', full:true },
+      { id:'bundleUnit', label:'Per Unit', type:'text', placeholder:'room · station · attendee' },
+      { id:'qty', label:'# Units', type:'number', default:18 },
+      { id:'days', label:'Days', type:'number', default:3 },
+      { id:'unitPrice', label:'Price per Unit', type:'number', default:485 },
+      { id:'unitCost', label:'Cost per Unit', type:'number', default:160 }
+    ], (v) => {
+      addTyped({
+        packageName:'Bundles', type:'Bundle',
+        description: v.desc + ' (per '+(v.bundleUnit||'unit')+')',
+        bundleUnit: v.bundleUnit || 'unit', bundlePricePerUnit: v.unitPrice,
+        qty: v.qty, rateTier:'day', days: v.days, unitPrice: v.unitPrice, cost: v.unitCost
+      });
+    });
+  }
+
+  function renderConsumableTab(body){
+    quickForm(body, 'Consumable', 'Non-serialized consumable — gaff tape, batteries, haze fluid. Partial return possible.', [
+      { id:'desc', label:'Item', type:'text', placeholder:'e.g. Gaff Tape — 2" Black (per roll)', full:true },
+      { id:'qty', label:'Qty', type:'number', default:12 },
+      { id:'unitPrice', label:'Unit Price', type:'number', default:18 },
+      { id:'unitCost', label:'Unit Cost', type:'number', default:10 }
+    ], (v) => {
+      addTyped({
+        packageName:'Consumables', type:'Consumable',
+        description: v.desc,
+        qty: v.qty, rateTier:'Each', days:0, unitPrice: v.unitPrice, cost: v.unitCost,
+        returnExpected: true
+      });
+    });
+  }
+
+  function renderMiscTab(body){
+    body.innerHTML = `
+      <div class="muted" style="font-size: var(--fs-xs); margin-bottom: var(--sp-3);">
+        Non-line annotations and misc revenue — pick a subtype.
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-3);">
+        <div class="pinned" style="cursor:pointer;" onclick="addMiscType('Header')"><span class="icon">§</span><div style="flex:1;"><strong>Header</strong><div class="muted" style="font-size:10px;">Section title line — $0 price, visible on quote</div></div></div>
+        <div class="pinned" style="cursor:pointer;" onclick="addMiscType('Note')"><span class="icon">ℹ</span><div style="flex:1;"><strong>Note (Client)</strong><div class="muted" style="font-size:10px;">Visible to client — explanation/context</div></div></div>
+        <div class="pinned" style="cursor:pointer;" onclick="addMiscType('InternalNote')"><span class="icon">🔒</span><div style="flex:1;"><strong>Internal Note</strong><div class="muted" style="font-size:10px;">[INT] prefix — never shown to client</div></div></div>
+        <div class="pinned" style="cursor:pointer;" onclick="addMiscType('Assumption')"><span class="icon">⚠</span><div style="flex:1;"><strong>Assumption</strong><div class="muted" style="font-size:10px;">Stipulation / scope assumption on client quote</div></div></div>
+        <div class="pinned" style="cursor:pointer;" onclick="addMiscType('Misc')"><span class="icon">＋</span><div style="flex:1;"><strong>Misc Revenue</strong><div class="muted" style="font-size:10px;">Catch-all revenue line (e.g. Custom Branding)</div></div></div>
+      </div>`;
+  }
+
+  window.addMiscType = (kind) => {
+    if(kind === 'Header'){
+      const t = prompt('Section header text (e.g. "AUDIO · MAIN SYSTEM"):');
+      if(!t) return;
+      addTyped({ packageName:'Headers', type:'Header', description:t, qty:1, rateTier:'Each', days:0, unitPrice:0, cost:0 });
+    }
+    if(kind === 'Note'){
+      const t = prompt('Client-visible note:');
+      if(!t) return;
+      addTyped({ packageName:'Notes', type:'Note', description:t, clientVisible:true, clientNote:t, qty:1, rateTier:'Each', days:0, unitPrice:0, cost:0 });
+    }
+    if(kind === 'InternalNote'){
+      const t = prompt('Internal note (client will not see):');
+      if(!t) return;
+      addTyped({ packageName:'Internal Notes', type:'Note', description:'[INT] '+t, clientVisible:false, internalNote:t, qty:1, rateTier:'Each', days:0, unitPrice:0, cost:0 });
+    }
+    if(kind === 'Assumption'){
+      const t = prompt('Assumption / stipulation:', 'Venue provides power within 50ft of main stage');
+      if(!t) return;
+      addTyped({ packageName:'Assumptions', type:'Assumption', description:t, clientVisible:true, qty:1, rateTier:'Each', days:0, unitPrice:0, cost:0 });
+    }
+    if(kind === 'Misc'){
+      const t = prompt('Description:'); if(!t) return;
+      const v = parseFloat(prompt('Amount ($):', '0')); if(isNaN(v)) return;
+      addTyped({ packageName:'Misc', type:'Misc', description:t, qty:1, rateTier:'Each', days:0, unitPrice:v, cost:0 });
+    }
+  };
 
   function renderItemsTab(body){
     const cats = PCG.api.getInventoryCategories();

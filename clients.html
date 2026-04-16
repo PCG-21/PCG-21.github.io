@@ -3,23 +3,53 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PCG Stage · Clients</title>
+<title>PCG Stage · Client Workspace</title>
 <link rel="stylesheet" href="assets/tokens.css" />
 <link rel="stylesheet" href="assets/app.css" />
 <style>
   .client-row {
-    display: grid; grid-template-columns: 44px 2fr 1fr 100px 110px 110px 140px;
+    display: grid; grid-template-columns: 44px 2fr 1fr 80px 110px 100px 140px;
     gap: var(--sp-3); align-items: center;
-    padding: 12px var(--sp-4); border-bottom: 1px solid var(--border);
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--border);
     font-size: var(--fs-sm); cursor: pointer;
   }
   .client-row:hover { background: var(--surface-2); }
+  .client-row.active { background: rgba(1,153,253,0.06); border-left: 3px solid var(--pcg-bright-blue); }
   .client-av {
     width: 36px; height: 36px; border-radius: 10px;
     background: var(--grad-show-light-spectrum);
     display: inline-flex; align-items: center; justify-content: center;
     font-family: var(--font-display); font-size: 12px; font-weight: 700; color: white;
   }
+  .active-engine {
+    background: linear-gradient(135deg, rgba(1,153,253,0.07), rgba(122,65,229,0.05));
+    border: 1px solid var(--border-accent); border-radius: var(--r-sm);
+    padding: 10px 14px; margin-top: var(--sp-3); font-size: var(--fs-sm);
+  }
+  .active-engine .label {
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--pcg-bright-blue); margin-bottom: 4px;
+  }
+  .quote-family-node {
+    padding: 8px 12px; border-left: 2px solid var(--border);
+    font-size: var(--fs-sm); margin-bottom: 4px;
+  }
+  .quote-family-node.master { border-left-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.04); }
+  .quote-family-node.child  { border-left-color: var(--text-tertiary); margin-left: 18px; }
+  .quote-family-node.add    { border-left-color: var(--status-amber); margin-left: 18px; }
+  .ctc-row {
+    display:grid; grid-template-columns: 30px 1fr auto;
+    gap: var(--sp-2); align-items: center; padding: 6px 0;
+    border-bottom: 1px dashed var(--border); font-size: var(--fs-sm);
+  }
+  .ctc-av { width:26px; height:26px; border-radius: 6px; background: var(--surface-3); display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-family: var(--font-display); font-weight:600; color: var(--text-secondary); }
+  .tab-bar { display:flex; gap: 2px; background: var(--surface-2); border-radius: var(--r-sm); padding: 3px; margin: var(--sp-3) 0; flex-wrap:wrap; }
+  .tab-bar button {
+    padding: 6px 14px; background: transparent; border:0; color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; cursor: pointer; border-radius: calc(var(--r-sm) - 2px);
+  }
+  .tab-bar button.on { background: var(--surface-1); color: var(--pcg-bright-blue); }
 </style>
 </head>
 <body>
@@ -30,9 +60,9 @@
 
       <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
         <div>
-          <div class="eyebrow">Client Master Records</div>
+          <div class="eyebrow">Client Workspace</div>
           <h1>Clients</h1>
-          <div class="muted">Billing entity, preferences, do-not-use list, prior show history, AE of record.</div>
+          <div class="muted">Active engine: auto-applies rate cards, fee rules, staffing restrictions, PO requirements on new projects. Single client = single system record across quoting, scheduling, billing, and portal. (Spec §QQ · §XX)</div>
         </div>
         <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
           <input id="q" placeholder="Search clients…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 12px; border-radius:var(--r-pill); width:220px; font-size:var(--fs-sm);" />
@@ -42,28 +72,25 @@
 
       <div class="kpi-strip" id="kpis"></div>
 
-      <div class="split">
+      <div class="split" style="grid-template-columns: 1fr 1.4fr;">
         <div>
           <div class="card">
             <div class="card-header"><div class="title">Client Library</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span></div>
-            <div style="display:grid; grid-template-columns: 44px 2fr 1fr 100px 110px 110px 140px; gap:var(--sp-3); padding: 10px var(--sp-4); background: var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-tertiary);">
+            <div style="display:grid; grid-template-columns: 44px 2fr 1fr 80px 110px 100px 140px; gap:var(--sp-3); padding: 10px var(--sp-4); background: var(--surface-2); font-family:var(--font-display); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-tertiary);">
               <div></div>
               <div>Client</div>
               <div>Industry</div>
-              <div style="text-align:right;">Prior Shows</div>
+              <div style="text-align:right;">Projects</div>
               <div style="text-align:right;">Rev YTD</div>
               <div>Status</div>
-              <div>AE of Record</div>
+              <div>AE</div>
             </div>
             <div id="rows"></div>
           </div>
         </div>
 
         <aside>
-          <div class="card" id="detailCard">
-            <div class="card-header"><div class="title">Client Detail</div></div>
-            <div class="card-body" id="detail">Select a client.</div>
-          </div>
+          <div id="detailCard"></div>
         </aside>
       </div>
 
@@ -78,13 +105,32 @@
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
 <script>
-  PCG.mountShell({active:'portfolio', crumbs:[{label:'Clients'}]});
+  PCG.mountShell({active:'clients', crumbs:[{label:'Clients'}]});
 
   const clients = PCG.api.getClients();
-  let currentId = clients[0] ? clients[0].id : null;
+  let currentId = PCG.qs('id') || (clients[0] ? clients[0].id : null);
+  let detailTab = 'overview';
   const canSeeRev = PCG.canSeeTier('T2_MARGINS');
 
   function initials(s){ return (s||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+
+  function getClientProjects(clientId) {
+    return (PCG.api.getProjects()||[]).filter(p=>p.clientId===clientId);
+  }
+  function getClientQuotes(clientId) {
+    const projectCodes = getClientProjects(clientId).map(p=>p.code);
+    return (PCG.quotes||[]).filter(q => projectCodes.includes(q.projectCode))
+      .concat((PCG.quotes||[]).filter(q => q.clientId === clientId));
+  }
+  function getClientPitches(clientId) {
+    return (PCG.api.getPitches({clientId})||[]);
+  }
+  function getClientContacts(clientId) {
+    return PCG.api.getClientContacts ? PCG.api.getClientContacts(clientId) : [];
+  }
+  function getClientTours(clientId) {
+    return (PCG.api.getTours()||[]).filter(t => t.clientId === clientId);
+  }
 
   function render(){
     const q = (document.getElementById('q').value||'').toLowerCase();
@@ -92,18 +138,18 @@
     document.getElementById('count').textContent = `${filtered.length} of ${clients.length}`;
 
     document.getElementById('rows').innerHTML = filtered.map(c=>{
-      const priors = (c.priorProjectCodes||[]).length;
+      const projCount = getClientProjects(c.id).length;
       const ae = PCG.findPerson(c.aeId);
-      return `<div class="client-row ${c.id===currentId?'':''}" onclick="setClient('${c.id}')">
+      return `<div class="client-row ${c.id===currentId?'active':''}" onclick="setClient('${c.id}')">
         <div><div class="client-av">${initials(c.name)}</div></div>
         <div>
           <div style="font-weight:600;">${PCG.escapeHtml(c.name)}</div>
-          <div class="muted" style="font-size:11px;">${PCG.escapeHtml(c.billingAddress||'')}</div>
+          <div class="muted" style="font-size:11px;">${PCG.escapeHtml((c.billingAddress||'').slice(0,60))}</div>
         </div>
         <div>${PCG.escapeHtml(c.industry||'—')}</div>
-        <div class="mono" style="text-align:right;">${priors}</div>
+        <div class="mono" style="text-align:right;">${projCount}</div>
         <div class="mono" style="text-align:right;">${canSeeRev?PCG.money(c.revenueYTD||0):'🔒'}</div>
-        <div><span class="pill ${c.status==='Active'?'green':c.status==='New'?'blue':'gray'}" style="font-size:10px;">${(c.status||'—').toUpperCase()}</span></div>
+        <div><span class="pill ${c.status==='Active'?'green':c.status==='New'?'blue':'gray'} plain" style="font-size:10px;">${(c.status||'—').toUpperCase()}</span></div>
         <div>${ae?PCG.escapeHtml(ae.name):'—'}</div>
       </div>`;
     }).join('') || PCG.states.empty('No clients match.');
@@ -112,14 +158,15 @@
     const active = clients.filter(c=>c.status==='Active').length;
     const prospects = clients.filter(c=>c.status==='Prospect' || c.status==='New').length;
     const totalRev = clients.reduce((s,c)=>s+(c.revenueYTD||0),0);
-    const totalPriors = clients.reduce((s,c)=>s+(c.priorProjectCodes||[]).length,0);
-    const activeProjects = (PCG.api.getProjects()||[]).filter(p=>p.show && p.show.lifecycleState!=='Archived').length;
+    const portfolioProjects = (PCG.api.getProjects()||[]).filter(p=>p.show && p.show.lifecycleState!=='Archived').length;
+    const openPitches = (PCG.api.getPitches()||[]).filter(p => ['Draft','Issued','Opened'].includes(p.status)).length;
+    const activeTours = (PCG.api.getTours()||[]).filter(t => t.status==='Executing').length;
     document.getElementById('kpis').innerHTML = `
       <div class="kpi"><div class="label">Total Clients</div><div class="value">${clients.length}</div><div class="sub">in master</div></div>
-      <div class="kpi"><div class="label">Active</div><div class="value" style="color:var(--status-green);">${active}</div><div class="sub">current relationships</div></div>
-      <div class="kpi blue"><div class="label">New / Prospect</div><div class="value">${prospects}</div><div class="sub">in pipeline</div></div>
-      <div class="kpi"><div class="label">Prior Shows</div><div class="value">${totalPriors}</div><div class="sub">historical</div></div>
-      <div class="kpi"><div class="label">Active Projects</div><div class="value">${activeProjects}</div><div class="sub">underway</div></div>
+      <div class="kpi green"><div class="label">Active</div><div class="value">${active}</div><div class="sub">current relationships</div></div>
+      <div class="kpi blue"><div class="label">Prospects</div><div class="value">${prospects}</div><div class="sub">in pipeline</div></div>
+      <div class="kpi purple"><div class="label">Open Pitches</div><div class="value">${openPitches}</div><div class="sub">awaiting decision</div></div>
+      <div class="kpi amber"><div class="label">Active Tours</div><div class="value">${activeTours}</div><div class="sub">multi-city</div></div>
       <div class="kpi"><div class="label">Revenue YTD</div><div class="value">${canSeeRev?PCG.money(totalRev):'🔒'}</div><div class="sub">portfolio</div></div>
     `;
 
@@ -128,69 +175,342 @@
 
   function renderDetail(){
     const c = clients.find(x=>x.id===currentId);
-    if(!c){ document.getElementById('detail').innerHTML = PCG.states.empty('Select a client.'); return; }
+    if(!c){ document.getElementById('detailCard').innerHTML = `<div class="card card-pad">${PCG.states.empty('Select a client.')}</div>`; return; }
     const ae = PCG.findPerson(c.aeId);
-    const projects = (PCG.api.getProjects()||[]).filter(p=>p.clientId===c.id);
+    const projects = getClientProjects(c.id);
+    const quotes = getClientQuotes(c.id);
+    const pitches = getClientPitches(c.id);
+    const contacts = getClientContacts(c.id);
+    const tours = getClientTours(c.id);
     const rev = PCG.api.getClientRevenueRollup(c.id);
 
-    document.getElementById('detail').innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div class="client-av" style="width:48px; height:48px; font-size:14px;">${initials(c.name)}</div>
-        <div>
-          <div style="font-weight:600; font-size:var(--fs-md);">${PCG.escapeHtml(c.name)}</div>
-          <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(c.industry||'')}</div>
+    document.getElementById('detailCard').innerHTML = `
+      <div class="card">
+        <div class="card-header" style="padding: var(--sp-4);">
+          <div class="client-av" style="width:48px; height:48px; font-size:14px; margin-right:12px;">${initials(c.name)}</div>
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:var(--fs-md);">${PCG.escapeHtml(c.name)}</div>
+            <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(c.industry||'')} · AE ${ae?PCG.escapeHtml(ae.name):'—'}</div>
+          </div>
+          <span class="pill ${c.status==='Active'?'green':'blue'} plain" style="font-size:10px;">${(c.status||'').toUpperCase()}</span>
         </div>
-      </div>
-      <div class="divider"></div>
 
-      <div class="kv-grid">
+        <!-- Client KPIs -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-3);">
+          <div class="kpi"><div class="label" style="font-size:9px;">Projects</div><div class="value" style="font-size:18px;">${projects.length}</div><div class="sub">${projects.filter(p=>p.show&&p.show.lifecycleState!=='Archived').length} active</div></div>
+          <div class="kpi"><div class="label" style="font-size:9px;">Quotes</div><div class="value" style="font-size:18px;">${quotes.length}</div><div class="sub">in system</div></div>
+          <div class="kpi"><div class="label" style="font-size:9px;">Pitches</div><div class="value" style="font-size:18px;">${pitches.length}</div><div class="sub">${pitches.filter(p=>p.status==='Accepted').length} won</div></div>
+          <div class="kpi"><div class="label" style="font-size:9px;">Contacts</div><div class="value" style="font-size:18px;">${contacts.length}</div><div class="sub">portal users</div></div>
+        </div>
+
+        <!-- Tab bar -->
+        <div class="tab-bar" id="tabBar" style="margin: 0 var(--sp-4);">
+          <button class="${detailTab==='overview'?'on':''}" onclick="setTab('overview')">Overview</button>
+          <button class="${detailTab==='contacts'?'on':''}" onclick="setTab('contacts')">Contacts</button>
+          <button class="${detailTab==='rules'?'on':''}"    onclick="setTab('rules')">Commercial Rules</button>
+          <button class="${detailTab==='pitches'?'on':''}"  onclick="setTab('pitches')">Pitches · ${pitches.length}</button>
+          <button class="${detailTab==='quotes'?'on':''}"   onclick="setTab('quotes')">Quotes · ${quotes.length}</button>
+          <button class="${detailTab==='projects'?'on':''}" onclick="setTab('projects')">Projects · ${projects.length}</button>
+          ${tours.length?`<button class="${detailTab==='tours'?'on':''}" onclick="setTab('tours')">Tours · ${tours.length}</button>`:''}
+        </div>
+
+        <div class="card-body" id="detailBody" style="padding-top: 0;"></div>
+      </div>`;
+    renderTab(c, { projects, quotes, pitches, contacts, tours, rev, ae });
+  }
+
+  function renderTab(c, ctx) {
+    const el = document.getElementById('detailBody');
+    if(detailTab === 'overview')  return el.innerHTML = tabOverview(c, ctx);
+    if(detailTab === 'contacts')  return el.innerHTML = tabContacts(c, ctx);
+    if(detailTab === 'rules')     return el.innerHTML = tabRules(c, ctx);
+    if(detailTab === 'pitches')   return el.innerHTML = tabPitches(c, ctx);
+    if(detailTab === 'quotes')    return el.innerHTML = tabQuotes(c, ctx);
+    if(detailTab === 'projects')  return el.innerHTML = tabProjects(c, ctx);
+    if(detailTab === 'tours')     return el.innerHTML = tabTours(c, ctx);
+  }
+
+  // --- Overview ---
+  function tabOverview(c, ctx) {
+    return `
+      <div class="kv-grid" style="padding-top: var(--sp-3);">
         <div class="k">Billing</div><div class="v">${PCG.escapeHtml(c.billingAddress||'—')}</div>
-        <div class="k">AE of Record</div><div class="v">${ae?PCG.escapeHtml(ae.name):'—'}</div>
-        <div class="k">Status</div><div class="v">${c.status}</div>
-        <div class="k">Prior Shows</div><div class="v">${(c.priorProjectCodes||[]).length}</div>
+        <div class="k">AE of Record</div><div class="v">${ctx.ae?PCG.escapeHtml(ctx.ae.name):'—'}</div>
+        <div class="k">Status</div><div class="v"><span class="pill ${c.status==='Active'?'green':'blue'} plain" style="font-size:10px;">${c.status}</span></div>
+        <div class="k">Prior Shows</div><div class="v mono">${(c.priorProjectCodes||[]).length}</div>
         ${canSeeRev?`<div class="k">Revenue YTD</div><div class="v mono">${PCG.money(c.revenueYTD||0)}</div>`:''}
-        ${canSeeRev && rev ? `<div class="k">Quoted (Active)</div><div class="v mono">${PCG.money(rev.quoted)}</div>`:''}
+        ${canSeeRev && ctx.rev ? `<div class="k">Quoted (Active)</div><div class="v mono">${PCG.money(ctx.rev.quoted)}</div>`:''}
       </div>
 
       ${(c.preferences||[]).length ? `
-        <div class="divider"></div>
-        <div class="eyebrow">Client Preferences</div>
-        <ul style="font-size:var(--fs-sm); margin:6px 0 0; padding-left:18px;">
-          ${(c.preferences||[]).map(p=>`<li>${PCG.escapeHtml(p)}</li>`).join('')}
-        </ul>
+        <div class="active-engine">
+          <div class="label">Active Engine · Client Preferences (auto-applied to new projects)</div>
+          <ul style="margin:6px 0 0; padding-left:18px;">
+            ${(c.preferences||[]).map(p=>`<li>${PCG.escapeHtml(p)}</li>`).join('')}
+          </ul>
+        </div>
       `:''}
 
       ${(c.doNotUse||[]).length ? `
-        <div class="divider"></div>
-        <div class="eyebrow" style="color:var(--status-red);">Do Not Use (Scheduling only)</div>
-        <ul style="font-size:var(--fs-sm); margin:6px 0 0; padding-left:18px; color:var(--status-red);">
-          ${(c.doNotUse||[]).map(p=>`<li>${PCG.escapeHtml(p)}</li>`).join('')}
-        </ul>
+        <div class="active-engine" style="background: linear-gradient(135deg, rgba(178,56,56,0.06), rgba(178,56,56,0.02)); border-color: var(--status-red);">
+          <div class="label" style="color: var(--status-red);">Do Not Use · Enforced by Scheduler</div>
+          <ul style="margin:6px 0 0; padding-left:18px; color:var(--status-red);">
+            ${(c.doNotUse||[]).map(p=>`<li>${PCG.escapeHtml(p)}</li>`).join('')}
+          </ul>
+        </div>
       `:''}
 
       <div class="divider"></div>
-      <div class="eyebrow">Active Projects (${projects.length})</div>
-      <div style="margin-top:6px; display:grid; gap:6px; font-size:var(--fs-sm);">
-        ${projects.length ? projects.map(p=>`
-          <a href="playbook.html?project=${p.code}" class="pinned" style="text-decoration:none; color:inherit;">
-            <span class="icon mono">${p.code}</span>
-            <div><strong>${PCG.escapeHtml(p.name)}</strong>
-              <div class="muted" style="font-size:var(--fs-xs);">${PCG.lifecyclePill(p.show&&p.show.lifecycleState)} · ${PCG.fmtShort(p.dates.loadIn)}</div>
-            </div>
-          </a>`).join('') : '<div class="muted">No active projects.</div>'}
+      <div class="eyebrow">Recent Activity</div>
+      <div style="margin-top: var(--sp-2); font-size: var(--fs-sm);">
+        ${recentActivity(c, ctx).map(e => `
+          <div style="padding: 6px 0; border-bottom: 1px dashed var(--border);">
+            <span class="mono" style="font-size: 10px; color: var(--text-tertiary);">${PCG.fmtShort(e.at)}</span>
+            ${e.icon} ${e.text}
+          </div>`).join('') || PCG.states.empty('No recent activity.')}
       </div>
+    `;
+  }
 
-      <div class="divider"></div>
-      <div class="eyebrow">Prior Projects</div>
-      <div style="margin-top:6px; font-size:var(--fs-sm);">
-        ${(c.priorProjectCodes||[]).length ? (c.priorProjectCodes||[]).map(code=>`
-          <div style="padding:6px 0; border-bottom: 1px dashed var(--border);"><strong class="mono">${PCG.escapeHtml(code)}</strong></div>
-        `).join('') : '<div class="muted">No prior projects recorded.</div>'}
+  function recentActivity(c, ctx) {
+    const ev = [];
+    ctx.pitches.forEach(p => {
+      if(p.issuedAt)   ev.push({ at:p.issuedAt,   icon:'✉', text:`<strong>Pitch ${PCG.escapeHtml(p.pitchNo)}</strong> issued — <em>${PCG.escapeHtml(p.projectIdea)}</em>` });
+      if(p.acceptedAt) ev.push({ at:p.acceptedAt, icon:'✓', text:`<strong>Pitch ${PCG.escapeHtml(p.pitchNo)}</strong> accepted by client` });
+      (p.comments||[]).slice(-1).forEach(cmt => ev.push({ at:cmt.at, icon:'💬', text:`Comment from ${PCG.escapeHtml(cmt.fromName)} on ${PCG.escapeHtml(p.pitchNo)}` }));
+    });
+    ctx.quotes.forEach(q => {
+      if(q.awardedAt) ev.push({ at:q.awardedAt, icon:'🏆', text:`<strong>Quote ${PCG.escapeHtml(q.quoteNo)}</strong> awarded` });
+    });
+    return ev.sort((a,b) => new Date(b.at||0) - new Date(a.at||0)).slice(0, 8);
+  }
+
+  // --- Contacts ---
+  function tabContacts(c, ctx) {
+    return `
+      <div class="eyebrow" style="padding-top: var(--sp-3);">Client Contacts · Portal Access</div>
+      <div style="margin-top: 6px;">
+        ${ctx.contacts.length ? ctx.contacts.map(ct => `
+          <div class="ctc-row">
+            <div class="ctc-av">${initials(ct.name)}</div>
+            <div>
+              <div><strong>${PCG.escapeHtml(ct.name)}</strong> <span class="muted" style="font-size:11px;">· ${PCG.escapeHtml(ct.role)}</span></div>
+              <div class="muted" style="font-size:11px; font-family: var(--font-mono);">${PCG.escapeHtml(ct.email)}${ct.phone?' · '+PCG.escapeHtml(ct.phone):''}</div>
+            </div>
+            <div>
+              <span class="pill ${ct.portalAccess==='Full'?'green':ct.portalAccess==='Billing'?'amber':'gray'} plain" style="font-size:10px;">${PCG.escapeHtml(ct.portalAccess||'None').toUpperCase()}</span>
+            </div>
+          </div>`).join('') : PCG.states.empty('No client contacts on file.')}
+      </div>
+    `;
+  }
+
+  // --- Commercial Rules (§QQ / §XX active engine) ---
+  function tabRules(c, ctx) {
+    const rate = (PCG.rateCardVersions||[])[0];
+    const hasPOReq = (c.preferences||[]).some(p => p.toLowerCase().includes('po'));
+    const taxExempt = c.name === 'Little Caesars Enterprises, Inc.' || (c.preferences||[]).some(p => p.toLowerCase().includes('tax exempt'));
+    return `
+      <div style="padding-top: var(--sp-3);">
+        <div class="active-engine">
+          <div class="label">PO Requirement Policy</div>
+          <div style="font-size: var(--fs-sm);">
+            ${c.name==='Little Caesars Enterprises, Inc.'
+              ? 'Required on every quote · Gate: Quote → Award blocked if Customer PO is missing · Customer PO format: LCEP[XXXXXX]'
+              : c.name==='MVP Collaborative'
+              ? 'Not required on every quote — MVP operates on blanket PO · Event folder number (E26-XXXX) used instead for PO tracking'
+              : 'Standard — PO required on Quote Issue.'}
+          </div>
+        </div>
+
+        <div class="active-engine">
+          <div class="label">Tax Rule</div>
+          <div style="font-size: var(--fs-sm);">
+            ${taxExempt ? 'Tax Exempt — no sales tax applied to any line. Exemption certificate on file.' : 'Standard sales tax applied per jurisdiction.'}
+          </div>
+        </div>
+
+        <div class="active-engine">
+          <div class="label">Rate Card · Applied</div>
+          <div style="font-size: var(--fs-sm);">
+            ${rate ? `<strong>${PCG.escapeHtml(rate.name)}</strong> — effective ${PCG.fmtShort(rate.effectiveFrom)} → ${PCG.fmtShort(rate.effectiveTo)}.` : 'Default PCG rate card.'}
+            ${c.name==='Little Caesars Enterprises, Inc.'?' <br><span style="color:var(--pcg-bright-blue);">Partner Discount applied ($57,500) on signed master quotes.</span>':''}
+          </div>
+        </div>
+
+        <div class="active-engine">
+          <div class="label">Payment Terms</div>
+          <div style="font-size: var(--fs-sm);">
+            50% deposit on award · NET 30 on balance · Invoiced against <code>${c.name==='Little Caesars Enterprises, Inc.'?'LCEP[XX]':c.name==='MVP Collaborative'?'E26-XXXX event folder':'Customer PO'}</code>
+          </div>
+        </div>
+
+        ${(c.doNotUse||[]).length ? `
+          <div class="active-engine" style="background: linear-gradient(135deg, rgba(178,56,56,0.06), rgba(178,56,56,0.02)); border-color: var(--status-red);">
+            <div class="label" style="color: var(--status-red);">Restricted Crew · Scheduling Gate</div>
+            <div style="font-size: var(--fs-sm);">
+              ${(c.doNotUse||[]).map(p=>`<span class="pill red plain" style="font-size:10px; margin-right:6px;">🚫 ${PCG.escapeHtml(p)}</span>`).join('')}
+              <div class="muted" style="margin-top: 6px; font-size: 11px;">Labor Coordinator cannot assign these crew to any project for this client. Override requires Director + reason.</div>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="active-engine">
+          <div class="label">Decision Limits</div>
+          <div style="font-size: var(--fs-sm);">
+            CO &lt; $5,000 → PM can approve · CO $5k-$25k → Director · CO &gt; $25k → AE + Director + CFO
+            ${c.name==='Little Caesars Enterprises, Inc.'?'<br><span style="color: var(--pcg-bright-blue);">LCE special: CO approval must include Jordan Beth (Client Side) via portal sign-off.</span>':''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- Pitches ---
+  function tabPitches(c, ctx) {
+    if(!ctx.pitches.length) return `<div style="padding-top: var(--sp-3);">${PCG.states.empty('No pitches yet. Create one from the Pitches page.')}</div>`;
+    return `
+      <div style="padding-top: var(--sp-3);">
+        ${ctx.pitches.map(p => {
+          const summary = PCG.api.getPitchEngagementSummary ? PCG.api.getPitchEngagementSummary(p.id) : null;
+          const statusTone = p.status==='Accepted'?'green':p.status==='Opened'?'blue':p.status==='Issued'?'blue':'amber';
+          return `
+            <a href="pitch.html?id=${p.id}" style="text-decoration: none; color: inherit;">
+              <div class="pinned" style="margin-bottom: 6px;">
+                <span class="icon">★</span>
+                <div style="flex: 1;">
+                  <div style="display:flex; gap:6px; align-items:center; margin-bottom:2px;">
+                    <span class="pill ${statusTone} plain" style="font-size:9px;">${p.status.toUpperCase()}</span>
+                    <strong>${PCG.escapeHtml(p.projectIdea)}</strong>
+                    <span class="mono muted" style="font-size: 10px;">${p.pitchNo}</span>
+                  </div>
+                  <div class="muted" style="font-size: 11px;">${PCG.escapeHtml(p.targetDates||'—')} · ${p.estimatedBudget?PCG.money(p.estimatedBudget.low)+'–'+PCG.money(p.estimatedBudget.high):'budget TBD'}</div>
+                  ${summary ? `
+                    <div class="muted" style="font-size: 10px; margin-top: 4px;">
+                      ${summary.opens} opens · ${summary.commentCount} comments${summary.selectedOptionId ? ' · chose '+PCG.escapeHtml(((p.options||[]).find(o=>o.id===summary.selectedOptionId)||{}).label||'—') : ''}
+                    </div>` : ''}
+                </div>
+                ${p.convertedQuoteId?'<span class="pill green plain" style="font-size: 9px;">→ QUOTE</span>':''}
+              </div>
+            </a>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // --- Quotes (with parent/child family tree) ---
+  function tabQuotes(c, ctx) {
+    if(!ctx.quotes.length) return `<div style="padding-top: var(--sp-3);">${PCG.states.empty('No quotes for this client.')}</div>`;
+    // Group by master quote id (parent → children → adds)
+    const masters = ctx.quotes.filter(q => !q.parentQuoteId);
+    const childrenOf = (qid) => ctx.quotes.filter(q => q.parentQuoteId === qid);
+
+    return `
+      <div style="padding-top: var(--sp-3);">
+        ${masters.map(m => {
+          const kids = childrenOf(m.id);
+          const depts = kids.filter(k => k.quoteType === 'DepartmentChild');
+          const adds  = kids.filter(k => k.quoteType === 'AddOrder');
+          const ln = depts.length + adds.length;
+          const family = ln ? depts.reduce((s,k)=>s+(k.totalRevenue||0),0) + adds.reduce((s,k)=>s+(k.totalRevenue||0),0) : 0;
+          return `
+            <div class="quote-family-node master">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="pill ${m.status==='Awarded'?'green':m.status==='Issued'?'blue':'amber'} plain" style="font-size:9px;">${m.status.toUpperCase()}</span>
+                <a href="quote.html?id=${m.id}" style="color: var(--text-primary); flex:1;">
+                  <strong>${PCG.escapeHtml(m.quoteNo)}</strong>
+                  <span class="muted" style="font-size: 11px;"> · ${PCG.escapeHtml(m.projectCode||'—')}</span>
+                </a>
+                <span class="mono" style="font-size: 13px; color: var(--pcg-bright-blue);">${canSeeRev?PCG.money(m.totalRevenue||0):'🔒'}</span>
+              </div>
+              ${ln ? `<div class="muted" style="font-size: 10px; margin-top: 4px; margin-left: 16px;">
+                ${depts.length} dept sub-quotes · ${adds.length} add order${adds.length===1?'':'s'} · family total ${canSeeRev?PCG.money((m.totalRevenue||0)+family - family):'🔒'}
+              </div>` : ''}
+            </div>
+            ${depts.map(k => `
+              <div class="quote-family-node child">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="pill gray plain" style="font-size:9px;">${(k.department||'').toUpperCase()}</span>
+                  <a href="quote.html?id=${k.id}" style="color: var(--text-primary); flex:1; text-decoration:none;">
+                    <span class="mono" style="font-size: 11px;">${PCG.escapeHtml(k.quoteNo)}</span>
+                  </a>
+                  <span class="mono muted" style="font-size: 11px;">${canSeeRev?PCG.money(k.totalRevenue||0):'—'}</span>
+                </div>
+              </div>`).join('')}
+            ${adds.map(k => `
+              <div class="quote-family-node add">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="pill amber plain" style="font-size:9px;">+ ADD${k.addOrderLabel?' · '+PCG.escapeHtml(k.addOrderLabel.toUpperCase()):''}</span>
+                  <a href="quote.html?id=${k.id}" style="color: var(--text-primary); flex:1; text-decoration:none;">
+                    <span class="mono" style="font-size: 11px;">${PCG.escapeHtml(k.quoteNo)}</span>
+                  </a>
+                  <span class="mono muted" style="font-size: 11px;">${canSeeRev?PCG.money(k.totalRevenue||0):'—'}</span>
+                </div>
+              </div>`).join('')}
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // --- Projects ---
+  function tabProjects(c, ctx) {
+    const active = ctx.projects.filter(p => p.show && p.show.lifecycleState !== 'Archived');
+    const archived = ctx.projects.filter(p => p.show && p.show.lifecycleState === 'Archived');
+    return `
+      <div style="padding-top: var(--sp-3);">
+        <div class="eyebrow">Active / Current (${active.length})</div>
+        ${active.map(p => `
+          <a href="playbook.html?project=${p.code}" class="pinned" style="text-decoration:none; color:inherit; margin-bottom: 4px;">
+            <span class="icon mono">${p.code}</span>
+            <div style="flex: 1;">
+              <strong>${PCG.escapeHtml(p.name)}</strong>
+              <div class="muted" style="font-size: 11px;">${PCG.lifecyclePill(p.show&&p.show.lifecycleState)} · ${PCG.fmtShort(p.dates.loadIn)} · ${PCG.escapeHtml(p.venueName||'')}</div>
+            </div>
+          </a>`).join('') || '<div class="muted" style="font-size: var(--fs-sm); padding: 10px 0;">No active projects.</div>'}
+
+        ${(c.priorProjectCodes||[]).length ? `
+          <div class="divider"></div>
+          <div class="eyebrow">Prior Projects</div>
+          <div style="font-size: var(--fs-sm);">
+            ${(c.priorProjectCodes||[]).map(code=>`
+              <div style="padding:6px 0; border-bottom: 1px dashed var(--border);"><strong class="mono">${PCG.escapeHtml(code)}</strong></div>`).join('')}
+          </div>` : ''}
+      </div>
+    `;
+  }
+
+  // --- Tours ---
+  function tabTours(c, ctx) {
+    return `
+      <div style="padding-top: var(--sp-3);">
+        ${ctx.tours.map(t => {
+          const stops = PCG.api.getTourStops(t.id);
+          const complete = stops.filter(s=>s.stopStatus==='Complete').length;
+          return `
+            <a href="tour-view.html?id=${t.id}" style="text-decoration:none; color:inherit;">
+              <div class="pinned" style="margin-bottom: 6px;">
+                <span class="icon">🚌</span>
+                <div style="flex:1;">
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <span class="pill ${t.status==='Executing'?'blue':'gray'} plain" style="font-size: 9px;">${t.status.toUpperCase()}</span>
+                    <strong>${PCG.escapeHtml(t.name)}</strong>
+                  </div>
+                  <div class="muted" style="font-size: 11px; margin-top: 2px;">
+                    ${stops.length} stops · ${complete} complete · ${PCG.fmtShort(t.startDate)} → ${PCG.fmtShort(t.endDate)}
+                    ${t.eventFolderNumber?' · EMF '+PCG.escapeHtml(t.eventFolderNumber):''}
+                  </div>
+                </div>
+                ${canSeeRev && t.budgetSummary ? `<span class="mono">${PCG.money(t.budgetSummary.totalQuotedRevenue)}</span>` : ''}
+              </div>
+            </a>`;
+        }).join('')}
       </div>
     `;
   }
 
   window.setClient = (id) => { currentId = id; render(); };
+  window.setTab = (t) => { detailTab = t; const c = clients.find(x=>x.id===currentId); renderTab(c, { projects: getClientProjects(c.id), quotes: getClientQuotes(c.id), pitches: getClientPitches(c.id), contacts: getClientContacts(c.id), tours: getClientTours(c.id), rev: PCG.api.getClientRevenueRollup(c.id), ae: PCG.findPerson(c.aeId) }); document.querySelectorAll('#tabBar button').forEach(b => b.classList.toggle('on', b.textContent.toLowerCase().startsWith(t))); };
   document.getElementById('q').addEventListener('input', render);
   render();
 </script>

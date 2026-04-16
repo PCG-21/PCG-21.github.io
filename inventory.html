@@ -165,7 +165,7 @@
           <div class="ttl">${PCG.escapeHtml(a.model.name)}</div>
           <div class="meta">Available ${a.balance.available} &lt; min ${a.rule.minQty} · reorder ${a.rule.reorderQty}</div>
         </div>
-        <div class="act"><button class="btn sm primary">Create PO</button></div>
+        <div class="act"><button class="btn sm primary" onclick="createPO('${a.model.id}', ${a.rule.reorderQty})">Create PO</button></div>
       </div>
     `).join('') : PCG.states.empty('No reorder alerts.');
 
@@ -236,6 +236,31 @@
   document.getElementById('q').addEventListener('input', render);
   whSel.addEventListener('change', render);
   render();
+
+  window.createPO = (modelId, qty) => {
+    const m = PCG.api.getInventoryItem(modelId);
+    if(!m) return;
+    if(!confirm(`Draft procurement request for ${qty}× ${m.name}?\n\nRoutes to Dept Director + CFO for approval per §9.1.`)) return;
+    const req = {
+      id: 'pr.'+Math.random().toString(36).slice(2,8),
+      departmentId: m.categoryId ? 'dept.'+m.categoryId.split('.')[1] : 'dept.wh',
+      requesterId: PCG.user.id,
+      itemDescription: m.name,
+      modelId: modelId,
+      qty: qty,
+      justification: `Reorder — available balance below minimum. Auto-drafted from reorder alert.`,
+      estimatedCost: (m.rates && m.rates.day) ? m.rates.day * 30 * qty : 500 * qty,
+      dateNeeded: new Date(Date.now()+30*86400000).toISOString().slice(0,10),
+      status: 'PendingApproval',
+      approvalRoute: ['Dept Director','CFO'],
+      createdAt: new Date().toISOString()
+    };
+    PCG.procurementRequests = PCG.procurementRequests || [];
+    PCG.procurementRequests.push(req);
+    PCG.auditLog.push({ at: req.createdAt, actor: PCG.user.id, action: 'procurementRequest.create', entityId: req.id, detail: `${qty}× ${m.name}` });
+    if(PCG.engines && PCG.engines.notify) PCG.engines.notify.emit('ProcurementRequestCreated', { id: req.id, qty, modelId });
+    alert(`✓ Procurement request ${req.id} drafted.\nRouted to Dept Director → CFO for approval.`);
+  };
 </script>
 </body>
 </html>

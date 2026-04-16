@@ -152,7 +152,7 @@
     view();
   }
 
-  // ---------- Home (Lasso-parity: Today's shifts, Roster Confirmations, Quick grid) ----------
+  // ---------- Home (bottom-tab nav: Today's shifts, Roster Confirmations, Quick grid) ----------
   function renderHome(){
     const assns = CrewApi.getMyAssignments();
     const today = new Date(); today.setHours(0,0,0,0);
@@ -161,7 +161,7 @@
     assns.forEach(a => (a.dates||[]).forEach(d => { if(d === todayStr) todayShifts.push({...a, date:d}); }));
     const toConfirm = assns.filter(a => a.status === 'Invited' || a.status === 'Applied');
     const messages = CrewApi.getMyMessages().filter(m => !m.archived).slice(0,3);
-    const tasks = [];  // Lasso-style "My tasks this week"
+    const tasks = [];  // PWA-style "My tasks this week"
 
     const activeClock = CrewApi.getActiveClockEvent();
     const clockLabel = activeClock
@@ -242,7 +242,7 @@
     `;
   }
 
-  // ---------- Time (Clock In/Out — Lasso parity) ----------
+  // ---------- Time (Clock In/Out — Crew PWA) ----------
   function renderTime(){
     const active = CrewApi.getActiveClockEvent();
     const now = new Date();
@@ -284,7 +284,7 @@
         <div class="label">About Clock Events</div>
         <div style="color:var(--text2); font-size:12px; margin-top:4px;">
           Clock in/out events feed your timesheet for the day. Labor Coordinator approves before payroll export.
-          OT calculation uses your PayRule (Lasso parity).
+          OT calculation uses your PayRule (union local + employment type).
         </div>
       </section>
 
@@ -295,7 +295,7 @@
   window.clockInNow = () => { CrewApi.clockIn(); routeTo('time'); };
   window.clockOutNow = () => { CrewApi.clockOut(); routeTo('time'); };
 
-  // ---------- Time Cards (list — Lasso parity) ----------
+  // ---------- Time Cards (list — Crew PWA) ----------
   function renderTimeCards(){
     const cards = CrewApi.getMyTimeCards();
     document.getElementById('screen').innerHTML = `
@@ -334,7 +334,7 @@
     `;
   }
 
-  // ---------- Messages (Inbox — Lasso parity) ----------
+  // ---------- Messages (Inbox — Crew PWA) ----------
   function renderMessages(){
     const all = CrewApi.getMyMessages();
     const inbox = all.filter(m => !m.archived);

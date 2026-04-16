@@ -10,55 +10,130 @@
   body { background: #000; }
   .tv-hdr { display:flex; align-items:center; gap:var(--sp-5); padding-bottom: var(--sp-4); border-bottom: 2px solid #1B3150; margin-bottom: var(--sp-5); }
   .tv-hdr .stamp { margin-left:auto; font-family: var(--font-mono); color:#9DD4FF; font-size: 22px; }
-  .tv-ticker { background: #0B1625; border:1px solid #1B3150; padding: 18px 24px; border-radius: var(--r-md); margin-top: var(--sp-5); font-family: var(--font-display); text-transform:uppercase; letter-spacing:0.08em; color:#9DD4FF; font-size: 22px; }
+  .tv-hdr .countdown { font-family: var(--font-mono); color:#F5B73C; font-size: 18px; }
+  .tv-ticker {
+    background: linear-gradient(90deg, #0B1625, #112238);
+    border:1px solid #1B3150; padding: 16px 28px; border-radius: var(--r-md);
+    margin-top: var(--sp-5); font-family: var(--font-display); text-transform:uppercase;
+    letter-spacing:0.08em; color:#9DD4FF; font-size: 22px;
+    display:flex; align-items:center; gap: 18px; min-height: 56px;
+    overflow:hidden; position:relative;
+  }
+  .tv-ticker .dot { width:14px; height:14px; border-radius:50%; background:#2FBF71; box-shadow:0 0 12px #2FBF71; animation: blink 2s infinite; flex-shrink:0; }
+  .tv-ticker .dot.red    { background:#F04E55; box-shadow:0 0 12px #F04E55; }
+  .tv-ticker .dot.amber  { background:#F5B73C; box-shadow:0 0 12px #F5B73C; }
+  .tv-ticker .msg { flex:1; opacity:0; transition: opacity 0.6s; }
+  .tv-ticker .msg.on { opacity:1; }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
   .tv-row {
-    display:grid; grid-template-columns: 180px 1fr 180px 240px;
+    display:grid; grid-template-columns: 180px 1fr 220px 200px;
     gap: var(--sp-4); align-items:center;
     padding: 14px 20px; border-bottom: 1px solid #1B3150;
     font-size: 22px;
   }
   .tv-row .code { font-family: var(--font-mono); color:#9DD4FF; }
-  .tv-row .status { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 14px; border-radius: 999px; font-size: 16px; }
+  .tv-row .status { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 14px; border-radius: 999px; font-size: 16px; display:inline-block; }
   .s-inprog  { background: rgba(245,183,60,0.18); color: #F5B73C; border:1px solid #F5B73C; }
   .s-prepped { background: rgba(1,153,253,0.18); color: #0199FD; border:1px solid #0199FD; }
   .s-shipped { background: rgba(122,65,229,0.18); color: #B79AFD; border:1px solid #8848FF; }
   .s-not     { background: rgba(110,125,148,0.18); color: #AAB8CC; border:1px solid #AAB8CC; }
   .s-final   { background: rgba(47,191,113,0.18); color: #2FBF71; border:1px solid #2FBF71; }
+  .s-returning { background: rgba(245,183,60,0.18); color: #F5B73C; border:1px solid #F5B73C; }
+  .s-departed  { background: rgba(1,153,253,0.18); color: #0199FD; border:1px solid #0199FD; }
+
+  .tv-bar { flex:1; height:12px; background:#0B1625; border:1px solid #1B3150; border-radius: 6px; overflow:hidden; }
+  .tv-bar > span { display:block; height:100%; background: linear-gradient(90deg, #0199FD, #7A41E5); transition: width 0.4s; }
+
+  .tv-grid-extra { display:grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); margin-top: var(--sp-5); }
+  .tv-mini { background: #0B1625; border:1px solid #1B3150; border-radius: var(--r-md); padding: 18px 22px; }
+  .tv-mini h3 { color:#AAB8CC; font-family: var(--font-display); font-size: 14px; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 8px; }
+  .tv-mini .num { font-family: var(--font-display); font-size: 48px; font-weight:700; line-height: 1; }
+  .tv-mini .sub { color:#6E7D94; font-size: 14px; margin-top: 6px; }
+  .tv-mini.red   .num { color:#F04E55; }
+  .tv-mini.amber .num { color:#F5B73C; }
+  .tv-mini.green .num { color:#2FBF71; }
+  .tv-mini.blue  .num { color:#0199FD; }
+
+  .tv-manifests { margin-top: var(--sp-5); }
+  .tv-man-row {
+    display:grid; grid-template-columns: 140px 1fr 1fr 160px;
+    gap: var(--sp-4); align-items:center;
+    padding: 12px 20px; border-bottom: 1px solid #1B3150;
+    font-size: 20px;
+  }
 </style>
 </head>
 <body class="tv-shell">
   <div class="tv-hdr">
     <div>
       <div style="color:#9DD4FF; font-family: var(--font-display); text-transform:uppercase; letter-spacing:0.14em; font-size: 18px;">PCG · WAREHOUSE</div>
-      <h1 style="margin-top:4px;">Premier — Main Office</h1>
+      <h1 style="margin-top:4px;" id="tv-site">—</h1>
     </div>
+    <div class="countdown" id="nextEvent">—</div>
     <div class="stamp" id="stamp"></div>
   </div>
 
+  <!-- KPI row 1: operational pulse -->
   <div class="tv-grid">
-    <div class="tv-card tv-pulse" id="cardPulls">
+    <div class="tv-card tv-pulse">
       <h2>Active Pulls</h2>
       <div class="big" id="kpiPulls">—</div>
       <div style="color:#AAB8CC; margin-top:10px; font-size:18px;" id="kpiPullsSub">—</div>
     </div>
-    <div class="tv-card" id="cardScans">
+    <div class="tv-card">
       <h2>Scans Today</h2>
       <div class="big" id="kpiScans">—</div>
       <div style="color:#AAB8CC; margin-top:10px; font-size:18px;">Offline queue: <span id="kpiQueue">0</span></div>
     </div>
-    <div class="tv-card" id="cardTickets">
+    <div class="tv-card">
       <h2>Open Svc Tickets</h2>
       <div class="big" id="kpiSvc" style="color:#F04E55;">—</div>
       <div style="color:#AAB8CC; margin-top:10px; font-size:18px;" id="kpiSvcSub">—</div>
     </div>
   </div>
 
+  <!-- KPI row 2: warehouse pressure points -->
+  <div class="tv-grid-extra">
+    <div class="tv-mini amber">
+      <h3>Walk-the-Pile</h3>
+      <div class="num" id="kpiWalk">—</div>
+      <div class="sub">Sup sign-off pending</div>
+    </div>
+    <div class="tv-mini red">
+      <h3>Workbox Restock</h3>
+      <div class="num" id="kpiWB">—</div>
+      <div class="sub" id="kpiWBSub">units short</div>
+    </div>
+    <div class="tv-mini red">
+      <h3>OOC Serials</h3>
+      <div class="num" id="kpiOOC">—</div>
+      <div class="sub" id="kpiOOCSub">awaiting RTS</div>
+    </div>
+    <div class="tv-mini amber">
+      <h3>RPO Hold &lt;24h</h3>
+      <div class="num" id="kpiRPO">—</div>
+      <div class="sub" id="kpiRPOSub">vendors waiting</div>
+    </div>
+  </div>
+
+  <!-- Pull Floor -->
   <div class="tv-card" style="margin-top:var(--sp-5);">
     <h2 style="margin-bottom: var(--sp-3);">Today's Pull Floor</h2>
     <div id="pullList"></div>
   </div>
 
-  <div class="tv-ticker" id="ticker">Auto-refresh every 60 seconds · Scan a barcode anywhere to jump to that pull</div>
+  <!-- Truck board -->
+  <div class="tv-card tv-manifests">
+    <h2 style="margin-bottom: var(--sp-3);">Truck Board — Departures &amp; Returns</h2>
+    <div id="manList"></div>
+  </div>
+
+  <!-- Rotating ticker -->
+  <div class="tv-ticker" id="tickerBar">
+    <div class="dot" id="tickerDot"></div>
+    <div class="msg on" id="tickerMsg">Auto-refresh every 60 seconds · Scan a barcode anywhere to jump to that pull</div>
+  </div>
 
 <script src="assets/data.js"></script>
 <script src="assets/permissions.js"></script>
@@ -67,18 +142,137 @@
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
 <script>
+  // Header site name from primary warehouse
+  const primary = (PCG.warehouses||[])[0];
+  document.getElementById('tv-site').textContent = primary ? primary.name : 'Troy / Main / HQ';
+
+  const buildTicker = () => {
+    const msgs = [];
+    const now = new Date();
+
+    // Urgency: departing soon
+    const staged = (PCG.manifests||[]).filter(m => m.status === 'Staged');
+    staged.forEach(m => {
+      const hrs = (new Date(m.departureDate) - now)/3600000;
+      if(hrs > 0 && hrs < 6){
+        msgs.push({ tone:'amber', text:`🚛 ${m.showId} departs in ${Math.round(hrs*10)/10}h · ${m.vehicle||'—'} · ${m.driverName||'driver TBD'}` });
+      }
+    });
+    // Returning now
+    (PCG.manifests||[]).filter(m => m.status === 'Returning').forEach(m => {
+      msgs.push({ tone:'amber', text:`📦 ${m.showId} inbound · ${m.vehicle||'—'} · prep IC bay` });
+    });
+    // RPO hold expiring
+    const rpos = PCG.api.getSubRentals ? PCG.api.getSubRentals() : [];
+    rpos.forEach(r => {
+      if(r.status==='Closed' || r.status==='Returned') return;
+      const hrs = (new Date(r.holdExpiry) - now)/3600000;
+      if(hrs > 0 && hrs < 24){
+        msgs.push({ tone:'red', text:`⏰ RPO ${r.id} hold expires in ${Math.round(hrs)}h · ${r.vendorName} · ${r.itemDescription}` });
+      }
+    });
+    // Critical service tickets
+    (PCG.serviceTickets||[]).filter(t=>t.triage==='Critical' && !['Repaired','Retired'].includes(t.status)).forEach(t => {
+      msgs.push({ tone:'red', text:`🔴 CRITICAL SVC · ${t.serialId||t.id} · ${t.description.slice(0,80)}` });
+    });
+    // Prepped pulls awaiting walk-the-pile
+    (PCG.pullSheets||[]).filter(p => p.status==='Prepped' && !p.authorizedById).forEach(p => {
+      msgs.push({ tone:'amber', text:`⚠ WALK-THE-PILE PENDING · ${p.id} · ${p.showId} · ${p.department} — supervisor sign-off needed` });
+    });
+    // EQLPC conflicts
+    const conflicts = PCG.api.getInventoryConflicts ? PCG.api.getInventoryConflicts() : [];
+    if(conflicts.length){
+      msgs.push({ tone:'red', text:`⚡ ${conflicts.length} EQLPC conflict${conflicts.length===1?'':'s'} open · inventory overlap across shows` });
+    }
+    // Workbox shortages
+    const wbShort = PCG.api.getWorkboxes ? PCG.api.getWorkboxes().filter(w => w.shortage > 0) : [];
+    if(wbShort.length){
+      const units = wbShort.reduce((s,w)=>s+w.needed,0);
+      msgs.push({ tone:'amber', text:`🧰 ${wbShort.length} workbox${wbShort.length===1?'':'es'} short · ${units} units to restock · kit-rebuild console` });
+    }
+    // Open add orders
+    const aos = (PCG.addOrders||[]).filter(a => ['Requested','Acknowledged','Picking'].includes(a.status));
+    aos.forEach(a => {
+      if(a.urgency === 'Emergency' || a.urgency === 'Urgent'){
+        msgs.push({ tone:'red', text:`★ ${a.urgency.toUpperCase()} AO · ${a.aoNumber} · ${a.showId} · ${a.description.slice(0,70)}` });
+      }
+    });
+    // Fallback
+    if(!msgs.length) msgs.push({ tone:'green', text:'All clear · no urgent items · pull floor running on schedule' });
+    return msgs;
+  };
+
+  let tickerIdx = 0;
+  let tickerMsgs = buildTicker();
+  const cycleTicker = () => {
+    if(!tickerMsgs.length) tickerMsgs = buildTicker();
+    const msgEl = document.getElementById('tickerMsg');
+    const dotEl = document.getElementById('tickerDot');
+    msgEl.classList.remove('on');
+    setTimeout(() => {
+      const m = tickerMsgs[tickerIdx % tickerMsgs.length];
+      msgEl.textContent = m.text;
+      dotEl.className = 'dot ' + (m.tone === 'green' ? '' : m.tone);
+      msgEl.classList.add('on');
+      tickerIdx++;
+    }, 400);
+  };
+
   const render = ()=>{
+    const now = new Date();
     const pulls = (PCG.pullSheets||[]);
     const active = pulls.filter(p=>['InProgress','Prepped','Finalized'].includes(p.status));
-    const scansToday = (PCG.scanRecords||[]).filter(s=>s.ts && new Date(s.ts).toDateString()===new Date().toDateString()).length;
+    const scansToday = (PCG.scanRecords||[]).filter(s=>s.ts && new Date(s.ts).toDateString()===now.toDateString()).length;
     const svc = PCG.api.getServiceTickets({status:'Open'});
+    const ooc = (PCG.inventorySerials||[]).filter(s => s.status === 'OOC').length;
+    const awaitingRTS = (PCG.serviceTickets||[]).filter(t => t.status === 'BenchTest' || t.status === 'ReturnToService').length;
+    const workboxes = PCG.api.getWorkboxes ? PCG.api.getWorkboxes().filter(w => w.shortage > 0) : [];
+    const wbUnits = workboxes.reduce((s,w)=>s+w.needed,0);
+    const rpos = PCG.api.getSubRentals ? PCG.api.getSubRentals() : [];
+    const rposExpiring = rpos.filter(r => {
+      if(r.status === 'Closed' || r.status === 'Returned') return false;
+      const hrs = (new Date(r.holdExpiry) - now) / 3600000;
+      return hrs > 0 && hrs < 24;
+    });
+    const walkPending = pulls.filter(p=>p.status==='Prepped' && !p.authorizedById).length;
 
-    document.getElementById('stamp').textContent = new Date().toLocaleTimeString();
+    document.getElementById('stamp').textContent = now.toLocaleTimeString();
+
+    // Next event countdown (next departure or load-in)
+    const upcoming = [];
+    (PCG.manifests||[]).forEach(m => {
+      if(m.status === 'Staged' || m.status === 'Departed'){
+        const when = new Date(m.departureDate);
+        if(when > now) upcoming.push({ when, label: `${m.showId} depart` });
+      }
+    });
+    (PCG.projects||[]).forEach(p => {
+      if(p.dates && p.dates.loadIn && p.show && ['InPrep','Awarded'].includes(p.show.lifecycleState)){
+        const when = new Date(p.dates.loadIn);
+        if(when > now && when - now < 7*86400000) upcoming.push({ when, label: `${p.code} load-in` });
+      }
+    });
+    upcoming.sort((a,b) => a.when - b.when);
+    if(upcoming[0]){
+      const hrs = (upcoming[0].when - now)/3600000;
+      const tm = hrs < 1 ? `${Math.round(hrs*60)}m` : hrs < 24 ? `${Math.round(hrs*10)/10}h` : `${Math.round(hrs/24)}d`;
+      document.getElementById('nextEvent').textContent = `NEXT · ${upcoming[0].label} · ${tm}`;
+    } else {
+      document.getElementById('nextEvent').textContent = '';
+    }
+
     document.getElementById('kpiPulls').textContent = active.length;
     document.getElementById('kpiPullsSub').textContent = `${pulls.reduce((s,p)=>s+(p.lines||[]).length,0)} lines total across floor`;
     document.getElementById('kpiScans').textContent = scansToday;
     document.getElementById('kpiSvc').textContent = svc.length;
     document.getElementById('kpiSvcSub').textContent = svc.length ? svc[0].description.slice(0,60)+(svc[0].description.length>60?'…':'') : 'All clear';
+    document.getElementById('kpiWalk').textContent = walkPending;
+    document.getElementById('kpiWB').textContent = wbUnits;
+    document.getElementById('kpiWBSub').textContent = `${workboxes.length} box${workboxes.length===1?'':'es'} short`;
+    document.getElementById('kpiOOC').textContent = ooc;
+    document.getElementById('kpiOOCSub').textContent = `${awaitingRTS} awaiting RTS`;
+    document.getElementById('kpiRPO').textContent = rposExpiring.length;
+    document.getElementById('kpiRPOSub').textContent = rposExpiring.length ? `next: ${Math.round((new Date(rposExpiring[0].holdExpiry)-now)/3600000)}h` : 'none expiring';
 
     // queue from IndexedDB (async)
     if(PCG.engines.sync && PCG.engines.sync.pending){
@@ -87,7 +281,8 @@
       }).catch(()=>{ document.getElementById('kpiQueue').textContent = '—'; });
     }
 
-    document.getElementById('pullList').innerHTML = pulls.map(p=>{
+    // Pull Floor
+    document.getElementById('pullList').innerHTML = pulls.length ? pulls.map(p=>{
       const scanned = (p.lines||[]).filter(l=>l.scanStatus==='verified').length;
       const total   = (p.lines||[]).length;
       const pct     = total? Math.round(scanned/total*100):0;
@@ -95,14 +290,34 @@
       return `<div class="tv-row">
         <div class="code">${p.id}</div>
         <div><strong style="color:white; font-size:26px;">${p.showId}</strong> · ${p.department}</div>
-        <div style="font-family: var(--font-mono); color:#9DD4FF;">${scanned} / ${total} · ${pct}%</div>
+        <div style="display:flex; align-items:center; gap:14px;"><div class="tv-bar"><span style="width:${pct}%;"></span></div><span style="font-family: var(--font-mono); color:#9DD4FF; min-width:100px; text-align:right;">${scanned}/${total} · ${pct}%</span></div>
         <div><span class="status ${stCls}">${p.status.toUpperCase()}</span></div>
       </div>`;
-    }).join('');
+    }).join('') : `<div style="padding: 20px; color:#6E7D94; font-size:20px;">No pull sheets on the floor.</div>`;
+
+    // Truck board
+    const mans = (PCG.manifests||[]);
+    document.getElementById('manList').innerHTML = mans.length ? mans.map(m => {
+      const stCls = {'Staged':'s-not','Departed':'s-departed','Delivered':'s-final','Returning':'s-returning','Received':'s-shipped'}[m.status] || 's-not';
+      const when = m.status === 'Returning' || m.status === 'Received'
+        ? new Date(m.arrivalDate).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})
+        : new Date(m.departureDate).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+      return `<div class="tv-man-row">
+        <div class="code" style="font-family: var(--font-mono); color:#9DD4FF;">${m.id}</div>
+        <div><strong style="color:white; font-size:24px;">${m.showId}</strong> · ${m.vehicle||'—'}</div>
+        <div style="color:#AAB8CC;">${m.driverName||'Driver TBD'} · <span style="font-family: var(--font-mono); color:#9DD4FF;">${when}</span></div>
+        <div><span class="status ${stCls}">${m.status.toUpperCase()}</span></div>
+      </div>`;
+    }).join('') : `<div style="padding: 20px; color:#6E7D94; font-size:20px;">No manifests on the truck board.</div>`;
+
+    // Rebuild ticker messages
+    tickerMsgs = buildTicker();
   };
 
   render();
-  setInterval(render, 60000); // §6.2 auto-refresh 60s (Open Decision #13 default)
+  cycleTicker();
+  setInterval(render, 60000);    // §6.2 auto-refresh 60s
+  setInterval(cycleTicker, 6000); // rotate ticker every 6s
 </script>
 </body>
 </html>

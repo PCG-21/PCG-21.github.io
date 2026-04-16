@@ -50,13 +50,10 @@
 
         <aside>
           <div class="card">
-            <div class="card-header"><div class="title">Vendor Library (Phase 3)</div></div>
-            <div class="card-body" style="font-size:var(--fs-sm);">
-              <div class="pinned" style="margin-bottom:6px;"><span class="icon">⊛</span><div><strong>Solotech</strong><div class="muted" style="font-size:var(--fs-xs);">Audio · Montreal / Nashville</div></div></div>
-              <div class="pinned" style="margin-bottom:6px;"><span class="icon">⊛</span><div><strong>PRG</strong><div class="muted" style="font-size:var(--fs-xs);">Audio · Lighting · Video</div></div></div>
-              <div class="pinned" style="margin-bottom:6px;"><span class="icon">⊛</span><div><strong>IMPACT</strong><div class="muted" style="font-size:var(--fs-xs);">Audio · Regional (Detroit)</div></div></div>
-              <div class="pinned"><span class="icon">⊛</span><div><strong>VER</strong><div class="muted" style="font-size:var(--fs-xs);">Video · National</div></div></div>
+            <div class="card-header"><div class="title">Vendor Library</div>
+              <a class="btn sm ghost" style="margin-left:auto;" href="vendors.html">Open →</a>
             </div>
+            <div class="card-body" style="font-size:var(--fs-sm);" id="vendorsMini"></div>
           </div>
           <div class="card" style="margin-top:var(--sp-4);">
             <div class="card-header"><div class="title">Approval Rules</div></div>
@@ -144,6 +141,20 @@
         <div class="kpi"><div class="label">CFO-gate RPOs</div><div class="value">${rpos.filter(r=>r.quotedCost>10000).length}</div><div class="sub">&gt; $10K threshold</div></div>
       `;
     };
+
+    // Mini vendor list (top 5 preferred)
+    const vendors = (PCG.api.getVendors ? PCG.api.getVendors() : []).slice(0, 5);
+    document.getElementById('vendorsMini').innerHTML = vendors.length ? vendors.map(v => `
+      <a href="vendors.html" class="pinned" style="text-decoration: none; color: inherit; margin-bottom: 6px;">
+        <span class="icon">⊛</span>
+        <div style="flex: 1;">
+          <strong>${PCG.escapeHtml(v.name)}</strong>
+          <div class="muted" style="font-size: var(--fs-xs);">
+            ${PCG.escapeHtml(v.category)} · ${v.qualityScore.toFixed(1)}★ · ${Math.round(v.onTimeRate*100)}% on-time
+          </div>
+        </div>
+        ${v.qualityScore>=4.5 ? '<span class="pill green plain" style="font-size: 9px;">PREFERRED</span>' : ''}
+      </a>`).join('') : PCG.states.empty('No vendors yet.');
 
     render();
     document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{

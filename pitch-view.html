@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Creative Proposal</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<style>
+  /* =========================================================================
+     CLIENT-FACING PITCH — no sidebar, no nav. Branded, mobile-first.
+     Writes engagement events on every scroll/section-view/click.
+     ========================================================================= */
+  :root {
+    --cp-bg: #F4F7FA;
+    --cp-surface: #FFFFFF;
+    --cp-surface-2: #EEF3F8;
+    --cp-text: #0A1220;
+    --cp-text-2: #4A5568;
+    --cp-text-3: #7A8899;
+    --cp-border: #E1E8EF;
+    --cp-border-2: #CDD8E1;
+    --cp-accent: #0199FD;
+    --cp-accent-dark: #013558;
+    --cp-accent-purple: #7A41E5;
+    --cp-success: #1C8B4C;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--cp-bg); color: var(--cp-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px; line-height: 1.6;
+  }
+
+  .pt-hero {
+    background: linear-gradient(135deg, var(--cp-accent-dark) 0%, #0B2842 60%, var(--cp-accent-purple) 140%);
+    color: #FFF; padding: 64px 28px 90px; position: relative; overflow: hidden;
+  }
+  .pt-hero::after {
+    content: ""; position: absolute; right: -80px; top: -80px;
+    width: 420px; height: 420px; border-radius: 55% 45% 50% 50%;
+    background: radial-gradient(circle, rgba(217,47,180,0.4), transparent 60%);
+    filter: blur(12px);
+  }
+  .pt-hero-inner { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
+  .pt-brand {
+    font-family: "Oswald", sans-serif; font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 10px;
+  }
+  .pt-hero h1 {
+    margin: 0 0 12px; font-family: "Oswald", sans-serif; font-size: 48px;
+    font-weight: 700; letter-spacing: 0.01em; line-height: 1.1;
+  }
+  .pt-hero-meta { color: rgba(255,255,255,0.82); font-size: 16px; margin-bottom: 18px; }
+  .pt-hero-stats {
+    display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px;
+    padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.18);
+  }
+  .pt-stat { min-width: 160px; }
+  .pt-stat .k { font-family: "Oswald", sans-serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+  .pt-stat .v { font-family: "IBM Plex Mono", monospace; font-size: 18px; color: #FFF; font-weight: 600; margin-top: 2px; }
+
+  .pt-main { max-width: 920px; margin: -50px auto 48px; padding: 0 28px; position: relative; z-index: 2; }
+
+  .pt-section {
+    background: var(--cp-surface); border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(10,18,32,0.06), 0 10px 30px rgba(10,18,32,0.08);
+    margin-bottom: 24px; padding: 36px 44px; scroll-margin-top: 24px;
+    border-top: 3px solid transparent;
+    transition: border-top-color 0.3s;
+  }
+  .pt-section.visible { border-top-color: var(--cp-accent); }
+  .pt-section h2 {
+    margin: 0 0 10px; font-family: "Oswald", sans-serif; font-size: 30px; font-weight: 700;
+  }
+  .pt-section .eyebrow { font-family: "Oswald", sans-serif; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cp-accent); margin-bottom: 4px; }
+  .pt-section .body { color: var(--cp-text); font-size: 17px; line-height: 1.65; margin-top: 10px; }
+
+  .pt-updated-dot {
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background: var(--cp-accent-purple); margin-right:6px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  /* Stage concepts grid */
+  .sc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 22px; }
+  .sc-card {
+    background: var(--cp-surface-2); border: 2px solid transparent; border-radius: 12px;
+    padding: 20px 22px; cursor: pointer; transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .sc-card:hover { transform: translateY(-2px); }
+  .sc-card.selected { border-color: var(--cp-accent); background: rgba(1,153,253,0.06); }
+  .sc-card.recommended::before {
+    content: "RECOMMENDED"; position: absolute; top: -10px; right: 14px;
+    background: var(--cp-accent); color: #FFF; padding: 3px 10px;
+    font-family: "Oswald", sans-serif; font-size: 10px; letter-spacing: 0.12em;
+    border-radius: 20px;
+  }
+  .sc-card h3 { margin: 0 0 4px; font-family: "Oswald", sans-serif; font-size: 22px; }
+  .sc-card .delta {
+    font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--cp-accent-dark);
+    font-weight: 600; margin-bottom: 8px;
+  }
+  .sc-card .desc { font-size: 13px; color: var(--cp-text-2); line-height: 1.5; }
+  .sc-card .incl { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+  .sc-card .incl li { font-size: 12px; color: var(--cp-text-2); list-style: none; }
+  .sc-card .incl li::before { content: "✓"; color: var(--cp-success); margin-right: 6px; font-weight: bold; }
+
+  /* Comment thread */
+  .pt-comments {
+    margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--cp-border);
+  }
+  .pt-comment {
+    padding: 10px 14px; margin-bottom: 10px; border-radius: 10px;
+    background: var(--cp-surface-2); font-size: 14px;
+  }
+  .pt-comment.pcg { background: rgba(1,153,253,0.06); }
+  .pt-comment .meta {
+    font-size: 11px; color: var(--cp-text-3); margin-bottom: 4px;
+    font-family: "Oswald", sans-serif; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .pt-comment-add { display: flex; gap: 8px; margin-top: 12px; }
+  .pt-comment-add textarea {
+    flex: 1; border: 1px solid var(--cp-border-2); border-radius: 8px; padding: 8px 10px;
+    font-family: inherit; font-size: 14px; min-height: 40px; resize: vertical;
+  }
+  .pt-comment-add button {
+    background: var(--cp-accent); color: #FFF; border: 0; border-radius: 8px;
+    padding: 8px 16px; font-family: "Oswald", sans-serif; letter-spacing: 0.06em;
+    text-transform: uppercase; font-size: 13px; cursor: pointer; align-self: flex-end;
+  }
+
+  /* CTA */
+  .pt-cta-card {
+    background: linear-gradient(135deg, var(--cp-accent-dark) 0%, var(--cp-accent) 140%);
+    color: #FFF; border-radius: 14px; padding: 36px 44px; margin-bottom: 40px;
+    box-shadow: 0 10px 40px rgba(1,153,253,0.3);
+  }
+  .pt-cta-card h2 { color: #FFF; }
+  .pt-cta-card .body { color: rgba(255,255,255,0.9); }
+  .pt-cta-row { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+  .pt-cta-btn {
+    border: 0; padding: 14px 28px; border-radius: 10px; cursor: pointer;
+    font-family: "Oswald", sans-serif; font-size: 15px; letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .pt-cta-btn.primary { background: #FFF; color: var(--cp-accent-dark); }
+  .pt-cta-btn.ghost   { background: rgba(255,255,255,0.12); color: #FFF; border: 1px solid rgba(255,255,255,0.3); }
+
+  .pt-footer {
+    text-align: center; color: var(--cp-text-3); font-size: 12px; padding: 24px;
+  }
+
+  .pt-tocchip {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--cp-surface); border-radius: 30px;
+    padding: 8px 18px; box-shadow: 0 4px 20px rgba(10,18,32,0.18);
+    font-family: "Oswald", sans-serif; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--cp-text-2); cursor: pointer;
+    z-index: 100;
+  }
+
+  @media (max-width: 720px) {
+    .pt-hero { padding: 48px 20px 70px; }
+    .pt-hero h1 { font-size: 34px; }
+    .pt-main { padding: 0 16px; }
+    .pt-section { padding: 24px 22px; }
+    .pt-cta-card { padding: 26px 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="invalidState" style="display:none; max-width:480px; margin:80px auto; padding:40px 32px; background:#FFF; border-radius:12px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+  <div style="font-size:40px; margin-bottom:12px;">🔗</div>
+  <h2 style="font-family:'Oswald',sans-serif;">Invalid or expired link</h2>
+  <p style="color:#4A5568;">This pitch link is no longer active. Please contact your PCG account lead.</p>
+</div>
+
+<div id="pitchBody" style="display:none;">
+  <div class="pt-hero">
+    <div class="pt-hero-inner">
+      <div class="pt-brand">PREMIER CREATIVE GROUP · PROPOSAL</div>
+      <h1 id="ptTitle"></h1>
+      <div class="pt-hero-meta" id="ptMeta"></div>
+      <div class="pt-hero-stats" id="ptStats"></div>
+    </div>
+  </div>
+
+  <div class="pt-main" id="ptMain"></div>
+
+  <div class="pt-footer">
+    Prepared by <span id="ptAE"></span> · Premier Creative Group · 248.607.0444<br>
+    Born Backstage · Built for the Spotlight
+  </div>
+</div>
+
+<div class="pt-tocchip" id="ptToc" style="display:none;">▲ Top</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js?bypass_pin=true"></script>
+<script src="assets/seed.js"></script>
+<script>
+  // Skip app.js entirely — client-facing magic-link surface.
+
+  const escape = s => String(s??'').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const money = n => (n==null||isNaN(n)) ? "—" : `$${Number(n).toLocaleString("en-US",{maximumFractionDigits:0})}`;
+  const fmtDate = iso => iso ? new Date(iso).toLocaleString("en-US",{month:'long',day:'numeric',year:'numeric'}) : '—';
+  const fmtDateTime = iso => iso ? new Date(iso).toLocaleString("en-US",{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+
+  const token = new URL(location.href).searchParams.get('token') || 'PT-LCE26-jrt93s'; // default demo token
+  const pitch = PCG.api.getPitch(token);
+
+  if(!pitch || !pitch.shareToken){
+    document.getElementById('invalidState').style.display = 'block';
+  } else {
+    mount();
+  }
+
+  function mount(){
+    const body = document.getElementById('pitchBody');
+    body.style.display = 'block';
+
+    const client = PCG.api.getClient(pitch.clientId);
+    const ae = PCG.findPerson(pitch.aeId);
+    const contact = (PCG.clientContacts||[]).find(c=>c.id===pitch.clientContactId);
+
+    document.getElementById('ptTitle').textContent = pitch.projectIdea;
+    document.getElementById('ptMeta').innerHTML = `For ${client?escape(client.name):'client'}${contact?' · '+escape(contact.name):''} · Pitch ${escape(pitch.pitchNo)} · Version ${pitch.currentVersion}`;
+    document.getElementById('ptAE').textContent = ae?ae.name:'PCG';
+
+    const stats = [
+      { k:'Target Dates', v: pitch.targetDates },
+      { k:'Budget Range', v: pitch.estimatedBudget ? money(pitch.estimatedBudget.low)+' – '+money(pitch.estimatedBudget.high) : '—' },
+      { k:'Status',       v: pitch.status.toUpperCase() }
+    ];
+    document.getElementById('ptStats').innerHTML = stats.map(s =>
+      `<div class="pt-stat"><div class="k">${escape(s.k)}</div><div class="v">${escape(s.v)}</div></div>`
+    ).join('');
+
+    // Second-visit delta indicator
+    const secondVisit = (pitch.engagementEvents||[]).some(e => e.meta && e.meta.secondVisit);
+    const updatedSections = (pitch.versionHistory||[]).slice(-2).length >= 2
+      ? pitch.versionHistory.slice(-2).map(v => v.change).join(' · ')
+      : null;
+
+    // Render sections
+    const main = document.getElementById('ptMain');
+    if(secondVisit && updatedSections) {
+      main.innerHTML = `<div class="pt-section" style="background: rgba(122,65,229,0.06); border: 1px solid var(--cp-accent-purple); border-top: 3px solid var(--cp-accent-purple);">
+        <div class="eyebrow" style="color:var(--cp-accent-purple);"><span class="pt-updated-dot"></span>WHAT'S NEW SINCE YOUR LAST VISIT</div>
+        <div class="body">${escape(updatedSections)}</div>
+      </div>`;
+    }
+    (pitch.sections||[]).forEach(s => {
+      if(s.type === 'Options' || s.variantRef === 'stage-concepts') return main.insertAdjacentHTML('beforeend', renderOptionsSection(s));
+      if(s.type === 'CTA') return main.insertAdjacentHTML('beforeend', renderCTASection(s));
+      main.insertAdjacentHTML('beforeend', renderStandardSection(s));
+    });
+
+    // Record Opened event
+    PCG.api.recordPitchEngagement(token, { type:'Opened', meta:{ device:navigator.userAgent.slice(0,60) } });
+
+    // Observe sections for view duration
+    setupSectionObserver();
+
+    // ToC chip scrolls to top
+    document.getElementById('ptToc').addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+    window.addEventListener('scroll', () => {
+      document.getElementById('ptToc').style.display = window.scrollY > 400 ? 'block' : 'none';
+    });
+  }
+
+  function renderStandardSection(s){
+    const sectionComments = (pitch.comments||[]).filter(c => c.sectionId === s.id);
+    return `
+      <div class="pt-section" id="${s.id}" data-section="${s.id}">
+        <div class="eyebrow">${escape(s.type)}</div>
+        <h2>${escape(s.title)}</h2>
+        ${s.body ? `<div class="body">${escape(s.body).replace(/\n/g,'<br>')}</div>` : ''}
+
+        ${sectionComments.length || s.commentable !== false ? `
+          <div class="pt-comments">
+            ${sectionComments.map(c => `
+              <div class="pt-comment ${c.fromSide==='pcg'?'pcg':''}">
+                <div class="meta">${escape(c.fromName||'')} · ${fmtDateTime(c.at)}</div>
+                <div>${escape(c.body)}</div>
+              </div>`).join('')}
+            <div class="pt-comment-add">
+              <textarea placeholder="Add a comment for PCG…" id="cmt-${s.id}"></textarea>
+              <button onclick="postComment('${s.id}')">Send</button>
+            </div>
+          </div>
+        ` : ''}
+      </div>`;
+  }
+
+  function renderOptionsSection(s){
+    const opts = pitch.options || [];
+    return `
+      <div class="pt-section" id="${s.id}" data-section="${s.id}">
+        <div class="eyebrow">OPTIONS · ${escape(s.type)}</div>
+        <h2>${escape(s.title)}</h2>
+        ${s.body ? `<div class="body" style="margin-bottom:12px;">${escape(s.body)}</div>` : ''}
+        <div class="sc-grid">
+          ${opts.map(o => {
+            const sc = o.stageConceptId ? PCG.api.getStageConcept(o.stageConceptId) : null;
+            return `
+              <div class="sc-card ${pitch.selectedOptionId===o.id?'selected':''} ${o.recommended?'recommended':''}" onclick="pickOption('${o.id}')">
+                <h3>${escape(o.label)}</h3>
+                <div class="delta">${o.priceDelta===0?'Included':o.priceDelta>0?'+'+money(o.priceDelta):money(o.priceDelta)}</div>
+                <div class="desc">${sc ? escape(sc.description) : ''}</div>
+                <ul class="incl">${(o.inclusions||[]).map(i => `<li>${escape(i)}</li>`).join('')}</ul>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }
+
+  function renderCTASection(s){
+    return `
+      <div class="pt-cta-card" id="${s.id}" data-section="${s.id}">
+        <div class="eyebrow" style="color:rgba(255,255,255,0.7);">${escape(s.type)}</div>
+        <h2>${escape(s.title)}</h2>
+        ${s.body ? `<div class="body">${escape(s.body)}</div>` : ''}
+        <div class="pt-cta-row">
+          ${pitch.status==='Accepted' ? `
+            <div style="padding:14px 28px; background:rgba(255,255,255,0.15); border-radius:10px; font-weight:600;">✓ Accepted ${fmtDateTime(pitch.acceptedAt)} — converted to quote.</div>
+          ` : `
+            <button class="pt-cta-btn primary" onclick="ctaClick('Accept')">Accept — Generate Quote</button>
+            <button class="pt-cta-btn ghost"   onclick="ctaClick('RequestChanges')">Request Changes</button>
+            <button class="pt-cta-btn ghost"   onclick="ctaClick('ScheduleCall')">Schedule a Call</button>
+          `}
+        </div>
+      </div>`;
+  }
+
+  // Engagement: SectionViewed events on intersection
+  function setupSectionObserver(){
+    const seen = {};
+    const timers = {};
+    const ob = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        const sid = e.target.dataset.section;
+        if(!sid) return;
+        if(e.isIntersecting){
+          e.target.classList.add('visible');
+          timers[sid] = Date.now();
+        } else if(timers[sid]){
+          const dur = Math.round((Date.now() - timers[sid])/1000);
+          if(dur > 2){
+            PCG.api.recordPitchEngagement(token, { type:'SectionViewed', sectionId: sid, meta:{ durationSec: dur } });
+            seen[sid] = (seen[sid]||0) + dur;
+          }
+          delete timers[sid];
+        }
+      });
+    }, { threshold: 0.4 });
+    document.querySelectorAll('[data-section]').forEach(el => ob.observe(el));
+
+    // On unload: flush remaining timers
+    window.addEventListener('beforeunload', () => {
+      Object.entries(timers).forEach(([sid, t]) => {
+        const dur = Math.round((Date.now() - t)/1000);
+        if(dur > 2) PCG.api.recordPitchEngagement(token, { type:'SectionViewed', sectionId: sid, meta:{ durationSec: dur } });
+      });
+    });
+  }
+
+  window.postComment = (sectionId) => {
+    const ta = document.getElementById('cmt-'+sectionId);
+    const body = ta.value.trim();
+    if(!body) return;
+    const contact = (PCG.clientContacts||[]).find(c=>c.id===pitch.clientContactId);
+    PCG.api.postPitchComment(token, {
+      sectionId,
+      fromSide:'client',
+      fromName: contact ? contact.name : 'Client',
+      body
+    });
+    ta.value = '';
+    location.reload(); // Re-render to show the comment
+  };
+
+  window.pickOption = (optionId) => {
+    PCG.api.selectPitchOption(token, optionId);
+    // Visual update without full reload
+    document.querySelectorAll('.sc-card').forEach(c => c.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+  };
+
+  window.ctaClick = (action) => {
+    if(action === 'Accept'){
+      if(!confirm('Accept this proposal? PCG will generate a line-item quote and your account lead will be in touch within 1 business day.')) return;
+    }
+    const res = PCG.api.clickPitchCTA(token, action);
+    if(action === 'Accept'){
+      alert('✓ Accepted — PCG has been notified and will send a detailed quote shortly.');
+      location.reload();
+    } else if(action === 'RequestChanges'){
+      const note = prompt('What changes would you like? (Optional — we\'ll follow up either way)');
+      if(note) {
+        PCG.api.postPitchComment(token, { sectionId:'sec.cta', fromSide:'client', fromName:'Client', body:'Requested changes: '+note });
+      }
+      alert('Thanks — your account lead will follow up.');
+    } else {
+      alert('A PCG team member will reach out to schedule.');
+    }
+  };
+</script>
+</body>
+</html>

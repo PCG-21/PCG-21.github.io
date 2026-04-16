@@ -74,6 +74,7 @@
         <span class="eyebrow" style="font-size:10px; align-self:center;">OWNERSHIP</span>
         <button class="chip" data-o="mine">Mine</button>
         <button class="chip" data-o="atrisk">At Risk</button>
+        <button class="chip" data-o="tour">Tour Stops Only</button>
         <div style="margin-left:auto;">
           <span class="eyebrow" style="font-size:10px; margin-right:6px;">SORT</span>
           <select id="sort" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
@@ -112,6 +113,7 @@
       const r = PCG.api.getReadiness(p.code);
       return r && (r.overall==='Red' || r.overall==='Blocked' || r.overall==='Yellow');
     });
+    if(state.o === 'tour') list = list.filter(p => !!p.tourId);
     const q = (document.getElementById('q').value||'').toLowerCase();
     if(q) list = list.filter(p => [p.code, p.name, p.client, p.venueName].some(v => (v||'').toLowerCase().includes(q)));
 
@@ -157,9 +159,13 @@
               const r = PCG.api.getReadiness(p.code);
               const pm = PCG.findPerson(p.pmId || p.primaryPM);
               const quote = (PCG.quotes||[]).find(x=>x.projectCode===p.code);
+              const tour = p.tourId ? (PCG.api.getTour ? PCG.api.getTour(p.tourId) : null) : null;
               return `<tr onclick="location.href='playbook.html?project=${p.code}'">
-                <td class="mono">${p.code}</td>
-                <td><strong>${PCG.escapeHtml(p.name)}</strong></td>
+                <td class="mono">${p.code}${tour?'<div style="font-size:9px; color: var(--pcg-spotlight-purple); margin-top:2px;">🚌 Stop ' + (p.tourStopNumber||'?') + '</div>':''}</td>
+                <td>
+                  <strong>${PCG.escapeHtml(p.name)}</strong>
+                  ${tour?`<div class="muted" style="font-size:10px; margin-top:2px;">Part of <a href="tour-view.html?id=${tour.id}" onclick="event.stopPropagation()">${PCG.escapeHtml(tour.name)}</a></div>`:''}
+                </td>
                 <td>${PCG.escapeHtml(p.client||'—')}</td>
                 <td>${PCG.escapeHtml(p.venueName||'—')}</td>
                 <td>${PCG.lifecyclePill(p.show&&p.show.lifecycleState)}</td>
@@ -189,9 +195,10 @@
                   ${PCG.lifecyclePill(st)}
                   ${PCG.readinessBadge(r,{compact:true})}
                   ${banners.length?`<span class="pill red" style="font-size:9px;">⚠ ${banners.length}</span>`:''}
+                  ${p.tourId?`<span class="pill purple plain" style="font-size:9px;">🚌 STOP ${p.tourStopNumber||''}</span>`:''}
                 </div>
                 <div style="font-weight:600; font-size:var(--fs-md);">${PCG.escapeHtml(p.name)}</div>
-                <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">${PCG.escapeHtml(p.client||'')} · ${PCG.escapeHtml(p.venueName||'')}</div>
+                <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">${PCG.escapeHtml(p.client||'')} · ${PCG.escapeHtml(p.venueName||'')}${p.tourId?' · part of tour':''}</div>
                 <div class="comps">
                   ${['warehouse','labor','ros','checklist','finance'].map(k=>{
                     const c = comps[k] || {};

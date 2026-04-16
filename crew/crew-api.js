@@ -186,7 +186,7 @@
     return (window.PCG.availabilityBlocks||[]).filter(b=>b.crewMemberId===ctx.crewMemberId);
   };
 
-  // --- Clock in/out (Time screen, Lasso parity) ---
+  // --- Clock in/out (Time screen) ---
   CrewApi.getActiveClockEvent = ()=>{
     const ctx = CrewApi.parseToken();
     if(!ctx) return null;
@@ -243,7 +243,7 @@
       { id:'m.1', subject:'Detroit Uniform', preview:'The attire for Detroit is plain black polo, black pants, closed-toe black shoes. Ask Tyler if you need anything.', from:'p.tscheff', date:'2026-03-18', archived:false, showId:ctx.showId },
       { id:'m.2', subject:'Start Time and Point of Contact', preview:'Your start time for Sunday is 11 am. On-site lead is Chris Taylor. Message him when you arrive at dock 3.', from:'p.coliver', date:'2026-03-18', archived:false, showId:ctx.showId },
       { id:'m.3', subject:'Parking and Load-in', preview:'Enter via Atwater off Washington. Crew parking at American Center lot B. Badge at security hut.', from:'p.ctaylor', date:'2026-02-09', archived:false, showId:ctx.showId },
-      { id:'m.4', subject:'IMPORTANT MESSAGE FROM OPERATIONS', preview:'When working with Premier, technical paperwork is to be submitted within 24 hours of strike. Timecards in Lasso, damage reports in STAGE.', from:'p.kbenz', date:'2026-01-28', archived:false, showId:ctx.showId },
+      { id:'m.4', subject:'IMPORTANT MESSAGE FROM OPERATIONS', preview:'When working with Premier, technical paperwork must be submitted within 24 hours of strike. Timecards in the Sheets tab, damage reports via field notes.', from:'p.kbenz', date:'2026-01-28', archived:false, showId:ctx.showId },
       { id:'m.5', subject:'Crew Entrance', preview:'Hello All. We will be entering through the Atwater dock for this show. Please use the badges at the security desk.', from:'p.ctaylor', date:'2026-01-19', archived:true, showId:ctx.showId }
     ];
     // Pull messages sent to this crew member from the live messages store

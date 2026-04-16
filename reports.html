@@ -115,7 +115,7 @@
         </div>
 
         <aside>
-          <!-- Open Positions 7/14/30-day (Lasso parity) -->
+          <!-- Open Positions 7/14/30-day (spec §12) -->
           <div class="card">
             <div class="card-header"><div class="title">Open Positions to Fill</div></div>
             <div class="card-body">
@@ -281,7 +281,7 @@
       </div>
     `).join('');
 
-    // ---- Open Positions to Fill (Lasso-parity 7 / 14 / 30-day) ----
+    // ---- Open Positions to Fill (7 / 14 / 30-day roll forward) ----
     const today = new Date();
     const days = [7, 14, 30];
     const openPosHtml = days.map(d=>{

@@ -39,6 +39,20 @@
             <div class="card-header"><div class="title">Shows Currently Live</div></div>
             <div class="card-body" id="live"></div>
           </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">🚌 Active Tours</div>
+              <a class="btn sm ghost" style="margin-left:auto;" href="tours.html">All Tours →</a>
+            </div>
+            <div class="card-body" id="toursRollup"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">★ Open Pitches · Sales Pipeline</div>
+              <a class="btn sm ghost" style="margin-left:auto;" href="pitch.html">All Pitches →</a>
+            </div>
+            <div class="card-body" id="pitchesRollup"></div>
+          </div>
         </div>
 
         <aside>
@@ -126,6 +140,70 @@
         <div class="act"><a class="btn sm" href="producer-home.html?project=${p.code}">Watch Live</a></div>
       </div>`;
   }).join('') : PCG.states.empty('No shows currently on show.');
+
+  // Active tours — leadership rollup
+  const activeTours = (PCG.api.getTours ? PCG.api.getTours() : []).filter(t => t.status === 'Executing');
+  document.getElementById('toursRollup').innerHTML = activeTours.length ? activeTours.map(t => {
+    const stops = PCG.api.getTourStops(t.id);
+    const complete = stops.filter(s => s.stopStatus === 'Complete').length;
+    const active = stops.find(s => s.stopStatus === 'Active');
+    const fin = PCG.api.getTourFinancialSummary ? PCG.api.getTourFinancialSummary(t.id) : null;
+    const client = PCG.api.getClient(t.clientId);
+    const pct = stops.length ? Math.round(complete / stops.length * 100) : 0;
+    return `
+      <a href="tour-view.html?id=${t.id}" class="attn-item" style="text-decoration: none; color: inherit; margin-bottom: 6px;">
+        <div style="flex: 1;">
+          <div class="ttl">${PCG.escapeHtml(t.name)} ${active ? `<span class="pill green plain" style="font-size: 9px; margin-left: 6px;">NOW · ${PCG.escapeHtml(active.city)}</span>` : ''}</div>
+          <div class="meta">
+            ${client ? PCG.escapeHtml(client.name) : '—'} · ${stops.length} stops · ${complete} complete (${pct}%)
+            ${fin && PCG.canSeeTier('T2_MARGINS') ? ' · '+PCG.money(fin.totalQuotedRevenue) : ''}
+          </div>
+          <div style="margin-top: 4px; height: 4px; background: var(--surface-3); border-radius: 2px; overflow: hidden;">
+            <div style="height: 100%; background: linear-gradient(90deg, var(--pcg-bright-blue), var(--pcg-spotlight-purple)); width: ${pct}%;"></div>
+          </div>
+        </div>
+      </a>`;
+  }).join('') : PCG.states.empty('No active tours.');
+
+  // Open pitches — leadership sees the pipeline + engagement health
+  const allPitches = PCG.api.getPitches ? PCG.api.getPitches() : [];
+  const openPitches = allPitches.filter(p => ['Draft','Issued','Opened'].includes(p.status));
+  const accepted = allPitches.filter(p => p.status === 'Accepted');
+  const totalBudget = openPitches.reduce((s,p) => s + ((p.estimatedBudget && p.estimatedBudget.high)||0), 0);
+  document.getElementById('pitchesRollup').innerHTML = `
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: var(--sp-3);">
+      <div style="text-align: center; padding: 8px; background: var(--surface-2); border-radius: var(--r-sm);">
+        <div class="eyebrow" style="font-size: 9px;">Open</div>
+        <div class="mono" style="font-size: 20px; font-weight: 600; color: var(--pcg-bright-blue);">${openPitches.length}</div>
+      </div>
+      <div style="text-align: center; padding: 8px; background: var(--surface-2); border-radius: var(--r-sm);">
+        <div class="eyebrow" style="font-size: 9px;">Accepted YTD</div>
+        <div class="mono" style="font-size: 20px; font-weight: 600; color: var(--status-green);">${accepted.length}</div>
+      </div>
+      <div style="text-align: center; padding: 8px; background: var(--surface-2); border-radius: var(--r-sm);">
+        <div class="eyebrow" style="font-size: 9px;">Open Pipeline (high)</div>
+        <div class="mono" style="font-size: 14px; font-weight: 600; color: var(--pcg-spotlight-purple);">${PCG.canSeeTier('T2_MARGINS') ? PCG.money(totalBudget) : '🔒'}</div>
+      </div>
+    </div>
+    ${openPitches.slice(0, 4).map(p => {
+      const summary = PCG.api.getPitchEngagementSummary ? PCG.api.getPitchEngagementSummary(p.id) : null;
+      const client = PCG.api.getClient(p.clientId);
+      const tone = p.status==='Opened'?'blue':p.status==='Issued'?'blue':'amber';
+      return `
+        <a href="pitch.html?id=${p.id}" class="attn-item" style="text-decoration: none; color: inherit; margin-bottom: 4px;">
+          <div style="flex: 1;">
+            <div class="ttl">
+              <span class="pill ${tone} plain" style="font-size: 9px; margin-right: 4px;">${p.status.toUpperCase()}</span>
+              ${PCG.escapeHtml(p.projectIdea)}
+            </div>
+            <div class="meta">
+              ${client ? PCG.escapeHtml(client.name) : '—'} · AE ${PCG.escapeHtml((PCG.findPerson(p.aeId)||{}).name||p.aeId)}
+              ${summary ? ' · '+summary.opens+' opens · '+summary.commentCount+' comments' : ''}
+            </div>
+          </div>
+        </a>`;
+    }).join('')}
+  `;
 
   // Blocked transitions
   const blocked = (PCG.api.getProjects()||[]).filter(p=>{

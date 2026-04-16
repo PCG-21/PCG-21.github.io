@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Workback &amp; Handoff</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .wb-row {
+    display: grid; grid-template-columns: 80px 1fr 150px 110px 100px 110px 40px;
+    gap: var(--sp-2); align-items: center;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  }
+  .wb-row:hover { background: var(--surface-2); }
+  .wb-row.overdue { background: rgba(178,56,56,0.06); border-left: 3px solid var(--status-red); }
+  .wb-row.due-soon { background: rgba(212,163,47,0.06); border-left: 3px solid var(--status-amber); }
+  .wb-row.blocking { border-left: 3px solid var(--pcg-bright-blue); }
+  .wb-row.complete { opacity: 0.55; }
+  .wb-row .anchor { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); text-align: right; }
+  .wb-row .title { font-weight: 600; }
+  .wb-row .dept {
+    padding: 2px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9px; text-transform: uppercase;
+    background: var(--surface-3); color: var(--text-secondary);
+  }
+  .handoff-sect {
+    padding: 14px 16px; margin-bottom: 10px;
+    background: var(--surface-2); border-radius: var(--r-sm);
+    border-left: 3px solid var(--pcg-spotlight-purple);
+  }
+  .handoff-sect h4 {
+    margin: 0 0 6px; font-family: var(--font-display); font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-spotlight-purple);
+  }
+  .kv-stack { display: grid; gap: 6px; font-size: var(--fs-sm); }
+  .kv-stack .row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; }
+  .kv-stack .k { color: var(--text-tertiary); font-size: 11px; }
+
+  .phase-bar {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+    margin-bottom: var(--sp-3);
+  }
+  .phase-step {
+    padding: 10px 12px; border-radius: var(--r-sm);
+    background: var(--surface-2); text-align: center;
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .phase-step.active { background: var(--pcg-bright-blue); color: #001a2a; font-weight: 700; }
+  .phase-step.done   { background: rgba(28,139,76,0.2); color: var(--status-green); }
+  .phase-step.blocked{ background: rgba(178,56,56,0.2); color: var(--status-red); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Workback · Handoff · Phase Gates</div>
+          <h1>Workback &amp; Handoff</h1>
+          <div class="muted">Task dependencies · phase gating · formal ownership transfers between AE → PM → TD → Crew (spec §FF).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size: 10px;">SHOW</span>
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); min-width: 260px;"></select>
+          <button class="btn sm primary" id="genHandoffBtn">Generate Handoff →</button>
+        </div>
+      </div>
+
+      <!-- Phase gate bar -->
+      <div class="card card-pad" style="margin-bottom: var(--sp-4);">
+        <div class="eyebrow" style="margin-bottom: 6px;">PHASE GATES (spec §C)</div>
+        <div class="phase-bar" id="phaseBar"></div>
+        <div class="muted" style="font-size: var(--fs-xs);" id="phaseExplain"></div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Workback Tasks</div>
+              <div style="display: flex; gap: 6px; margin-left: auto;">
+                <button class="chip on" data-f="all">All</button>
+                <button class="chip" data-f="blocking">Blocking</button>
+                <button class="chip" data-f="overdue">Overdue</button>
+                <button class="chip" data-f="mine">Mine</button>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 80px 1fr 150px 110px 100px 110px 40px; gap: var(--sp-2); padding: 8px 14px; background: var(--surface-2); font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary);">
+              <div style="text-align: right;">Anchor</div>
+              <div>Task</div>
+              <div>Dept · Owner</div>
+              <div>Due</div>
+              <div>Priority</div>
+              <div>Status</div>
+              <div></div>
+            </div>
+            <div id="taskList"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div id="handoffCard"></div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Handoff generation modal -->
+<div class="modal-backdrop" id="hoBd" onclick="closeHo()"></div>
+<div class="modal-box" id="hoBox" style="max-width: 720px; width: calc(100vw - 48px); max-height: 85vh; overflow-y: auto;">
+  <button class="close" onclick="closeHo()" style="position: absolute; top: 10px; right: 10px; background: transparent; border: 0; color: var(--text-secondary); font-size: 20px; cursor: pointer;">×</button>
+  <h3 id="hoTitle">Handoff Package</h3>
+  <div id="hoBody" style="margin-top: var(--sp-3);"></div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'workback', crumbs:[{label:'Projects'},{label:'Workback'}]});
+
+  // Populate show selector
+  const activeShows = PCG.api.getProjects().filter(p => p.show && !['Archived'].includes(p.show.lifecycleState));
+  const showSel = document.getElementById('showSel');
+  showSel.innerHTML = activeShows.map(p => `<option value="${p.code}">${p.code} — ${PCG.escapeHtml(p.name)}</option>`).join('');
+  const qShow = PCG.qs('project') || PCG.qs('show');
+  if(qShow) showSel.value = qShow;
+
+  let currentShow = showSel.value;
+  let filter = 'all';
+
+  function getWorkback(showId){
+    // Synthesize workback tasks from checklist items + add some template-generated ones
+    const existing = (PCG.checklistItems||[]).filter(c => c.showId === showId);
+    return existing.map(c => ({
+      id: c.id,
+      title: c.taskName,
+      department: c.department || 'SharedServices',
+      assignedToRole: c.assignedToRole,
+      assignedToId: c.assignedToId,
+      dueDate: c.dueDate,
+      relativeAnchor: c.phase || 'LoadIn',
+      relativeOffsetDays: c.dueDate ? Math.round((new Date(c.dueDate) - new Date()) / 86400000) : null,
+      priority: c.blocking ? 'Critical' : 'Normal',
+      blocking: !!c.blocking,
+      status: c.status,
+      notes: c.notes
+    }));
+  }
+
+  function render(){
+    const show = PCG.api.getShow(currentShow);
+    const project = PCG.api.getProject(currentShow);
+    if(!show || !project){ return; }
+
+    // --- Phase bar ---
+    const phases = ['Opportunity','Quoted','InPrep','OnShow','Closing'];
+    const currentPhase = show.lifecycleState;
+    document.getElementById('phaseBar').innerHTML = phases.map((p, i) => {
+      const cur = phases.indexOf(currentPhase);
+      const cls = i < cur ? 'done' : i === cur ? 'active' : '';
+      return `<div class="phase-step ${cls}">${p}</div>`;
+    }).join('');
+    document.getElementById('phaseExplain').textContent =
+      `Currently in ${currentPhase}. Blocking tasks in the current phase must reach Complete or Waived before advance to ${phases[phases.indexOf(currentPhase)+1] || 'Archived'}.`;
+
+    // --- Tasks ---
+    const tasks = getWorkback(currentShow);
+    const me = PCG.user;
+    const today = new Date();
+
+    const filtered = tasks.filter(t => {
+      if(filter === 'blocking') return t.blocking;
+      if(filter === 'overdue')  return t.dueDate && new Date(t.dueDate) < today && !['Complete','Waived','Overridden','NA'].includes(t.status);
+      if(filter === 'mine')     return t.assignedToId === me.id;
+      return true;
+    });
+
+    document.getElementById('taskList').innerHTML = filtered.length ? filtered.map(t => {
+      const overdue = t.dueDate && new Date(t.dueDate) < today && !['Complete','Waived','Overridden','NA'].includes(t.status);
+      const dueSoon = t.dueDate && !overdue && (new Date(t.dueDate) - today) < 48*3600*1000;
+      const complete = ['Complete','Waived','NA','Overridden'].includes(t.status);
+      const rowClass = overdue ? 'overdue' : dueSoon ? 'due-soon' : complete ? 'complete' : t.blocking ? 'blocking' : '';
+      const owner = t.assignedToId ? PCG.findPerson(t.assignedToId) : null;
+      return `
+        <div class="wb-row ${rowClass}">
+          <div class="anchor">${t.relativeOffsetDays != null ? (t.relativeOffsetDays >= 0 ? '+' : '') + t.relativeOffsetDays + 'd' : '—'}<br><span style="color: var(--text-tertiary); font-size: 9px;">${t.relativeAnchor}</span></div>
+          <div>
+            <div class="title">${PCG.escapeHtml(t.title)}</div>
+            ${t.notes ? `<div class="muted" style="font-size: 10px;">${PCG.escapeHtml(t.notes.slice(0, 80))}${t.notes.length > 80 ? '…' : ''}</div>` : ''}
+          </div>
+          <div>
+            <span class="dept">${PCG.escapeHtml(t.department)}</span>
+            <div style="font-size: 10px; margin-top: 2px;">${owner ? PCG.escapeHtml(owner.name) : PCG.escapeHtml(t.assignedToRole || '—')}</div>
+          </div>
+          <div class="mono" style="font-size: 11px;">${t.dueDate ? PCG.fmtShort(t.dueDate) : '—'}</div>
+          <div><span class="pill ${t.priority==='Critical'?'red':t.priority==='High'?'amber':'gray'} plain" style="font-size: 9px;">${t.priority.toUpperCase()}</span></div>
+          <div><span class="pill ${complete?'green':overdue?'red':dueSoon?'amber':'gray'} plain" style="font-size: 9px;">${t.status.toUpperCase()}</span></div>
+          <div style="text-align: right;">${t.blocking ? '<span style="color: var(--pcg-bright-blue); font-size: 14px;" title="Blocking task — phase advance gated">◆</span>' : ''}</div>
+        </div>`;
+    }).join('') : PCG.states.empty('No tasks match this filter.');
+
+    // --- KPIs ---
+    const overdueCount = tasks.filter(t => t.dueDate && new Date(t.dueDate) < today && !['Complete','Waived','Overridden','NA'].includes(t.status)).length;
+    const blockingCount = tasks.filter(t => t.blocking && !['Complete','Waived','Overridden','NA'].includes(t.status)).length;
+    const mineCount = tasks.filter(t => t.assignedToId === me.id && !['Complete','Waived'].includes(t.status)).length;
+    const completeCount = tasks.filter(t => ['Complete','Waived','NA','Overridden'].includes(t.status)).length;
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi"><div class="label">Total Tasks</div><div class="value">${tasks.length}</div><div class="sub">workback</div></div>
+      <div class="kpi green"><div class="label">Complete</div><div class="value">${completeCount}</div><div class="sub">${Math.round((completeCount/Math.max(tasks.length,1))*100)}%</div></div>
+      <div class="kpi red"><div class="label">Overdue</div><div class="value">${overdueCount}</div><div class="sub">past due date</div></div>
+      <div class="kpi amber"><div class="label">Blocking</div><div class="value">${blockingCount}</div><div class="sub">gate incomplete</div></div>
+      <div class="kpi blue"><div class="label">My Tasks</div><div class="value">${mineCount}</div><div class="sub">assigned to me</div></div>
+      <div class="kpi"><div class="label">Phase Advance</div><div class="value" style="font-size: 14px;">${blockingCount === 0 ? '✓ READY' : '⛔ BLOCKED'}</div><div class="sub">${blockingCount} blocker${blockingCount===1?'':'s'}</div></div>
+    `;
+
+    // --- Latest Handoff preview ---
+    renderHandoffCard(project);
+  }
+
+  function renderHandoffCard(project){
+    const pm = PCG.findPerson(project.pmId || project.primaryPM);
+    const ae = PCG.findPerson(project.aeId);
+    const td = PCG.findPerson(project.td);
+    document.getElementById('handoffCard').innerHTML = `
+      <div class="card">
+        <div class="card-header"><div class="title">Ownership Chain</div></div>
+        <div class="card-body">
+          <div class="handoff-sect">
+            <h4>AE → PM</h4>
+            <div style="font-size: var(--fs-sm);">
+              ${ae ? '<strong>'+PCG.escapeHtml(ae.name)+'</strong>' : '—'} →
+              ${pm ? '<strong>'+PCG.escapeHtml(pm.name)+'</strong>' : '<em>TBD</em>'}
+            </div>
+            <div class="muted" style="font-size: 10px; margin-top: 2px;">${pm ? 'Handoff complete · project in PM ownership' : 'PIF gate: score ≥ 60 required before PM assignment'}</div>
+          </div>
+
+          <div class="handoff-sect" style="border-left-color: var(--pcg-bright-blue);">
+            <h4>PM → TD</h4>
+            <div style="font-size: var(--fs-sm);">
+              ${pm ? '<strong>'+PCG.escapeHtml(pm.name)+'</strong>' : '—'} →
+              ${td ? '<strong>'+PCG.escapeHtml(td.name)+'</strong>' : '<em>TBD</em>'}
+            </div>
+            <div class="muted" style="font-size: 10px; margin-top: 2px;">${td ? 'TD owns technical execution starting at InPrep' : 'TD not yet assigned'}</div>
+          </div>
+
+          <div class="handoff-sect" style="border-left-color: var(--status-green);">
+            <h4>PM → Crew (via Labor Coord)</h4>
+            <div style="font-size: var(--fs-sm);">
+              Labor Coord dispatches via multi-step confirmation · Invite → Confirm → Acknowledge
+            </div>
+            <div class="muted" style="font-size: 10px; margin-top: 2px;">Crew letters generated before call time. Each letter becomes "stale" if scope changes after generation.</div>
+          </div>
+
+          <button class="btn primary" onclick="openHandoff()" style="width: 100%; margin-top: var(--sp-3);">Generate Formal Handoff Package →</button>
+        </div>
+      </div>
+    `;
+  }
+
+  window.openHandoff = () => {
+    const project = PCG.api.getProject(currentShow);
+    const show = PCG.api.getShow(currentShow);
+    const readiness = PCG.api.getReadiness(currentShow);
+    const tasks = getWorkback(currentShow);
+    const pm = PCG.findPerson(project.pmId || project.primaryPM);
+    const td = PCG.findPerson(project.td);
+    const ae = PCG.findPerson(project.aeId);
+    const venue = (PCG.venues||[]).find(v => v.id === project.venueId);
+    const openRisks = (PCG.risks||[]).filter(r => r.projectId === currentShow && r.status !== 'Closed');
+    const openWorkback = tasks.filter(t => !['Complete','Waived','NA','Overridden'].includes(t.status));
+    const crewAssns = (PCG.shiftAssignments||[]).filter(s => s.showId === currentShow);
+    const crewConfirmed = crewAssns.filter(a => ['Confirmed','Acknowledged','Completed'].includes(a.status)).length;
+    const crewInvited = crewAssns.filter(a => a.status === 'Invited').length;
+    const crewUnfilled = crewAssns.filter(a => !a.crewMemberId).length;
+    const pullSheets = PCG.api.getPullSheets(currentShow);
+    const openTix = (PCG.serviceTickets||[]).filter(t => t.showId === currentShow && !['Repaired','ReturnToService','Retired','Deferred'].includes(t.status));
+
+    document.getElementById('hoTitle').textContent = `Handoff Package · ${project.code}`;
+    document.getElementById('hoBody').innerHTML = `
+      <div class="eyebrow" style="margin-bottom: 4px;">GENERATED ${PCG.fmtDate(new Date().toISOString(),{time:true})} · BY ${PCG.escapeHtml(PCG.user.name)}</div>
+      <h2 style="margin: 0 0 6px; font-family: var(--font-display); font-size: 22px;">${PCG.escapeHtml(project.name)}</h2>
+      <div class="muted" style="font-size: var(--fs-sm); margin-bottom: var(--sp-4);">${PCG.lifecyclePill(show.lifecycleState)} · ${PCG.escapeHtml(project.client||'')} · ${PCG.escapeHtml(project.venueName||'')}</div>
+
+      <div class="handoff-sect">
+        <h4>Handoff Type</h4>
+        <select id="hoType" style="background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 10px; border-radius: var(--r-sm); font-size: var(--fs-sm); width: 100%;">
+          <option>AEtoPM</option><option selected>PMtoTD</option><option>LaborToReplacements</option><option>PMtoPM (vacation / handoff)</option>
+        </select>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Project Summary</h4>
+        <textarea id="hoSummary" style="width: 100%; min-height: 64px; background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px; font-family: inherit; font-size: var(--fs-sm);" placeholder="Brief project description, client context, key sensitivities…">${PCG.escapeHtml(project.name + ' — ' + (project.client||''))}. ${show.lifecycleState === 'OnShow' ? 'Live now.' : show.lifecycleState === 'InPrep' ? 'In prep, load-in '+PCG.fmtShort(project.dates.loadIn)+'.' : 'In '+show.lifecycleState+' state.'}</textarea>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Show Readiness Snapshot</h4>
+        <div style="font-size: var(--fs-sm);">
+          ${readiness ? PCG.readinessBadge(readiness, {compact: true}) : 'No readiness signal'}
+          ${readiness && readiness.components ? Object.entries(readiness.components).map(([k, c]) =>
+            `<span class="pill ${c.status==='Green'?'green':c.status==='Yellow'?'amber':'red'} plain" style="font-size: 10px; margin: 2px;">${k.toUpperCase()}</span>`
+          ).join(' ') : ''}
+        </div>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Open Workback Tasks (${openWorkback.length})</h4>
+        <div style="font-size: var(--fs-sm); max-height: 160px; overflow-y: auto;">
+          ${openWorkback.slice(0, 8).map(t => `
+            <div style="padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <strong>${PCG.escapeHtml(t.title)}</strong>
+              <span class="muted" style="font-size: 10px;"> · ${t.dueDate ? PCG.fmtShort(t.dueDate) : '—'} · ${PCG.escapeHtml(t.department)}${t.blocking ? ' · 🚫 blocking' : ''}</span>
+            </div>`).join('') || '<div class="muted">None.</div>'}
+          ${openWorkback.length > 8 ? `<div class="muted" style="font-size: 10px; margin-top: 4px;">+${openWorkback.length-8} more in Workback view</div>` : ''}
+        </div>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Key Contacts</h4>
+        <div class="kv-stack">
+          ${ae ? `<div class="row"><div class="k">AE of Record</div><div><strong>${PCG.escapeHtml(ae.name)}</strong> · ${PCG.escapeHtml(ae.role||'')}</div></div>` : ''}
+          ${pm ? `<div class="row"><div class="k">PM</div><div><strong>${PCG.escapeHtml(pm.name)}</strong></div></div>` : ''}
+          ${td ? `<div class="row"><div class="k">TD</div><div><strong>${PCG.escapeHtml(td.name)}</strong></div></div>` : ''}
+          ${project.clientContactName ? `<div class="row"><div class="k">Client</div><div><strong>${PCG.escapeHtml(project.clientContactName||'—')}</strong>${project.clientContactEmail?' · '+PCG.escapeHtml(project.clientContactEmail):''}</div></div>` : ''}
+        </div>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Critical Dates</h4>
+        <div class="kv-stack">
+          <div class="row"><div class="k">Load-In</div><div class="mono">${PCG.fmtDate(project.dates.loadIn,{time:true})}</div></div>
+          <div class="row"><div class="k">Show Start</div><div class="mono">${PCG.fmtDate(project.dates.showStart,{time:true})}</div></div>
+          <div class="row"><div class="k">Load-Out</div><div class="mono">${PCG.fmtDate(project.dates.loadOut,{time:true})}</div></div>
+        </div>
+      </div>
+
+      ${venue && (venue.loadInNotes || (venue.knownQuirks||[]).length) ? `
+        <div class="handoff-sect">
+          <h4>Venue Notes — Read Before Call</h4>
+          <div style="font-size: var(--fs-sm);">${PCG.escapeHtml(venue.loadInNotes||'')}</div>
+          ${(venue.knownQuirks||[]).length ? `<ul style="margin: 6px 0 0; padding-left: 18px; font-size: var(--fs-xs); color: var(--text-secondary);">
+            ${(venue.knownQuirks||[]).map(q => `<li>${PCG.escapeHtml(q)}</li>`).join('')}
+          </ul>`: ''}
+        </div>
+      ` : ''}
+
+      <div class="handoff-sect">
+        <h4>Crew Status Summary</h4>
+        <div class="kv-stack">
+          <div class="row"><div class="k">Total Positions</div><div class="mono">${crewAssns.length}</div></div>
+          <div class="row"><div class="k">Confirmed</div><div class="mono" style="color: var(--status-green);">${crewConfirmed}</div></div>
+          <div class="row"><div class="k">Invited (awaiting)</div><div class="mono" style="color: var(--status-amber);">${crewInvited}</div></div>
+          <div class="row"><div class="k">Unfilled</div><div class="mono" style="color: var(--status-red);">${crewUnfilled}</div></div>
+        </div>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Warehouse Status</h4>
+        <div class="kv-stack">
+          <div class="row"><div class="k">Pull Sheets</div><div class="mono">${pullSheets.length}</div></div>
+          <div class="row"><div class="k">Open Service Tickets</div><div class="mono" style="color: ${openTix.length>0?'var(--status-amber)':'var(--status-green)'};">${openTix.length}</div></div>
+        </div>
+      </div>
+
+      <div class="handoff-sect">
+        <h4>Personal Notes (informal institutional knowledge)</h4>
+        <textarea id="hoPersonal" style="width: 100%; min-height: 72px; background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px; font-family: inherit; font-size: var(--fs-sm);" placeholder="Anything the next person should know that isn't in the official record — client politics, crew quirks, past issues, preferred approaches…"></textarea>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: var(--sp-4); justify-content: flex-end; padding-top: var(--sp-3); border-top: 1px solid var(--border);">
+        <button class="btn ghost" onclick="closeHo()">Cancel</button>
+        <button class="btn" onclick="printHandoff()">Print / PDF</button>
+        <button class="btn primary" onclick="deliverHandoff()">Deliver Handoff →</button>
+      </div>
+    `;
+    document.getElementById('hoBd').classList.add('show');
+    document.getElementById('hoBox').classList.add('show');
+  };
+
+  window.closeHo = () => {
+    document.getElementById('hoBd').classList.remove('show');
+    document.getElementById('hoBox').classList.remove('show');
+  };
+
+  window.printHandoff = () => window.print();
+
+  window.deliverHandoff = () => {
+    alert('✓ Handoff Package delivered.\n\n• Snapshot saved to project history\n• Receiving person notified (in-app + email)\n• Acknowledgment required before handoff closes\n• Immutable record — new handoffs can be generated any time');
+    closeHo();
+  };
+
+  showSel.addEventListener('change', () => { currentShow = showSel.value; render(); });
+  document.querySelectorAll('.chip[data-f]').forEach(b => b.addEventListener('click', e => {
+    document.querySelectorAll('.chip[data-f]').forEach(x => x.classList.toggle('on', x===e.target));
+    filter = e.target.dataset.f;
+    render();
+  }));
+  document.getElementById('genHandoffBtn').addEventListener('click', openHandoff);
+
+  render();
+</script>
+</body>
+</html>

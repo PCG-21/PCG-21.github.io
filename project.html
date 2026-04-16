@@ -142,8 +142,8 @@
     return `
     <div class="card">
       <div class="card-header">
-        <div class="title">Gear · Flex Pull Sheet ${p.pullSheetNo||"—"}</div>
-        <a class="btn sm ghost" style="margin-left:auto;" href="#">Open in Flex ↗</a>
+        <div class="title">Gear · Pull Sheet ${p.pullSheetNo||"—"}</div>
+        <a class="btn sm ghost" style="margin-left:auto;" href="pull-sheet.html">Open Pull Sheet →</a>
       </div>
       <div class="card-body tree">
         ${Object.entries(p.gearSummary||{}).filter(([,a])=>a&&a.length).map(([cat,arr])=>`
@@ -152,7 +152,7 @@
             <div class="group">• <span class="ttl">${PCG.escapeHtml(g.group)}</span></div>
             <div class="items">${PCG.escapeHtml(g.items)}</div>
           `).join("")}
-        `).join("") || '<div class="empty">No gear summary. Run Flex sync.</div>'}
+        `).join("") || '<div class="empty">No gear summary yet.</div>'}
       </div>
     </div>
     <div class="card" style="margin-top:var(--sp-4);">
@@ -183,11 +183,11 @@
   const renderLabor = () => `
     <div class="card">
       <div class="card-header">
-        <div class="title">Crew Assignments · Lasso</div>
-        <a class="btn sm ghost" style="margin-left:auto;" href="#">Open in Lasso ↗</a>
+        <div class="title">Crew Assignments</div>
+        <a class="btn sm ghost" style="margin-left:auto;" href="crew-assign.html?project=${p.code}">Open Crew Assign →</a>
       </div>
       <div class="card-body">
-        <div class="muted" style="font-size:var(--fs-sm); margin-bottom:10px;">Synced from Lasso · <span class="mono">${p.code}</span> · last sync 2h ago</div>
+        <div class="muted" style="font-size:var(--fs-sm); margin-bottom:10px;">Live assignments · <span class="mono">${p.code}</span></div>
         <table class="pcg-table">
           <thead><tr><th>Role</th><th>Person</th><th>Call</th><th>Through</th><th>Status</th></tr></thead>
           <tbody>
@@ -397,10 +397,10 @@
 
   document.getElementById("ql").innerHTML = `
     <div style="display:grid; gap:6px;">
-      <a class="btn sm" href="#">Flex · ${p.manifestNo||"—"} ↗</a>
-      <a class="btn sm" href="#">Lasso · ${p.code} ↗</a>
-      <a class="btn sm" href="#">QuickBooks · ${p.customerPO||"—"} ↗</a>
-      <a class="btn sm" href="#">ShoFlo ↗</a>
+      <a class="btn sm" href="pull-sheet.html">Manifest ${p.manifestNo||"—"} · Pull Sheet →</a>
+      <a class="btn sm" href="scheduling.html?project=${p.code}">Crew Schedule →</a>
+      <a class="btn sm" href="finance.html">QuickBooks Handoff · ${p.customerPO||"—"} →</a>
+      <a class="btn sm" href="ros.html?project=${p.code}">Run of Show →</a>
       <a class="btn sm ghost" href="#">SharePoint Folder ↗</a>
       <a class="btn sm ghost" href="#">Teams Channel ↗</a>
     </div>

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Show Book Generator</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .section-row {
+    display: grid; grid-template-columns: 40px 1fr 180px;
+    gap: 10px; align-items: center;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  }
+  .section-row label { cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; }
+  .section-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+  .audience-pill {
+    display: inline-flex; padding: 6px 14px; border-radius: var(--r-pill);
+    border: 1px solid var(--border); background: var(--surface-2);
+    cursor: pointer; font-family: var(--font-display); font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary);
+  }
+  .audience-pill.on { background: var(--pcg-bright-blue); color: #001a2a; border-color: var(--pcg-bright-blue); font-weight: 700; }
+  .sb-preview {
+    background: #FFF; color: #111; border-radius: var(--r-sm);
+    padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    font-family: Helvetica, Arial, sans-serif;
+    max-height: 500px; overflow-y: auto;
+  }
+  .sb-preview h1 { font-family: "Oswald", sans-serif; font-size: 28px; margin: 0 0 6px; }
+  .sb-preview h2 { font-family: "Oswald", sans-serif; font-size: 18px; margin: 20px 0 6px; color: #013558; }
+  .sb-preview .source-badge {
+    display: inline-block; padding: 1px 6px; font-size: 9px;
+    background: #EEF3F8; color: #0199FD; border-radius: 4px;
+    font-family: monospace; margin-left: 6px;
+  }
+  .version-row {
+    display: grid; grid-template-columns: 70px 1fr auto;
+    gap: 10px; padding: 10px 14px; align-items: center;
+    border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  }
+  .stale-banner {
+    background: linear-gradient(135deg, rgba(212,163,47,0.12), rgba(212,163,47,0.04));
+    border: 1px solid var(--status-amber); border-radius: var(--r-sm);
+    padding: 12px 16px; margin-bottom: var(--sp-3);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Documents · Generation Pipeline</div>
+          <h1>Show Book Generator</h1>
+          <div class="muted">Pick sections · pick audience · generate. Each section pulls from its canonical source. Stale detection re-flags the book when source data changes (spec §GG).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size: 10px;">SHOW</span>
+          <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); min-width: 280px;"></select>
+          <a class="btn sm ghost" id="openSbBtn" href="showbook.html">Open Current Book →</a>
+        </div>
+      </div>
+
+      <!-- Stale banner (if current book stale) -->
+      <div id="staleBanner"></div>
+
+      <div class="split" style="grid-template-columns: 1.2fr 1fr;">
+        <!-- LEFT: Config -->
+        <div>
+          <div class="card" style="margin-bottom: var(--sp-4);">
+            <div class="card-header"><div class="title">Step 1 · Select Sections</div>
+              <div style="margin-left: auto; display: flex; gap: 8px;">
+                <button class="btn sm ghost" id="selectAll">Select All</button>
+                <button class="btn sm ghost" id="selectDefault">Reset to Default</button>
+              </div>
+            </div>
+            <div id="sectionList"></div>
+          </div>
+
+          <div class="card" style="margin-bottom: var(--sp-4);">
+            <div class="card-header"><div class="title">Step 2 · Audience</div></div>
+            <div class="card-body">
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--sp-3);">
+                <button class="audience-pill on" data-aud="AllCrew">All Crew (default)</button>
+                <button class="audience-pill" data-aud="TDOnly">TD Only · includes tech plan</button>
+                <button class="audience-pill" data-aud="ClientSafe">Client Safe · stripped</button>
+              </div>
+              <div class="muted" style="font-size: var(--fs-xs);" id="audExplain"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Step 3 · Version Label &amp; Distribute</div></div>
+            <div class="card-body">
+              <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: var(--sp-3);">
+                <input id="versionLabel" placeholder="v1.0 · Load-In Edition" value="v1.0 · Load-In Edition"
+                       style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:8px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);" />
+                <button class="btn primary" id="genBtn">Generate Show Book →</button>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center; font-size:var(--fs-xs); color: var(--text-secondary);">
+                <label><input type="checkbox" id="distributeChk" checked /> Auto-distribute to confirmed crew (via Crew PWA Documents tab + email)</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version history -->
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Version History</div></div>
+            <div id="versionList"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Preview -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Live Preview</div>
+              <span class="muted" style="margin-left: auto; font-size: var(--fs-xs);" id="previewMeta">—</span>
+            </div>
+            <div style="padding: var(--sp-4); background: var(--surface-3);">
+              <div class="sb-preview" id="preview">Loading…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'showbook', crumbs:[{label:'Documents'},{label:'Show Book Generator'}]});
+
+  const availableSections = [
+    { key: 'cover',       label: 'Cover Page',           defaultOn: true,  source: 'Project · Venue · PM / AE' },
+    { key: 'schedule',    label: 'Schedule / Call Sheet', defaultOn: true, source: 'Days · Shifts' },
+    { key: 'runOfShow',   label: 'Run of Show',          defaultOn: true,  source: 'RunOfShow · clientVisible items' },
+    { key: 'crew',        label: 'Crew Roster',          defaultOn: true,  source: 'ShiftAssignments · Confirmed' },
+    { key: 'gear',        label: 'Key Equipment List',   defaultOn: false, source: 'Pull sheet summary · AllocationLines' },
+    { key: 'contacts',    label: 'Key Contacts',         defaultOn: true,  source: 'PM · AE · TSM · TD · Venue · Client' },
+    { key: 'venueNotes',  label: 'Venue Info',           defaultOn: true,  source: 'VenueRecord · knownQuirks' },
+    { key: 'drawings',    label: 'CAD / Drawings',       defaultOn: false, source: 'ShowDocuments type=CAD / Vectorworks' },
+    { key: 'documents',   label: 'Attached Documents',   defaultOn: false, source: 'ShowDocuments (pinned)' },
+    { key: 'emergency',   label: 'Emergency Protocols',  defaultOn: true,  source: 'VenueRecord · PCG Standard · Prior incidents' },
+    { key: 'techPlan',    label: 'Technical Summary (TD only)', defaultOn: false, source: 'ShowTechPlan · VideoIO · Intercom · Audio', note: 'Visible only when audience=TDOnly' }
+  ];
+
+  const shows = PCG.api.getProjects().filter(p => p.show && !['Archived'].includes(p.show.lifecycleState));
+  document.getElementById('showSel').innerHTML = shows.map(p => `<option value="${p.code}">${p.code} — ${PCG.escapeHtml(p.name)}</option>`).join('');
+  const qShow = PCG.qs('project') || 'LCE-2026';
+  document.getElementById('showSel').value = qShow;
+  let currentShow = qShow;
+  let audience = 'AllCrew';
+  let selected = new Set(availableSections.filter(s => s.defaultOn).map(s => s.key));
+  const versions = [
+    { v: 'v4', label: 'v4 · Updated Crew Roster', at: '2026-04-15T09:02', author: 'James Sharp', sections: ['cover','schedule','runOfShow','crew','contacts','venueNotes','emergency'], audience: 'AllCrew', stale: true, staleReason: 'ROS v5 published 2h ago · 2 new crew acknowledged' },
+    { v: 'v3', label: 'v3 · Distributed to Crew', at: '2026-04-14T17:40', author: 'Jeff Springer', sections: ['cover','schedule','runOfShow','crew','contacts','venueNotes','emergency'], audience: 'AllCrew', stale: false },
+    { v: 'v2', label: 'v2 · Internal Draft', at: '2026-04-12T21:10', author: 'Keith Oliver', sections: ['cover','schedule','contacts'], audience: 'AllCrew', stale: false },
+    { v: 'v1', label: 'v1 · Initial Draft', at: '2026-04-09T14:22', author: 'Jeff Springer', sections: ['cover','schedule'], audience: 'AllCrew', stale: false }
+  ];
+
+  function renderSections(){
+    document.getElementById('sectionList').innerHTML = availableSections.map(s => `
+      <div class="section-row">
+        <div><input type="checkbox" ${selected.has(s.key)?'checked':''} data-key="${s.key}" ${s.key==='techPlan' && audience!=='TDOnly'?'disabled':''}/></div>
+        <label>
+          <div>
+            <strong>${PCG.escapeHtml(s.label)}</strong>
+            ${s.note ? `<div class="muted" style="font-size: 10px;">${PCG.escapeHtml(s.note)}</div>` : ''}
+          </div>
+        </label>
+        <div class="source-badge" style="font-size: 10px; padding: 2px 8px; background: var(--surface-3); color: var(--text-tertiary); border-radius: var(--r-pill); justify-self: end;">${PCG.escapeHtml(s.source)}</div>
+      </div>`).join('');
+    document.querySelectorAll('.section-row input[type=checkbox]').forEach(c => c.addEventListener('change', e => {
+      if(e.target.checked) selected.add(e.target.dataset.key); else selected.delete(e.target.dataset.key);
+      renderPreview();
+    }));
+  }
+
+  function renderAudienceExplain(){
+    const explain = {
+      AllCrew:    'All crew + PCG staff see it. Pay rates + client financials stripped. Full operational content.',
+      TDOnly:     'TD + technical leads only. Adds video IO + intercom + audio rack summary. Excludes client-safe content.',
+      ClientSafe: 'Sharable with client. Strips private notes, internal contacts, and all financial data. Uses client-visible ROS only.'
+    };
+    document.getElementById('audExplain').textContent = explain[audience];
+  }
+
+  function renderPreview(){
+    const p = PCG.api.getProject(currentShow);
+    const show = PCG.api.getShow(currentShow);
+    const venue = (PCG.venues||[]).find(v => v.id === p.venueId);
+    const pm = PCG.findPerson(p.pmId || p.primaryPM);
+    const ae = PCG.findPerson(p.aeId);
+    const td = PCG.findPerson(p.td);
+    const crewAssns = (PCG.shiftAssignments||[]).filter(s => s.showId === currentShow && ['Confirmed','Acknowledged','Completed'].includes(s.status));
+    const ros = PCG.api.getRunOfShow ? PCG.api.getRunOfShow(currentShow) : null;
+    const techPlan = PCG.api.getShowTechPlan ? PCG.api.getShowTechPlan(currentShow) : null;
+
+    let html = '';
+    if(selected.has('cover')){
+      html += `
+        <div style="padding-bottom: 20px; border-bottom: 3px solid #013558;">
+          <div style="font-family: Oswald, sans-serif; font-size: 11px; letter-spacing: 0.2em; color: #0199FD; text-transform: uppercase;">SHOW BOOK · ${audience}</div>
+          <h1>${escape(p.name)}</h1>
+          <div style="color:#555;">${escape(p.code)} · ${venue ? escape(venue.name) : escape(p.venueName||'')}</div>
+          <div style="color:#555; margin-top: 4px;">${fmtDate(p.dates.loadIn)} — ${fmtDate(p.dates.loadOut)}</div>
+          <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 13px;">
+            ${pm ? `<div><strong>PM:</strong> ${escape(pm.name)}</div>` : ''}
+            ${ae ? `<div><strong>AE:</strong> ${escape(ae.name)}</div>` : ''}
+          </div>
+        </div>`;
+    }
+    if(selected.has('schedule')){
+      html += `
+        <h2>Schedule <span class="source-badge">from Days · Shifts</span></h2>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr style="background: #EEF3F8; text-align: left;">
+            <th style="padding: 6px 10px;">Date</th><th style="padding: 6px 10px;">Event</th><th style="padding: 6px 10px;">Time</th>
+          </tr>
+          <tr style="border-bottom: 1px solid #E5E9EF;"><td style="padding: 6px 10px;">${fmtDate(p.dates.loadIn)}</td><td style="padding: 6px 10px;">Load-In</td><td style="padding: 6px 10px;">${fmtTime(p.dates.loadIn)}</td></tr>
+          <tr style="border-bottom: 1px solid #E5E9EF;"><td style="padding: 6px 10px;">${fmtDate(p.dates.showStart)}</td><td style="padding: 6px 10px;">Show Start</td><td style="padding: 6px 10px;">${fmtTime(p.dates.showStart)}</td></tr>
+          <tr style="border-bottom: 1px solid #E5E9EF;"><td style="padding: 6px 10px;">${fmtDate(p.dates.loadOut)}</td><td style="padding: 6px 10px;">Load-Out</td><td style="padding: 6px 10px;">${fmtTime(p.dates.loadOut)}</td></tr>
+        </table>`;
+    }
+    if(selected.has('runOfShow') && ros){
+      html += `<h2>Run of Show <span class="source-badge">from RunOfShow</span></h2>
+        <div style="font-size: 13px;">${(ros.cues||ros.items||[]).slice(0, 6).map(c => `
+          <div style="padding: 6px 0; border-bottom: 1px dashed #E5E9EF; display:flex; gap:10px;">
+            <span style="font-family: monospace; color: #7A8899;">${String(c.cueNumber||c.order||0).padStart(2,'0')}</span>
+            <span style="flex:1;"><strong>${escape(c.name||c.title||'—')}</strong></span>
+            <span style="font-family: monospace; color: #7A8899;">${c.durationMin||c.estDurationMin||'—'} min</span>
+          </div>`).join('')}
+          ${(ros.cues||ros.items||[]).length > 6 ? `<div style="color: #888; font-size: 11px; margin-top: 4px;">+${(ros.cues||ros.items||[]).length-6} more cues</div>` : ''}
+        </div>`;
+    } else if(selected.has('runOfShow')){
+      html += `<h2>Run of Show</h2><div style="color:#888; font-size:13px;">No RunOfShow yet — build one in the ROS module.</div>`;
+    }
+    if(selected.has('crew') && audience !== 'ClientSafe'){
+      const byDept = {};
+      crewAssns.forEach(a => {
+        const pos = (PCG.crewPositions||[]).find(p => p.id === a.positionId);
+        const dept = pos ? pos.department : 'Other';
+        const person = PCG.findPerson(a.crewMemberId);
+        (byDept[dept] = byDept[dept] || []).push({ person, pos });
+      });
+      html += `<h2>Crew Roster <span class="source-badge">from ShiftAssignments · Confirmed</span></h2>
+        ${Object.entries(byDept).map(([dept, rows]) => `
+          <div style="margin: 8px 0;">
+            <strong style="font-family: Oswald, sans-serif; font-size: 11px; letter-spacing: 0.1em; color: #7A8899; text-transform: uppercase;">${escape(dept)}</strong>
+            <div style="font-size: 13px;">
+              ${rows.map(r => `<div style="padding: 3px 0;">${r.person ? escape(r.person.name) : '—'} · ${r.pos ? escape(r.pos.displayName || r.pos.name) : ''}</div>`).join('')}
+            </div>
+          </div>`).join('')}`;
+    }
+    if(selected.has('contacts')){
+      html += `<h2>Key Contacts <span class="source-badge">PM · AE · TSM · Venue · Client</span></h2>
+        <div style="font-size: 13px;">
+          ${pm ? `<div style="padding: 3px 0;"><strong>PM:</strong> ${escape(pm.name)}</div>` : ''}
+          ${ae ? `<div style="padding: 3px 0;"><strong>AE:</strong> ${escape(ae.name)}</div>` : ''}
+          ${td ? `<div style="padding: 3px 0;"><strong>TD:</strong> ${escape(td.name)}</div>` : ''}
+          ${p.clientContactName ? `<div style="padding: 3px 0;"><strong>Client:</strong> ${escape(p.clientContactName)}${p.clientContactEmail?' · '+escape(p.clientContactEmail):''}</div>`: ''}
+        </div>`;
+    }
+    if(selected.has('venueNotes') && venue){
+      html += `<h2>Venue Info <span class="source-badge">from VenueRecord</span></h2>
+        <div style="font-size: 13px;">
+          <div><strong>${escape(venue.name)}</strong></div>
+          <div style="color: #555;">${escape(venue.address||'')}</div>
+          ${venue.loadInNotes ? `<div style="margin-top: 6px; background: #FEF7E8; padding: 8px 10px; border-radius: 4px;"><strong>Load-In:</strong> ${escape(venue.loadInNotes)}</div>` : ''}
+          ${(venue.knownQuirks||[]).length ? `<ul style="margin: 8px 0 0; padding-left: 20px;">${(venue.knownQuirks||[]).map(q => `<li>${escape(q)}</li>`).join('')}</ul>` : ''}
+        </div>`;
+    }
+    if(selected.has('techPlan') && audience === 'TDOnly' && techPlan){
+      html += `<h2>Technical Summary <span class="source-badge">TD-only · from ShowTechPlan</span></h2>
+        <div style="font-size: 13px;">
+          <div><strong>Video IO:</strong> ${techPlan.videoIO.inputs.length} inputs / ${techPlan.videoIO.outputs.length} outputs / ${techPlan.videoIO.routes.length} routes · switcher ${escape(techPlan.videoIO.switcherModelName||'—')}</div>
+          <div style="margin-top: 4px;"><strong>Intercom:</strong> ${techPlan.intercom.systemType} · ${techPlan.intercom.channels.length} channels · ${techPlan.intercom.beltpackAssignments.length} beltpacks</div>
+          <div style="margin-top: 4px;"><strong>Audio Rack:</strong> ${escape(techPlan.audioRack.consoleModelName||'—')} · ${techPlan.audioRack.channelCount} channels</div>
+        </div>`;
+    }
+    if(selected.has('emergency')){
+      html += `<h2>Emergency Protocols <span class="source-badge">Venue + PCG Standard</span></h2>
+        <div style="font-size: 13px;">
+          <div><strong>Venue Security:</strong> Dial venue ops line · nearest exits marked in load-in briefing</div>
+          <div><strong>Medical:</strong> 911 for emergency · on-site medic if present</div>
+          <div><strong>PCG PM (on-show):</strong> ${pm ? escape(pm.name)+' — +1 313 555 0100' : '—'}</div>
+          <div><strong>Show Stop:</strong> Radio "Showstop" on SHOW channel · Producer calls cue hold</div>
+        </div>`;
+    }
+
+    document.getElementById('preview').innerHTML = html || '<div style="color:#888; text-align:center;">No sections selected.</div>';
+    document.getElementById('previewMeta').textContent = `${selected.size} section${selected.size===1?'':'s'} · ${audience}`;
+  }
+
+  function escape(s){ return String(s??'').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function fmtDate(iso){ return iso?new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—'; }
+  function fmtTime(iso){ return iso?new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—'; }
+
+  function renderVersions(){
+    const latestStale = versions[0] && versions[0].stale;
+    document.getElementById('staleBanner').innerHTML = latestStale ? `
+      <div class="stale-banner">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 22px;">⚠</span>
+          <div style="flex: 1;">
+            <strong>Current Show Book is marked Stale</strong>
+            <div class="muted" style="font-size: var(--fs-xs); margin-top: 2px;">${PCG.escapeHtml(versions[0].staleReason)} · Regenerate to refresh.</div>
+          </div>
+          <button class="btn sm primary" onclick="quickRegen()">Regenerate Now →</button>
+        </div>
+      </div>` : '';
+
+    document.getElementById('versionList').innerHTML = versions.map(v => `
+      <div class="version-row">
+        <div class="mono" style="font-weight: 600; color: var(--pcg-bright-blue);">${PCG.escapeHtml(v.v)}</div>
+        <div>
+          <div><strong>${PCG.escapeHtml(v.label)}</strong></div>
+          <div class="muted" style="font-size: 11px;">${v.sections.length} sections · ${PCG.escapeHtml(v.audience)} · ${PCG.fmtDate(v.at,{time:true})} · ${PCG.escapeHtml(v.author)}</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          ${v.stale ? '<span class="pill amber plain" style="font-size: 9px;">STALE</span>' : ''}
+          <a class="btn sm ghost" href="showbook.html?project=${currentShow}">View</a>
+        </div>
+      </div>`).join('');
+  }
+
+  window.quickRegen = () => {
+    const newVersion = {
+      v: 'v'+(versions.length+1),
+      label: 'v'+(versions.length+1)+' · Auto-regenerated (stale refresh)',
+      at: new Date().toISOString(),
+      author: PCG.user.name,
+      sections: Array.from(selected), audience, stale: false
+    };
+    versions.forEach(x => x.stale = false);
+    versions.unshift(newVersion);
+    renderVersions();
+    alert(`✓ Show Book regenerated as ${newVersion.v}.\n\nSnapshot of ${selected.size} sections stored in SharePoint.\n${document.getElementById('distributeChk').checked ? 'Distributed to confirmed crew.' : 'Not distributed.'}`);
+  };
+
+  document.getElementById('showSel').addEventListener('change', e => {
+    currentShow = e.target.value;
+    document.getElementById('openSbBtn').href = 'showbook.html?project='+currentShow;
+    renderPreview();
+  });
+  document.querySelectorAll('.audience-pill').forEach(p => p.addEventListener('click', e => {
+    document.querySelectorAll('.audience-pill').forEach(x => x.classList.toggle('on', x===e.target));
+    audience = e.target.dataset.aud;
+    // Auto-enable techPlan if TDOnly, auto-disable if not
+    if(audience === 'TDOnly') selected.add('techPlan');
+    else selected.delete('techPlan');
+    renderSections();
+    renderAudienceExplain();
+    renderPreview();
+  }));
+  document.getElementById('selectAll').addEventListener('click', () => {
+    availableSections.forEach(s => { if(s.key !== 'techPlan' || audience === 'TDOnly') selected.add(s.key); });
+    renderSections(); renderPreview();
+  });
+  document.getElementById('selectDefault').addEventListener('click', () => {
+    selected = new Set(availableSections.filter(s => s.defaultOn).map(s => s.key));
+    renderSections(); renderPreview();
+  });
+  document.getElementById('genBtn').addEventListener('click', () => {
+    const label = document.getElementById('versionLabel').value || 'v'+(versions.length+1);
+    const distribute = document.getElementById('distributeChk').checked;
+    const newVersion = {
+      v: 'v'+(versions.length+1),
+      label, at: new Date().toISOString(), author: PCG.user.name,
+      sections: Array.from(selected), audience, stale: false
+    };
+    versions.forEach(x => x.stale = false);
+    versions.unshift(newVersion);
+    renderVersions();
+    const crewCount = (PCG.shiftAssignments||[]).filter(s => s.showId === currentShow && ['Confirmed','Acknowledged'].includes(s.status)).length;
+    alert(`✓ Generated Show Book ${newVersion.v} — ${selected.size} sections, ${audience}.\n\n${distribute ? `Distributed to ${crewCount} confirmed crew (Crew PWA Documents tab + email).` : 'Not distributed — saved to SharePoint only.'}\n\nIn production: Word template → Power Automate → PDF → SharePoint URL written back to ShowBook.sharePointDocId.`);
+  });
+
+  renderSections();
+  renderAudienceExplain();
+  renderPreview();
+  renderVersions();
+</script>
+</body>
+</html>

@@ -32,6 +32,11 @@
         <div>
 
           <div class="card">
+            <div class="card-header"><div class="title">★ My Pitches · Live Engagement</div><a class="btn sm primary" href="pitch.html" style="margin-left:auto;">Open Pitches →</a></div>
+            <div class="card-body" id="pitchRows" style="display: grid; gap: 8px;"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-5);">
             <div class="card-header"><div class="title">Pipeline · Opportunities</div></div>
             <table class="pcg-table">
               <thead><tr><th>Client</th><th>Scope</th><th>Est. Value</th><th>Probability</th><th>Status</th><th>Follow-Up</th></tr></thead>
@@ -88,6 +93,42 @@
 <script>
   PCG.mountShell({active:'portfolio', crumbs:[{label:'AE Home'}]});
   document.getElementById('hi').textContent = `Good day, ${PCG.user.name.split(' ')[0]}`;
+
+  // My Pitches (live engagement)
+  const myPitches = PCG.api.getPitches().filter(p =>
+    p.aeId === PCG.user.id ||
+    PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP)
+  );
+  document.getElementById('pitchRows').innerHTML = myPitches.length ? myPitches.map(p => {
+    const summary = PCG.api.getPitchEngagementSummary(p.id);
+    const client = PCG.api.getClient(p.clientId);
+    const statusTone = p.status==='Accepted'?'green':p.status==='Opened'?'blue':p.status==='Issued'?'blue':'amber';
+    const selectedOpt = p.selectedOptionId ? ((p.options||[]).find(o=>o.id===p.selectedOptionId)||{}).label : null;
+    const lastEvent = p.engagementEvents && p.engagementEvents.length ? p.engagementEvents[p.engagementEvents.length-1] : null;
+    const unreadComments = (p.comments||[]).filter(c => c.fromSide === 'client').length;
+    return `
+      <a href="pitch.html?id=${p.id}" class="pinned" style="text-decoration:none; color:inherit;">
+        <span class="icon">★</span>
+        <div style="flex:1;">
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <span class="pill ${statusTone} plain" style="font-size:9px;">${p.status.toUpperCase()}</span>
+            ${unreadComments?`<span class="pill amber plain" style="font-size:9px;">💬 ${unreadComments} from client</span>`:''}
+            <strong>${PCG.escapeHtml(p.projectIdea)}</strong>
+            <span class="mono muted" style="font-size:10px;">${p.pitchNo}</span>
+          </div>
+          <div class="muted" style="font-size:11px; margin-top:2px;">
+            ${client?PCG.escapeHtml(client.name):'—'} · v${p.currentVersion} · ${p.estimatedBudget?PCG.money(p.estimatedBudget.low)+'–'+PCG.money(p.estimatedBudget.high):'budget TBD'}
+          </div>
+          <div class="muted" style="font-size:10px; margin-top:4px;">
+            ${summary.opens?`${summary.opens} open${summary.opens===1?'':'s'}`:'not yet opened'} ·
+            ${summary.commentCount} comment${summary.commentCount===1?'':'s'} ·
+            ${selectedOpt?`chose <strong>${PCG.escapeHtml(selectedOpt)}</strong>`:'no option chosen'}
+            ${lastEvent?' · last '+PCG.ago(lastEvent.at):''}
+          </div>
+        </div>
+        ${p.convertedQuoteId?'<span class="pill green plain" style="font-size:9px;">→ QUOTE</span>':''}
+      </a>`;
+  }).join('') : PCG.states.empty('No pitches yet. Open the Pitches page to create one.');
 
   // Opportunities
   const opps = (PCG.opportunities||[]);
@@ -160,6 +201,7 @@
   // KPIs
   const pipeline = opps.reduce((s,o)=>s+((o.estimatedValue||0)*(o.probability||0)),0);
   document.getElementById('kpis').innerHTML = `
+    <div class="kpi purple"><div class="label">★ Open Pitches</div><div class="value">${myPitches.filter(p=>['Draft','Issued','Opened'].includes(p.status)).length}</div><div class="sub">of ${myPitches.length} total</div></div>
     <div class="kpi blue"><div class="label">Weighted Pipeline</div><div class="value">${PCG.canSeeTier('T2_MARGINS')?PCG.money(pipeline):'—'}</div><div class="sub">probability × value</div></div>
     <div class="kpi"><div class="label">Active Quotes</div><div class="value">${mine.length}</div><div class="sub">issued + awarded</div></div>
     <div class="kpi amber"><div class="label">COs Pending</div><div class="value">${cos.length}</div><div class="sub">awaiting approval</div></div>

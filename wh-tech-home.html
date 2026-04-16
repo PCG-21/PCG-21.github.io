@@ -83,6 +83,13 @@
           </div>
 
           <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Workbox Restock Queue</div>
+              <a class="btn sm ghost" style="margin-left:auto;" href="kit-rebuild.html">Open Restock →</a>
+            </div>
+            <div class="card-body" id="wbRestock"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
             <div class="card-header"><div class="title">Quick Scan</div></div>
             <div class="card-body" style="font-size:var(--fs-sm);">
               <div class="muted">Jump straight to a scan interface. Offline queue auto-syncs when back online.</div>
@@ -90,6 +97,8 @@
               <div style="display:flex; gap:var(--sp-2); flex-wrap:wrap;">
                 <a class="btn primary" href="qc-scan.html?pullSheet=ps.sae.breakout">➜ QC Scan · SAE Breakout</a>
                 <a class="btn" href="ic-scan.html?manifest=man.lce.out1">➜ IC Return Scan · LCE</a>
+                <a class="btn" href="kit-rebuild.html">⚒ Kit Rebuild · Workbox</a>
+                <a class="btn ghost" href="cycle-count.html">◷ Cycle Count</a>
               </div>
             </div>
           </div>
@@ -252,6 +261,28 @@
         <div class="meta">${PCG.escapeHtml(w.description)}${w.dueBy?` · Due ${PCG.fmtDate(w.dueBy,{time:true})}`:''}</div></div>
       </div>`;
     }).join('') : PCG.states.empty('Inbox clear.');
+
+    // Workbox restock queue — workboxes with shortages (tech's tangible daily work)
+    const workboxes = PCG.api.getWorkboxes ? PCG.api.getWorkboxes().filter(w => w.shortage > 0) : [];
+    const top5Restock = workboxes.sort((a,b) => b.needed - a.needed).slice(0, 5);
+    document.getElementById('wbRestock').innerHTML = top5Restock.length ? top5Restock.map(w => `
+      <a href="kit-rebuild.html" class="pinned" style="text-decoration: none; color: inherit; margin-bottom: 6px;">
+        <span class="mono" style="font-size: 11px; color: var(--pcg-bright-blue); background: rgba(1,153,253,0.08); padding: 3px 8px; border-radius: var(--r-sm);">${PCG.escapeHtml(w.barcode)}</span>
+        <div style="flex: 1;">
+          <strong>${PCG.escapeHtml(w.name)}</strong>
+          <div class="muted" style="font-size: var(--fs-xs);">Last show ${PCG.escapeHtml(w.lastShow||'—')} · <span style="color: var(--status-amber);">${w.shortage} lines short</span></div>
+        </div>
+        <div style="text-align: center; color: var(--status-amber); font-family: var(--font-mono); font-size: 18px; font-weight: 600;">${w.needed}</div>
+      </a>`).join('') : PCG.states.empty('All workboxes at standard pack. 🎉');
+
+    // Kit rebuild tasks — pending or in-progress
+    const kits = PCG.api.getKitRebuildTasks ? PCG.api.getKitRebuildTasks().filter(k => k.status !== 'Complete') : [];
+    if(kits.length) document.getElementById('wbRestock').insertAdjacentHTML('beforeend', `
+      <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: var(--fs-xs);">
+        <strong style="color: var(--pcg-spotlight-purple);">⚒ ${kits.length} kit rebuild${kits.length===1?'':'s'} also pending</strong> —
+        <a href="kit-rebuild.html" style="color: var(--pcg-bright-blue);">open scan flow →</a>
+      </div>
+    `);
 
     // Week summary
     const myEvents = (PCG.clockEvents||[]).filter(e=>e.crewMemberId===PCG.user.id);

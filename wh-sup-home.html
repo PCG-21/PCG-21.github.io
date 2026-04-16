@@ -91,6 +91,14 @@
         </div>
       </div>
 
+      <!-- Tour Inventory Packages (active tours) -->
+      <div class="card" id="tourInvCard" style="margin-top: var(--sp-5); display:none;">
+        <div class="card-header"><div class="title">🚌 Tour Inventory Packages · In Motion</div>
+          <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Items committed to tour stops · blocked from general availability</span>
+        </div>
+        <div id="tourInv" style="padding: var(--sp-3);"></div>
+      </div>
+
       <!-- Add Order response loop row -->
       <div class="card" style="margin-top: var(--sp-5);">
         <div class="card-header"><div class="title">Add Orders — Needing Response (§10.6)</div>
@@ -175,6 +183,37 @@
     }).join('') : PCG.states.empty('No returns inbound.');
 
     // ---- Prep Queue ----
+    // Tour inventory packages
+    const activeTours = (PCG.api.getTours ? PCG.api.getTours() : []).filter(t => t.status === 'Executing');
+    if(activeTours.length){
+      document.getElementById('tourInvCard').style.display = 'block';
+      document.getElementById('tourInv').innerHTML = activeTours.map(t => {
+        const pkg = PCG.api.getTourInventoryPackage(t.id);
+        const stops = PCG.api.getTourStops(t.id);
+        const currentStop = stops.find(s => s.id === (pkg && pkg.currentStopId));
+        const damageNotes = pkg ? (pkg.items||[]).flatMap(i => (i.damageNotes||[])).length : 0;
+        const itemsDamaged = pkg ? (pkg.items||[]).filter(i => i.currentCondition === 'Fair' || i.currentCondition === 'Damaged').length : 0;
+        return `
+          <a href="tour-view.html?id=${t.id}" class="pinned" style="text-decoration:none; color:inherit; margin-bottom: 6px;">
+            <span class="icon">📦</span>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span class="pill blue plain" style="font-size: 9px;">${pkg ? pkg.packageStatus.toUpperCase() : '—'}</span>
+                <strong>${PCG.escapeHtml(pkg ? pkg.name : t.name)}</strong>
+                ${currentStop ? `<span class="pill green plain" style="font-size: 9px;">📍 ${PCG.escapeHtml(currentStop.city)}</span>` : ''}
+                ${itemsDamaged ? `<span class="pill amber plain" style="font-size: 9px;">⚠ ${itemsDamaged} items Fair/Damaged</span>` : ''}
+              </div>
+              <div class="muted" style="font-size: 11px; margin-top: 2px;">
+                ${pkg ? pkg.items.length : 0} items · ${pkg ? pkg.totalWeightLbs.toLocaleString() : 0} lbs · replacement ${pkg ? PCG.money(pkg.totalReplacementValue) : '—'} · ${damageNotes} damage note${damageNotes===1?'':'s'}
+              </div>
+              <div class="muted" style="font-size: 11px; margin-top: 2px;">
+                Tour window <span class="mono">${PCG.fmtShort(t.startDate)} → ${PCG.fmtShort(t.endDate)}</span> · items blocked from other-show availability
+              </div>
+            </div>
+          </a>`;
+      }).join('');
+    }
+
     const prepShows = PCG.api.getProjects().filter(p=>p.show && p.show.lifecycleState==='InPrep');
     prepShows.sort((a,b)=>new Date(a.dates.loadIn)-new Date(b.dates.loadIn));
     document.getElementById('ppCt').textContent = `${prepShows.length} in prep`;
@@ -226,7 +265,9 @@
         <div style="display:flex; gap:6px; align-items:center;">
           <span class="pill ${u}" style="font-size:10px;">${a.urgency.toUpperCase()}</span>
           <span class="pill blue plain" style="font-size:10px;">${a.status.toUpperCase()}</span>
-          ${a.status==='Requested' ? '<button class="btn sm primary">Ack</button>' : ''}
+          ${a.status==='Requested' ? `<button class="btn sm primary" onclick="ackAddOrder('${a.aoNumber}')">Ack</button>` : ''}
+          ${a.status==='Acknowledged' ? `<button class="btn sm" onclick="advanceAO('${a.aoNumber}','Picking')">→ Picking</button>` : ''}
+          ${a.status==='Picking' ? `<button class="btn sm" onclick="advanceAO('${a.aoNumber}','Staged')">→ Staged</button>` : ''}
         </div>
       </div>`;
     }).join('') : PCG.states.empty('No open add orders.');
@@ -239,7 +280,7 @@
           <div style="font-weight:600;">${PCG.escapeHtml(w.title)}</div>
           <div class="muted" style="font-size:11px;">${PCG.escapeHtml(w.description)}</div>
         </div>
-        <div><button class="btn sm">Resolve</button></div>
+        <div><button class="btn sm" onclick="resolveOrphan('${w.id}')">Resolve</button></div>
       </div>
     `).join('') : PCG.states.empty('No orphaned scans. ✓');
 
@@ -298,6 +339,32 @@
       <div class="kpi red"><div class="label">Add Orders Open</div><div class="value">${openAOs.length}</div><div class="sub">field requests</div></div>
       <div class="kpi"><div class="label">Orphan Scans</div><div class="value">${orphans.length}</div><div class="sub">awaiting review</div></div>
     `;
+
+    // ---- Action handlers (wired to onclicks above) ----
+    window.ackAddOrder = (aoNumber) => {
+      try {
+        const ao = PCG.api.acknowledgeAddOrder(aoNumber);
+        PCG.toast && PCG.toast(`AO ${ao.aoNumber} acknowledged — now in your queue.`);
+        location.reload();
+      } catch(e){ alert('Could not acknowledge: '+e.message); }
+    };
+    window.advanceAO = (aoNumber, toStatus) => {
+      try {
+        PCG.api.advanceAddOrder(aoNumber, toStatus);
+        PCG.toast && PCG.toast(`AO advanced → ${toStatus}`);
+        location.reload();
+      } catch(e){ alert('Could not advance: '+e.message); }
+    };
+    window.resolveOrphan = (workItemId) => {
+      const note = prompt('Resolution note (e.g., "moved to correct pull sheet", "scrapped — damaged beyond repair"):');
+      if(note === null) return;
+      const resolution = note.toLowerCase().includes('scrap') || note.toLowerCase().includes('damage') ? 'Scrapped' : 'Reassigned';
+      try {
+        PCG.api.resolveOrphanScan(workItemId, resolution, note);
+        PCG.toast && PCG.toast(`Orphan resolved (${resolution})`);
+        location.reload();
+      } catch(e){ alert('Could not resolve: '+e.message); }
+    };
   }
 </script>
 </body>

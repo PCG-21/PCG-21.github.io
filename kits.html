@@ -39,7 +39,21 @@
         </div>
         <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
           <input id="q" placeholder="Search kits…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 12px; border-radius:var(--r-pill); width:220px; font-size:var(--fs-sm);" />
-          <button class="btn sm">＋ New System Definition</button>
+          <a class="btn sm" href="kit-rebuild.html">⚒ Scan &amp; Rebuild →</a>
+          <button class="btn sm primary">＋ New System Definition</button>
+        </div>
+      </div>
+
+      <!-- Quick jump banner to scan flow -->
+      <div class="card card-pad" style="margin-bottom: var(--sp-4); background: linear-gradient(135deg, rgba(1,153,253,0.06), rgba(122,65,229,0.03)); border: 1px solid var(--border-accent);">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="font-size: 30px;">⚒</div>
+          <div style="flex: 1;">
+            <div style="font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-bright-blue); margin-bottom: 2px;">KIT REBUILD · WORKBOX RESTOCK</div>
+            <div style="font-weight: 600;">After a show returns, rebuild kits and restock workboxes via barcode scan</div>
+            <div class="muted" style="font-size: var(--fs-xs); margin-top: 4px;">Scan the destination container barcode, then scan each component · System checks vs BOM · Partial kits auto-flagged to EQLPC (spec §LL)</div>
+          </div>
+          <a class="btn primary" href="kit-rebuild.html">Open Scan Flow →</a>
         </div>
       </div>
 

@@ -69,11 +69,15 @@
         <div class="query-type">
           <button class="on" data-t="all">Everything</button>
           <button data-t="projects">Projects</button>
+          <button data-t="tours">Tours</button>
+          <button data-t="pitches">Pitches</button>
           <button data-t="venues">Venues</button>
           <button data-t="clients">Clients</button>
+          <button data-t="contacts">Client Contacts</button>
           <button data-t="crew">Crew</button>
           <button data-t="serials">Serials</button>
           <button data-t="quotes">Quotes</button>
+          <button data-t="stageConcepts">Stage Concepts</button>
           <button data-t="tickets">Service Tickets</button>
         </div>
       </div>
@@ -176,13 +180,36 @@
     renderRecent();
 
     const res = PCG.api.search(q);
+    const qLower = q.toLowerCase();
+    // Extend search to tours, pitches, stage concepts, client contacts
+    res.tours = (PCG.api.getTours ? PCG.api.getTours() : []).filter(t =>
+      t.name.toLowerCase().includes(qLower)
+      || (t.tourType||'').toLowerCase().includes(qLower)
+      || (t.eventFolderNumber||'').toLowerCase().includes(qLower));
+    res.pitches = (PCG.api.getPitches ? PCG.api.getPitches() : []).filter(p =>
+      p.projectIdea.toLowerCase().includes(qLower)
+      || (p.pitchNo||'').toLowerCase().includes(qLower)
+      || (p.targetDates||'').toLowerCase().includes(qLower));
+    res.stageConcepts = (PCG.api.getStageConcepts ? PCG.api.getStageConcepts() : []).filter(s =>
+      s.name.toLowerCase().includes(qLower)
+      || (s.description||'').toLowerCase().includes(qLower)
+      || (s.bestFor||[]).some(b => b.toLowerCase().includes(qLower)));
+    res.contacts = (PCG.clientContacts||[]).filter(c =>
+      c.name.toLowerCase().includes(qLower)
+      || (c.email||'').toLowerCase().includes(qLower)
+      || (c.role||'').toLowerCase().includes(qLower));
+
     const sections = [
-      { key: 'projects', title: 'Projects',        icon: '▦', items: res.projects, render: p=>({ title: `${p.code} — ${p.name}`, subtitle: `${p.client||''} · ${p.venueName||''}`, href: `playbook.html?project=${p.code}`, extra: p.show ? PCG.lifecyclePill(p.show.lifecycleState) : '' }) },
-      { key: 'venues',   title: 'Venues',          icon: '🏛', items: res.venues,   render: v=>({ title: v.name, subtitle: `${v.city||''}${v.state?', '+v.state:''} · ${v.venueType||''}${(v.union&&(v.union.required||v.union===true))?' · Union':''}`, href: `venue-detail.html?id=${v.id}` }) },
-      { key: 'clients',  title: 'Clients',         icon: '◉', items: res.clients,  render: c=>({ title: c.name, subtitle: `${c.industry||''} · ${(c.priorProjectCodes||[]).length} prior projects`, href: `clients.html` }) },
-      { key: 'crew',     title: 'Crew',            icon: '◴', items: res.crew,     render: m=>({ title: m.name, subtitle: `${m.employmentType||''} · ${(m.market||[]).join(', ')}`, href: `scheduling.html` }) },
+      { key: 'projects', title: 'Projects',        icon: '▦', items: res.projects, render: p=>({ title: `${p.code} — ${p.name}`, subtitle: `${p.client||''} · ${p.venueName||''}${p.tourId?' · part of tour':''}`, href: `playbook.html?project=${p.code}`, extra: p.show ? PCG.lifecyclePill(p.show.lifecycleState) : '' }) },
+      { key: 'tours',    title: 'Tours',           icon: '🚌', items: res.tours,    render: t=>({ title: t.name, subtitle: `${t.tourType||''} · ${t.status} · ${t.eventFolderNumber||''} · ${PCG.fmtShort(t.startDate)}–${PCG.fmtShort(t.endDate)}`, href: `tour-view.html?id=${t.id}`, extra: `<span class="pill ${t.status==='Executing'?'blue':'gray'} plain" style="font-size:10px;">${t.status}</span>` }) },
+      { key: 'pitches',  title: 'Pitches',         icon: '★', items: res.pitches,   render: p=>{ const s = PCG.api.getPitchEngagementSummary ? PCG.api.getPitchEngagementSummary(p.id) : null; const client = PCG.api.getClient(p.clientId); return { title: `${p.pitchNo} — ${p.projectIdea}`, subtitle: `${client?client.name:p.clientId} · v${p.currentVersion}${s ? ` · ${s.opens} open${s.opens===1?'':'s'}` : ''}`, href: `pitch.html?id=${p.id}`, extra: `<span class="pill ${p.status==='Accepted'?'green':'amber'} plain" style="font-size:10px;">${p.status}</span>` }; } },
+      { key: 'venues',   title: 'Venues',          icon: '🏛', items: res.venues,   render: v=>({ title: v.name, subtitle: `${v.city||v.address||''}${v.state?', '+v.state:''} · ${v.venueType||''}${(v.union&&(v.union.required||v.union===true))?' · Union':''}`, href: `venue-detail.html?id=${v.id}` }) },
+      { key: 'clients',  title: 'Clients',         icon: '◉', items: res.clients,  render: c=>({ title: c.name, subtitle: `${c.industry||''} · ${(c.priorProjectCodes||[]).length} prior projects`, href: `clients.html?id=${c.id}` }) },
+      { key: 'contacts', title: 'Client Contacts', icon: '☏', items: res.contacts, render: c=>{ const client = PCG.api.getClient(c.clientId); return { title: `${c.name} — ${c.role||''}`, subtitle: `${client?client.name:c.clientId} · ${c.email||''} · Portal: ${c.portalAccess||'None'}`, href: `clients.html?id=${c.clientId}` }; } },
+      { key: 'crew',     title: 'Crew',            icon: '◴', items: res.crew,     render: m=>({ title: m.name, subtitle: `${m.employmentType||''} · ${(m.market||[]).join(', ')}`, href: `crew-profile.html?id=${m.id}` }) },
       { key: 'serials',  title: 'Serialized Items',icon: '⚒', items: res.serials,  render: s=>({ title: `${s.serial} — ${s.barcode||''}`, subtitle: `Status ${s.status} · Location ${s.currentLocationId||'—'}`, href: `inventory.html` }) },
-      { key: 'quotes',   title: 'Quotes',          icon: '§', items: res.quotes,   render: q=>({ title: `${q.quoteNo} — ${q.projectCode}`, subtitle: `Status ${q.status}${q.totalRevenue && PCG.canSeeTier('T2_MARGINS') ? ' · '+PCG.money(q.totalRevenue) : ''}`, href: `quote.html?id=${q.id}` }) },
+      { key: 'quotes',   title: 'Quotes',          icon: '§', items: res.quotes,   render: quo=>{ const p = PCG.api.getProject(quo.projectCode); return { title: `${quo.quoteNo} — ${quo.projectCode}${quo.quoteType==='AddOrder'?' (Add Order)':quo.quoteType==='DepartmentChild'?' ('+quo.department+' child)':''}`, subtitle: `${p?p.client:''} · ${quo.status}${quo.totalRevenue && PCG.canSeeTier('T2_MARGINS') ? ' · '+PCG.money(quo.totalRevenue) : ''}`, href: `quote.html?id=${quo.id}` }; } },
+      { key: 'stageConcepts', title: 'Stage Concepts', icon: '◆', items: res.stageConcepts, render: s=>({ title: s.name, subtitle: `${s.description.slice(0,100)}…`, href: `pitch.html`, extra: `<span class="mono" style="font-size:11px; color: var(--pcg-bright-blue);">${PCG.money(s.basePriceRange[0])}–${PCG.money(s.basePriceRange[1])}</span>` }) },
       { key: 'tickets',  title: 'Service Tickets', icon: '⚠', items: res.tickets,  render: t=>({ title: `${t.id} — ${t.serialId||''}`, subtitle: `${(t.description||'').slice(0,80)} · ${t.status}`, href: `service.html` }) }
     ];
 

@@ -105,7 +105,7 @@ window.PCG.people = [
   { id: "p.tscheff",   name: "Tyler Scheff",   initials: "TS", role: "Mini GS / Breakouts Lead" },
   { id: "p.ctaylor",   name: "Chris Taylor",   initials: "CT", role: "TD — Ballroom GS" },
   { id: "p.jgerber",   name: "Jason Gerber",   initials: "JG", role: "Show Caller" },
-  { id: "p.coliver",   name: "Chelsea Oliver", initials: "CO", role: "ShoFlo / Schedules" },
+  { id: "p.coliver",   name: "Chelsea Oliver", initials: "CO", role: "Scheduling / Run of Show" },
   { id: "p.arachilla", name: "Alex Rachilla",  initials: "AR", role: "Quote / Pull Sheet" },
   { id: "p.pshah",     name: "Priya Shah",     initials: "PS", role: "Audio A1" },
   { id: "p.mchen",     name: "Mike Chen",      initials: "MC", role: "Audio A1 (Freelance)" },
@@ -185,7 +185,7 @@ window.PCG.projects = [
     ],
     attention: [
       { kind: "red",   title: "Sub-rental on 2x d&b JSubs — confirmation deadline Tue 4pm PT", owner: "p.svance", due: "2026-04-15T16:00" },
-      { kind: "amber", title: "Awards ready room not yet costed or in Flex",                    owner: "p.jspringer", due: "2026-04-16T12:00" },
+      { kind: "amber", title: "Awards ready room not yet costed or on quote",                    owner: "p.jspringer", due: "2026-04-16T12:00" },
       { kind: "amber", title: "Client sponsor loop PPT not received",                            owner: "p.koliver",   due: "2026-04-16T17:00" },
       { kind: "blue",  title: "Confirm union call changes with IATSE 720 steward",               owner: "p.ctaylor",   due: "2026-04-17T09:00" }
     ],
@@ -232,7 +232,7 @@ window.PCG.projects = [
       { title: "Manifest EHMYY",             url: "#", sz: "380 KB", pinned: true,  cat: "Flex" },
       { title: "Pull Sheet UZ4JX",           url: "#", sz: "2.1 MB", pinned: true,  cat: "Flex" },
       { title: "Ballroom Rigging Plot v2",   url: "#", sz: "4.5 MB", pinned: true,  cat: "Plots" },
-      { title: "Show Flow v4 (ShoFlo)",      url: "#", sz: "—",      pinned: true,  cat: "Script" },
+      { title: "Show Flow v4 (Run of Show)", url: "#", sz: "—",      pinned: true,  cat: "Script" },
       { title: "Client Master Agenda v7",    url: "#", sz: "220 KB", pinned: false, cat: "Client" },
       { title: "Marquee Set Renderings",     url: "#", sz: "28 MB",  pinned: true,  cat: "Creative" },
       { title: "Venue Load-In Map",          url: "#", sz: "180 KB", pinned: true,  cat: "Venue" },
@@ -254,7 +254,7 @@ Jennifer Beth is the real decision-maker onsite — if Kevin is uncertain on a s
       { ts: "2026-04-14T11:06", actor: "Brandon White",  text: "CO #2 approved — $12,800 for cocktail DJ patch + IFB adds." },
       { ts: "2026-04-13T20:18", actor: "Jeff Springer",  text: "A1 reassigned: Mike Chen → Priya Shah (resolving SAE WCX conflict)." },
       { ts: "2026-04-13T14:03", actor: "Chris Taylor",   text: "Rigging plot v2 issued — revised fly points for Forum Ballroom truss." },
-      { ts: "2026-04-12T10:45", actor: "Chelsea Oliver", text: "ShoFlo Show Flow v4 published — awards program block added." }
+      { ts: "2026-04-12T10:45", actor: "Chelsea Oliver", text: "Run of Show v4 published — awards program block added." }
     ]
   },
 

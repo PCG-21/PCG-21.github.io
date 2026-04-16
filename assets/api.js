@@ -544,6 +544,142 @@
   // ------------------------------------------------------------------
   PCG.api.getAddOrders = (showId) => (PCG.addOrders||[]).filter(a=>a.showId===showId);
 
+  PCG.api.acknowledgeAddOrder = (aoNumber) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS);
+    const ao = (PCG.addOrders||[]).find(a => a.aoNumber === aoNumber || a.id === aoNumber);
+    if(!ao) throw new Error('Add order not found: '+aoNumber);
+    if(ao.status !== 'Requested') return ao;
+    ao.status = 'Acknowledged';
+    ao.acknowledgedById = PCG.user.id;
+    ao.acknowledgedAt   = new Date().toISOString();
+    PCG.auditLog.push({ at:ao.acknowledgedAt, actor:PCG.user.id, action:'addOrder.ack', entityId:ao.id });
+    PCG.engines.notify.emit('AddOrderAcknowledged', { id:ao.id, aoNumber:ao.aoNumber, showId:ao.showId });
+    return ao;
+  };
+
+  PCG.api.advanceAddOrder = (aoNumber, toStatus) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS);
+    const ao = (PCG.addOrders||[]).find(a => a.aoNumber === aoNumber || a.id === aoNumber);
+    if(!ao) throw new Error('Add order not found');
+    const valid = ['Acknowledged','Picking','Staged','InTransit','Delivered','Closed'];
+    if(!valid.includes(toStatus)) throw new Error('Invalid status');
+    ao.status = toStatus;
+    ao[toStatus.charAt(0).toLowerCase()+toStatus.slice(1)+'At'] = new Date().toISOString();
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'addOrder.status.'+toStatus.toLowerCase(), entityId:ao.id });
+    PCG.engines.notify.emit('AddOrderAdvanced', { id:ao.id, toStatus });
+    return ao;
+  };
+
+  // ------------------------------------------------------------------
+  // Orphan Scan resolution (§3.8 — supervisors adjudicate unexpected scans)
+  // ------------------------------------------------------------------
+  PCG.api.resolveOrphanScan = (workItemId, resolution, note) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS);
+    const w = (PCG.workItems||[]).find(x => x.id === workItemId);
+    if(!w) throw new Error('Work item not found');
+    if(w.type !== 'ScanOrphan') throw new Error('Not an orphan scan');
+    w.status = 'Resolved';
+    w.resolution = resolution || 'Manual adjudication';
+    w.resolutionNote = note || '';
+    w.resolvedById = PCG.user.id;
+    w.resolvedAt = new Date().toISOString();
+    PCG.auditLog.push({ at:w.resolvedAt, actor:PCG.user.id, action:'orphan.resolve', entityId:w.id, detail:resolution });
+    PCG.engines.notify.emit('OrphanScanResolved', { id:w.id, resolution });
+    return w;
+  };
+
+  // ------------------------------------------------------------------
+  // Service Tickets (§21 — repair pipeline CRUD)
+  // ------------------------------------------------------------------
+  PCG.api.createServiceTicket = (data) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.TSMS);
+    const t = {
+      id: 'st.'+Math.random().toString(36).slice(2,8),
+      serialId: data.serialId || null,
+      itemId:   data.itemId   || null,
+      showId:   data.showId   || null,
+      description: data.description || '',
+      triage:   data.triage   || 'Minor',
+      status:   'Open',
+      estimatedCost: data.estimatedCost || 0,
+      clientCaused: !!data.clientCaused,
+      recurringFailure: false,
+      reportedById: PCG.user.id,
+      reportedAt:   new Date().toISOString(),
+      warrantyVendor: data.warrantyVendor || null,
+      warrantyClaimStatus: data.warrantyVendor ? 'Not filed' : null,
+      notes: data.notes || ''
+    };
+    PCG.serviceTickets = PCG.serviceTickets || [];
+    PCG.serviceTickets.push(t);
+    // Flip serial to OOC if provided
+    if(t.serialId){
+      const ser = (PCG.inventorySerials||[]).find(s => s.serial === t.serialId || s.barcode === t.serialId);
+      if(ser){ ser.status = 'OOC'; ser.serviceTicketId = t.id; }
+    }
+    PCG.auditLog.push({ at:t.reportedAt, actor:PCG.user.id, action:'serviceTicket.create', entityId:t.id, detail:t.description });
+    PCG.engines.notify.emit('ServiceTicketCreated', { id:t.id, triage:t.triage, clientCaused:t.clientCaused });
+    return t;
+  };
+
+  PCG.api.advanceServiceTicket = (ticketId, toStatus) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS);
+    const t = (PCG.serviceTickets||[]).find(x => x.id === ticketId);
+    if(!t) throw new Error('Ticket not found');
+    const valid = ['Open','WaitingParts','InRepair','VendorRepair','BenchTest','ReturnToService','Repaired','Retired','Deferred'];
+    if(!valid.includes(toStatus)) throw new Error('Invalid ticket status');
+    t.status = toStatus;
+    t[toStatus.charAt(0).toLowerCase()+toStatus.slice(1)+'At'] = new Date().toISOString();
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'serviceTicket.status.'+toStatus.toLowerCase(), entityId:t.id });
+    PCG.engines.notify.emit('ServiceTicketAdvanced', { id:t.id, toStatus });
+    return t;
+  };
+
+  PCG.api.approveReturnToService = (ticketId) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS);
+    const t = (PCG.serviceTickets||[]).find(x => x.id === ticketId);
+    if(!t) throw new Error('Ticket not found');
+    if(t.status !== 'ReturnToService' && t.status !== 'BenchTest'){
+      throw new Error('Ticket must be in BenchTest or ReturnToService to approve RTS');
+    }
+    // §21.2 gate: need BenchTest logged + approver
+    t.returnToServiceApprovedById = PCG.user.id;
+    t.returnToServiceApprovedAt = new Date().toISOString();
+    t.status = 'Repaired';
+    t.repairedAt = t.returnToServiceApprovedAt;
+    // Flip serial back to Available
+    if(t.serialId){
+      const ser = (PCG.inventorySerials||[]).find(s => s.serial === t.serialId || s.barcode === t.serialId);
+      if(ser){ ser.status = 'Available'; ser.serviceTicketId = null; }
+    }
+    PCG.auditLog.push({ at:t.returnToServiceApprovedAt, actor:PCG.user.id, action:'serviceTicket.rts.approve', entityId:t.id });
+    PCG.engines.notify.emit('ServiceTicketRTSApproved', { id:t.id });
+    return t;
+  };
+
+  PCG.api.createDamageChargeFromTicket = (ticketId) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS);
+    const t = (PCG.serviceTickets||[]).find(x => x.id === ticketId);
+    if(!t) throw new Error('Ticket not found');
+    if(!t.clientCaused) throw new Error('Only client-caused tickets can become damage charges');
+    if(t.damageChargeId) return (PCG.damageCharges||[]).find(d => d.id === t.damageChargeId);
+    const charge = {
+      id: 'dc.'+Math.random().toString(36).slice(2,8),
+      ticketId: t.id,
+      showId:   t.showId,
+      amount:   t.estimatedCost || 0,
+      status:   'Draft',
+      createdAt: new Date().toISOString(),
+      createdById: PCG.user.id
+    };
+    PCG.damageCharges = PCG.damageCharges || [];
+    PCG.damageCharges.push(charge);
+    t.damageChargeId = charge.id;
+    PCG.auditLog.push({ at:charge.createdAt, actor:PCG.user.id, action:'damageCharge.create', entityId:charge.id });
+    PCG.engines.notify.emit('DamageChargeCreated', { id:charge.id, ticketId:t.id, amount:charge.amount });
+    return charge;
+  };
+
   // ------------------------------------------------------------------
   // Scope / Current Scope (ScopeRecord + approved COs)
   // ------------------------------------------------------------------
@@ -915,6 +1051,72 @@
     if(filter && filter.status)   list = list.filter(i=>i.status===filter.status);
     if(filter && filter.severity) list = list.filter(i=>i.severity===filter.severity);
     return list;
+  };
+
+  // ------------------------------------------------------------------
+  // Incident CRUD (§22)
+  // ------------------------------------------------------------------
+  PCG.api.createIncident = (data) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.AE, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.PRODUCER, PCG.GROUPS.SCHEDULING, PCG.GROUPS.WH_SUPERVISORS);
+    const inc = {
+      id: 'inc.'+Math.random().toString(36).slice(2,8),
+      showId: data.showId || null,
+      description: data.description || '',
+      type: data.type || 'Other',
+      severity: data.severity || 'Minor',
+      locationDescription: data.locationDescription || '',
+      witnessNames: data.witnessNames || [],
+      immediateActionTaken: data.immediateActionTaken || '',
+      medicalAttentionRequired: !!data.medicalAttentionRequired,
+      venueNotified: !!data.venueNotified,
+      reportedById: PCG.user.id,
+      reportedAt: new Date().toISOString(),
+      status: 'Open',
+      escalatedTo: null
+    };
+    // Critical auto-escalates to Directors
+    if(inc.severity === 'Critical'){
+      inc.status = 'Escalated';
+      inc.escalatedTo = 'p.kbenz'; // Director of Ops stand-in
+      inc.escalatedAt = inc.reportedAt;
+    }
+    PCG.incidentReports = PCG.incidentReports || [];
+    PCG.incidentReports.push(inc);
+    PCG.auditLog.push({ at:inc.reportedAt, actor:PCG.user.id, action:'incident.create', entityId:inc.id, detail:inc.severity+' '+inc.type });
+    PCG.engines.notify.emit('IncidentReported', { id:inc.id, severity:inc.severity, type:inc.type });
+    return inc;
+  };
+
+  PCG.api.escalateIncident = (id, toUserId) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS);
+    const inc = (PCG.incidentReports||[]).find(x=>x.id===id);
+    if(!inc) throw new Error('Incident not found');
+    inc.status = 'Escalated';
+    inc.escalatedTo = toUserId || 'p.kbenz';
+    inc.escalatedAt = new Date().toISOString();
+    PCG.auditLog.push({ at:inc.escalatedAt, actor:PCG.user.id, action:'incident.escalate', entityId:inc.id });
+    PCG.engines.notify.emit('IncidentEscalated', { id:inc.id, to:inc.escalatedTo });
+    return inc;
+  };
+
+  PCG.api.closeIncident = (id, requireDirectorSignoff) => {
+    const inc = (PCG.incidentReports||[]).find(x=>x.id===id);
+    if(!inc) throw new Error('Incident not found');
+    if(inc.type === 'PersonalInjury' && !requireDirectorSignoff){
+      throw new Error('Personal Injury requires Director sign-off to close (§22)');
+    }
+    if(requireDirectorSignoff){
+      PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS);
+      inc.directorSignedOffById = PCG.user.id;
+      inc.directorSignedOffAt = new Date().toISOString();
+    } else {
+      PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS);
+    }
+    inc.status = 'Closed';
+    inc.closedAt = new Date().toISOString();
+    PCG.auditLog.push({ at:inc.closedAt, actor:PCG.user.id, action:'incident.close', entityId:inc.id, detail:requireDirectorSignoff?'DirectorSignoff':'' });
+    PCG.engines.notify.emit('IncidentClosed', { id:inc.id });
+    return inc;
   };
 
   // ------------------------------------------------------------------
@@ -1629,6 +1831,390 @@
       entityId:rpo.id, detail:`Drafted RPO for ${rpo.itemDescription} on ${payload.showId}` });
     PCG.engines.notify.emit('SubRentalDrafted', { id:rpo.id, showId:payload.showId });
     return { ok:true, subRental:rpo };
+  };
+
+  // ==================================================================
+  // FINAL SPEC §RR + §WW — Elite Pitch System
+  // Replaces PowerPoint + PDF proposals. Section-based, shareable-link,
+  // engagement-tracked, A/B options, comment thread, version diff.
+  // Same link evolves: Pitch → Quote → Approval → Portal.
+  // ==================================================================
+  PCG.api.getPitches = (filter) => {
+    let list = (PCG.pitches||[]).slice();
+    if(filter && filter.clientId) list = list.filter(p => p.clientId === filter.clientId);
+    if(filter && filter.status)   list = list.filter(p => p.status === filter.status);
+    if(filter && filter.aeId)     list = list.filter(p => p.aeId === filter.aeId);
+    return list.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+  };
+
+  PCG.api.getPitch = (id) => {
+    if(id && id.startsWith('PT-')){
+      // Lookup by share token (client-side link)
+      return (PCG.pitches||[]).find(p => p.shareToken === id) || null;
+    }
+    return (PCG.pitches||[]).find(p => p.id === id) || null;
+  };
+
+  PCG.api.createPitch = (fields) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    PCG.pitches = PCG.pitches || [];
+    const p = Object.assign({
+      id:'pitch.'+Math.random().toString(36).slice(2,8),
+      pitchNo:'PCG-PT-' + new Date().getFullYear() + '-' + String((PCG.pitches.length+1)).padStart(3,'0'),
+      aeId: PCG.user.id,
+      createdAt: new Date().toISOString(),
+      status:'Draft',
+      currentVersion:1,
+      shareToken:null,
+      engagementEvents:[],
+      comments:[],
+      sections:[
+        { id:'sec.ov',  type:'Overview',     title:'Overview',      body:'' },
+        { id:'sec.sd',  type:'System Design',title:'System Design', body:'' },
+        { id:'sec.sch', type:'Schedule',     title:'Schedule',      body:'' },
+        { id:'sec.opt', type:'Options',      title:'Options' },
+        { id:'sec.pri', type:'Pricing',      title:'Investment',    body:'' },
+        { id:'sec.cta', type:'CTA',          title:'Next Steps',    body:'Accept pitch → generate line-item quote.' }
+      ],
+      options:[],
+      versionHistory:[{ v:1, at:new Date().toISOString(), author: PCG.user.id, change:'Draft created' }]
+    }, fields);
+    PCG.pitches.push(p);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:p.createdAt, actor:PCG.user.id, action:'pitch.create', entityId:p.id, detail:p.projectIdea||''  });
+    return { ok:true, pitch:p };
+  };
+
+  PCG.api.updatePitchSection = (pitchId, sectionId, fields) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    const p = (PCG.pitches||[]).find(x => x.id===pitchId); if(!p) return { ok:false };
+    const s = (p.sections||[]).find(x => x.id===sectionId); if(!s) return { ok:false };
+    Object.assign(s, fields);
+    // Bump version on body change
+    if(fields.body !== undefined){
+      p.currentVersion = (p.currentVersion||1) + 1;
+      p.versionHistory = p.versionHistory || [];
+      p.versionHistory.push({ v:p.currentVersion, at:new Date().toISOString(), author:PCG.user.id, change:`Edited "${s.title}"` });
+    }
+    return { ok:true, section:s, version:p.currentVersion };
+  };
+
+  PCG.api.issuePitch = (pitchId) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    const p = (PCG.pitches||[]).find(x => x.id===pitchId); if(!p) return { ok:false };
+    if(!p.shareToken) p.shareToken = 'PT-' + Math.random().toString(36).slice(2,8).toUpperCase();
+    p.status = 'Issued';
+    p.issuedAt = new Date().toISOString();
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:p.issuedAt, actor:PCG.user.id, action:'pitch.issue', entityId:p.id,
+      detail:`Share link issued · ${p.shareToken}` });
+    PCG.engines.notify.emit('PitchIssued', { id:p.id, token:p.shareToken });
+    return { ok:true, pitch:p, url:`pitch-view.html?token=${p.shareToken}` };
+  };
+
+  PCG.api.convertPitchToQuote = (pitchId) => {
+    PCG.requireAny(G.AE, G.AE_NO_CONFIRM, G.DIRECTORS, G.ADMIN);
+    const p = (PCG.pitches||[]).find(x => x.id===pitchId); if(!p) return { ok:false, reason:'Pitch not found' };
+    if(p.convertedQuoteId) return { ok:false, reason:'Already converted', quoteId:p.convertedQuoteId };
+    p.status = 'Accepted';
+    p.acceptedAt = p.acceptedAt || new Date().toISOString();
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'pitch.convert', entityId:pitchId });
+    return { ok:true, pitch:p };
+  };
+
+  // Engagement tracking — writes from client-facing pitch view.
+  // Event types: Opened | SectionViewed | TimeSpent | OptionSelected | CommentAdded | CTAClicked
+  PCG.api.recordPitchEngagement = (pitchShareToken, event) => {
+    const p = (PCG.pitches||[]).find(x => x.shareToken === pitchShareToken);
+    if(!p) return { ok:false };
+    p.engagementEvents = p.engagementEvents || [];
+    const e = Object.assign({ at: new Date().toISOString() }, event);
+    p.engagementEvents.push(e);
+    // Auto-advance status: first open → "Opened"
+    if(event.type === 'Opened' && p.status === 'Issued') p.status = 'Opened';
+    return { ok:true, event:e };
+  };
+
+  PCG.api.postPitchComment = (pitchShareToken, payload) => {
+    const p = (PCG.pitches||[]).find(x => x.shareToken === pitchShareToken);
+    if(!p) return { ok:false };
+    p.comments = p.comments || [];
+    const cmt = {
+      id:'cmt.'+Math.random().toString(36).slice(2,8),
+      at: new Date().toISOString(),
+      sectionId: payload.sectionId,
+      fromSide: payload.fromSide || 'client',
+      fromName: payload.fromName || 'Client',
+      body: payload.body || ''
+    };
+    p.comments.push(cmt);
+    // Also log as engagement event
+    p.engagementEvents = p.engagementEvents || [];
+    p.engagementEvents.push({ at:cmt.at, type:'CommentAdded', sectionId:cmt.sectionId, meta:{ body:cmt.body.slice(0,120) } });
+    PCG.engines.notify.emit('PitchCommentAdded', { pitchId:p.id, commentId:cmt.id, fromSide:cmt.fromSide });
+    return { ok:true, comment:cmt };
+  };
+
+  PCG.api.selectPitchOption = (pitchShareToken, optionId) => {
+    const p = (PCG.pitches||[]).find(x => x.shareToken === pitchShareToken);
+    if(!p) return { ok:false };
+    p.selectedOptionId = optionId;
+    p.engagementEvents = p.engagementEvents || [];
+    p.engagementEvents.push({ at: new Date().toISOString(), type:'OptionSelected', sectionId:'sec.opt', meta:{ optionId } });
+    PCG.engines.notify.emit('PitchOptionSelected', { pitchId:p.id, optionId });
+    return { ok:true, selectedOptionId: optionId };
+  };
+
+  PCG.api.clickPitchCTA = (pitchShareToken, action) => {
+    const p = (PCG.pitches||[]).find(x => x.shareToken === pitchShareToken);
+    if(!p) return { ok:false };
+    p.engagementEvents = p.engagementEvents || [];
+    p.engagementEvents.push({ at: new Date().toISOString(), type:'CTAClicked', sectionId:'sec.cta', meta:{ action } });
+    if(action === 'Accept') {
+      p.status = 'Accepted';
+      p.acceptedAt = new Date().toISOString();
+      PCG.auditLog = PCG.auditLog || [];
+      PCG.auditLog.push({ at:p.acceptedAt, actor:'client', action:'pitch.accept', entityId:p.id });
+      PCG.engines.notify.emit('PitchAccepted', { pitchId:p.id });
+    }
+    return { ok:true, status:p.status };
+  };
+
+  // Engagement summary — aggregates all events for the pitch dashboard
+  PCG.api.getPitchEngagementSummary = (pitchId) => {
+    const p = PCG.api.getPitch(pitchId);
+    if(!p) return null;
+    const events = p.engagementEvents || [];
+    const sectionDurations = {};
+    let opens = 0, comments = 0, optionSelections = 0, ctaClicks = 0;
+    events.forEach(e => {
+      if(e.type === 'Opened') opens++;
+      if(e.type === 'CommentAdded') comments++;
+      if(e.type === 'OptionSelected') optionSelections++;
+      if(e.type === 'CTAClicked') ctaClicks++;
+      if(e.type === 'SectionViewed' && e.sectionId && e.meta && e.meta.durationSec){
+        sectionDurations[e.sectionId] = (sectionDurations[e.sectionId]||0) + e.meta.durationSec;
+      }
+    });
+    const rankedSections = Object.entries(sectionDurations)
+      .map(([id, dur]) => {
+        const sec = (p.sections||[]).find(s=>s.id===id);
+        return { sectionId:id, title: sec ? sec.title : id, durationSec: dur };
+      })
+      .sort((a,b) => b.durationSec - a.durationSec);
+    const skipped = (p.sections||[])
+      .filter(s => !sectionDurations[s.id])
+      .map(s => ({ sectionId:s.id, title:s.title }));
+    const firstOpen = events.find(e => e.type==='Opened');
+    const lastEvent = events[events.length-1];
+    return {
+      pitchId: p.id,
+      opens,
+      commentCount: comments,
+      optionSelections,
+      ctaClicks,
+      selectedOptionId: p.selectedOptionId || null,
+      firstOpenedAt: firstOpen ? firstOpen.at : null,
+      lastActivityAt: lastEvent ? lastEvent.at : null,
+      mostViewedSection: rankedSections[0] || null,
+      sectionsByTime: rankedSections,
+      skippedSections: skipped,
+      totalEvents: events.length
+    };
+  };
+
+  // ==================================================================
+  // FINAL SPEC §LL — Workbox + Kit Rebuild scan API
+  // ==================================================================
+  PCG.api.getWorkboxes = (filter) => {
+    let list = (PCG.workboxes||[]).slice();
+    if(filter && filter.department) list = list.filter(w => w.department === filter.department);
+    if(filter && filter.warehouseId) list = list.filter(w => w.currentLocationId === filter.warehouseId);
+    if(filter && filter.q) {
+      const q = filter.q.toLowerCase();
+      list = list.filter(w => w.barcode.toLowerCase().includes(q) || w.name.toLowerCase().includes(q));
+    }
+    // Compute shortage summary
+    return list.map(w => {
+      const shortage = (w.standardPack||[]).filter(p => p.currentQty < p.standardQty).length;
+      const needed = (w.standardPack||[]).reduce((s, p) => s + Math.max(0, p.standardQty - p.currentQty), 0);
+      return Object.assign({}, w, { shortage, needed });
+    });
+  };
+
+  PCG.api.getWorkbox = (id) => {
+    const w = (PCG.workboxes||[]).find(x => x.id === id);
+    if(!w) return null;
+    const shortage = (w.standardPack||[]).filter(p => p.currentQty < p.standardQty).length;
+    const needed = (w.standardPack||[]).reduce((s, p) => s + Math.max(0, p.standardQty - p.currentQty), 0);
+    return Object.assign({}, w, { shortage, needed });
+  };
+
+  // Find workbox by barcode scan (or by fuzzy match on name)
+  PCG.api.findWorkboxByBarcode = (code) => {
+    const c = String(code || '').toUpperCase().trim();
+    if(!c) return null;
+    return (PCG.workboxes||[]).find(w => w.barcode === c) || null;
+  };
+
+  // Scan an item INTO a workbox (increments current qty for a pack-list item)
+  PCG.api.scanItemIntoWorkbox = (workboxId, itemNameOrBarcode, qty) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.WH_TECHS, G.TSMS);
+    const w = (PCG.workboxes||[]).find(x => x.id === workboxId);
+    if(!w) return { ok:false, reason:'Workbox not found' };
+    const q = qty || 1;
+    // Try exact pack-list match first
+    const needle = String(itemNameOrBarcode || '').trim();
+    const needleLower = needle.toLowerCase();
+    const packItem = (w.standardPack||[]).find(p => p.item.toLowerCase().includes(needleLower) || (p.modelId && p.modelId === needle));
+    if(packItem) {
+      const short = packItem.standardQty - packItem.currentQty;
+      packItem.currentQty = Math.min(packItem.standardQty, packItem.currentQty + q);
+      const newShort = packItem.standardQty - packItem.currentQty;
+      return { ok:true, matchKind:'PackItem', item:packItem, addedQty:short - newShort, stillShort:newShort, wasShort: short };
+    }
+    // Not in pack list — log as unexpected
+    w.unexpectedScans = w.unexpectedScans || [];
+    w.unexpectedScans.push({ at: new Date().toISOString(), code: needle, qty: q });
+    return { ok:true, matchKind:'Unexpected', code: needle };
+  };
+
+  // Scan a serialized item into a workbox
+  PCG.api.scanSerialIntoWorkbox = (workboxId, serialOrBarcode) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.WH_TECHS, G.TSMS);
+    const w = (PCG.workboxes||[]).find(x => x.id === workboxId);
+    if(!w) return { ok:false, reason:'Workbox not found' };
+    const code = String(serialOrBarcode || '').toUpperCase().trim();
+    const serial = (PCG.inventorySerials||[]).find(s => s.serial === code || s.barcode === code);
+    if(!serial) return { ok:false, reason:'Serial not found in inventory', code };
+    w.serialsFound = w.serialsFound || [];
+    if(w.serialsFound.includes(serial.serial)) return { ok:true, matchKind:'Duplicate', serial };
+    w.serialsFound.push(serial.serial);
+    const wasExpected = (w.serialsExpected||[]).includes(serial.serial);
+    // Update serial location to this container
+    serial.currentLocationId = w.containerRef;
+    return { ok:true, matchKind: wasExpected ? 'Expected' : 'Unexpected', serial };
+  };
+
+  PCG.api.markWorkboxComplete = (workboxId) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.TSMS);
+    const w = (PCG.workboxes||[]).find(x => x.id === workboxId);
+    if(!w) return { ok:false };
+    w.status = 'Restocked';
+    w.restockedAt = new Date().toISOString();
+    w.restockedById = PCG.user.id;
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:w.restockedAt, actor:PCG.user.id, action:'workbox.restock',
+      entityId:w.id, detail:`${w.name} restocked to standard` });
+    return { ok:true, workbox:w };
+  };
+
+  // --- Kit Rebuild scan API ---
+  PCG.api.getKitRebuildTasks = (filter) => {
+    let list = (PCG.kitRebuildTasks||[]).slice();
+    if(filter && filter.status) list = list.filter(t => t.status === filter.status);
+    if(filter && filter.showId) list = list.filter(t => t.showId === filter.showId);
+    return list;
+  };
+
+  PCG.api.openKitRebuild = (taskId, containerBarcode) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.WH_TECHS, G.TSMS);
+    const t = (PCG.kitRebuildTasks||[]).find(x => x.id === taskId);
+    if(!t) return { ok:false, reason:'Rebuild task not found' };
+    const code = String(containerBarcode || '').toUpperCase().trim();
+    if(code !== t.destinationContainerBarcode) {
+      return { ok:false, reason:'Wrong container · expected '+t.destinationContainerBarcode+', got '+code };
+    }
+    t.destinationContainerOpen = true;
+    t.status = t.status === 'Pending' ? 'InProgress' : t.status;
+    t.openedAt = new Date().toISOString();
+    t.openedById = PCG.user.id;
+    return { ok:true, task:t };
+  };
+
+  PCG.api.scanComponentIntoKit = (taskId, componentBarcode) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.WH_TECHS, G.TSMS);
+    const t = (PCG.kitRebuildTasks||[]).find(x => x.id === taskId);
+    if(!t) return { ok:false, reason:'Rebuild task not found' };
+    if(!t.destinationContainerOpen) return { ok:false, reason:'Scan destination container first' };
+    const code = String(componentBarcode || '').toUpperCase().trim();
+    const serial = (PCG.inventorySerials||[]).find(s => s.serial === code || s.barcode === code);
+    const sd = (PCG.systemDefinitions||[]).find(x => x.id === t.sysDefId);
+
+    if(serial) {
+      if(t.scannedSerials.includes(serial.serial)) return { ok:true, matchKind:'Duplicate', serial };
+      t.scannedSerials.push(serial.serial);
+      // Check if this serial's model is part of BOM
+      const bom = (sd.requiredComponents||[]).find(c => c.modelId === serial.itemId);
+      if(bom) {
+        t.scanned[serial.itemId] = (t.scanned[serial.itemId] || 0) + 1;
+        return { ok:true, matchKind:'BOM_Match', serial, bomEntry: bom, newScannedQty: t.scanned[serial.itemId] };
+      }
+      // Not part of BOM
+      t.unexpectedScans = t.unexpectedScans || [];
+      t.unexpectedScans.push({ at:new Date().toISOString(), serial: serial.serial, modelId: serial.itemId, note:'Not in BOM' });
+      return { ok:true, matchKind:'Unexpected', serial };
+    }
+
+    // Non-serialized — try model lookup
+    const inv = (PCG.inventory||[]).find(i => i.id === code || i.model === code);
+    if(inv) {
+      const bom = (sd.requiredComponents||[]).find(c => c.modelId === inv.id);
+      if(bom) {
+        t.scanned[inv.id] = (t.scanned[inv.id] || 0) + 1;
+        return { ok:true, matchKind:'BOM_Match', inventoryModel: inv, bomEntry: bom, newScannedQty: t.scanned[inv.id] };
+      }
+    }
+    t.unexpectedScans = t.unexpectedScans || [];
+    t.unexpectedScans.push({ at:new Date().toISOString(), code, note:'Not found in inventory' });
+    return { ok:false, matchKind:'NotFound', code };
+  };
+
+  PCG.api.markKitComplete = (taskId, acceptPartial) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.TSMS);
+    const t = (PCG.kitRebuildTasks||[]).find(x => x.id === taskId);
+    if(!t) return { ok:false };
+    const sd = (PCG.systemDefinitions||[]).find(x => x.id === t.sysDefId);
+    const required = sd ? (sd.requiredComponents||[]) : [];
+    const missing = required.filter(c => (t.scanned[c.modelId] || 0) < c.qty);
+    if(missing.length > 0 && !acceptPartial){
+      return { ok:false, reason:'Components still short', missing };
+    }
+    t.status = missing.length ? 'PartialKit' : 'Complete';
+    t.completedAt = new Date().toISOString();
+    t.completedById = PCG.user.id;
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:t.completedAt, actor:PCG.user.id, action:'kit.rebuild.'+t.status.toLowerCase(),
+      entityId:t.id, detail:`${sd?sd.name:t.sysDefId} · ${missing.length} short` });
+    if(missing.length){
+      // Flag SystemDefinition as partial-availability
+      if(sd) sd.partialKitStatus = true;
+      PCG.engines.notify.emit('PartialKitFlagged', { taskId, sysDefId: t.sysDefId });
+    }
+    return { ok:true, task:t, missing };
+  };
+
+  // Stage concepts library (pulls from real PCG Miyra/Marquee/Lumen/Nova concepts)
+  PCG.api.getStageConcepts = () => (PCG.stageConcepts||[]).slice();
+  PCG.api.getStageConcept  = (id) => (PCG.stageConcepts||[]).find(c=>c.id===id);
+
+  // Vendor library (§DD) — vendor quality + preferred-vendor recommendations
+  PCG.api.getVendors = (filter) => {
+    let list = (PCG.vendors||[]).slice();
+    if(filter && filter.category) list = list.filter(v => v.category===filter.category || (v.preferredFor||[]).includes(filter.category));
+    if(filter && filter.preferredOnly) list = list.filter(v => v.qualityScore >= 4.5);
+    return list.sort((a,b) => (b.qualityScore||0) - (a.qualityScore||0));
+  };
+  PCG.api.getVendor = (id) => (PCG.vendors||[]).find(v => v.id===id) || null;
+  PCG.api.recommendVendorForItem = (itemId) => {
+    const inv = PCG.api.getInventoryItem(itemId); if(!inv) return [];
+    const cat = (PCG.inventoryCategories||[]).find(c=>c.id===inv.categoryId);
+    const dept = cat ? cat.department : 'Multi';
+    return (PCG.vendors||[])
+      .filter(v => (v.preferredFor||[]).includes(dept) || v.category===dept || v.category==='Multi')
+      .sort((a,b) => (b.qualityScore||0) - (a.qualityScore||0))
+      .slice(0, 3);
   };
 
   // ==================================================================

@@ -320,7 +320,7 @@
       ["V1","Dana Kim"],["Video Director","TBD"],
       ["LD","Elliot Reyes"],["ME","TBD"],
       ["LED Lead / Cam 1","Renée Benoit"],["Scenic / Cam 2","Dan Marino"],
-      ["ShoFlo","Chelsea Oliver"]
+      ["Run of Show","Chelsea Oliver"]
     ] : [
       ["PM","Tyler Scheff"],["TD","Chris Taylor"],
       ["Floor Lead 140s","Dana Kim"],["Floor Lead 250s","C. Ramos"],
@@ -345,7 +345,7 @@
       <div class="sb-page">
         <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Gear Summary</small></div></div>
         <h1>Gear</h1>
-        <p class="sb-callout">Headline gear only. For the full pull sheet, see Flex <strong>${p.pullSheetNo||"—"}</strong>.</p>
+        <p class="sb-callout">Headline gear only. For the full pull sheet, see <strong>${p.pullSheetNo||"—"}</strong> in the Pull Sheet module.</p>
         ${Object.entries(p.gearSummary||{}).filter(([,a])=>a&&a.length).map(([cat,arr])=>`
           <div class="sb-bar">${cat.toUpperCase()}</div>
           <table>
@@ -504,7 +504,7 @@
           <li>Cue-to-cue with DSM and Show Caller</li>
         </ol>
         <div class="sb-bar">Show Flow</div>
-        <p>Show Caller drives cues via ShoFlo. A1/V1/LD on comm (Arcadia). Any scope change goes through PM to Show Caller — do not change cues at the board.</p>
+        <p>Show Caller drives cues from the Run of Show module. A1/V1/LD on comm (Arcadia). Any scope change goes through PM to Show Caller — do not change cues at the board.</p>
         <div class="sb-bar">Strike</div>
         <ol>
           <li>Power down + unplug all video chain</li>

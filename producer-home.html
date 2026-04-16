@@ -116,8 +116,28 @@
   const ros = PCG.api.getRunOfShow(p.code);
   const state = PCG.api.getLiveROSState(p.code);
 
+  // Tour-stop context — if this show is part of a tour, surface it
+  let tourBanner = '';
+  if(p.tourId && PCG.api.getTour){
+    const t = PCG.api.getTour(p.tourId);
+    const allStops = PCG.api.getTourStops(p.tourId);
+    const myStop = allStops.find(s => s.linkedProjectId === p.code);
+    const nextStop = myStop ? allStops.find(s => s.stopNumber === myStop.stopNumber + 1) : null;
+    if(t && myStop){
+      tourBanner = `
+        <div style="background: linear-gradient(135deg, rgba(122,65,229,0.12), rgba(1,153,253,0.06)); border-left: 3px solid var(--pcg-spotlight-purple); padding: 10px 14px; border-radius: var(--r-sm); margin-bottom: var(--sp-3); font-size: var(--fs-sm); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span class="eyebrow" style="color: var(--pcg-spotlight-purple);">🚌 PART OF TOUR</span>
+          <strong>${PCG.escapeHtml(t.name)}</strong> ·
+          Stop <strong>${myStop.stopNumber} of ${allStops.length}</strong> ·
+          ${PCG.escapeHtml(myStop.city)}${myStop.state?', '+PCG.escapeHtml(myStop.state):''}
+          ${nextStop ? ` · NEXT: <a href="tour-view.html?id=${t.id}" style="color: var(--pcg-bright-blue);">${PCG.escapeHtml(nextStop.city)} (${PCG.fmtShort(nextStop.loadInDate)})</a>` : ' · FINAL STOP'}
+          <a href="tour-view.html?id=${t.id}" class="btn sm ghost" style="margin-left: auto; font-size: 11px;">Tour Dashboard →</a>
+        </div>`;
+    }
+  }
+
   document.getElementById('hdr').textContent = `${p.code} — ${p.name}`;
-  document.getElementById('subt').innerHTML = `
+  document.getElementById('subt').innerHTML = tourBanner + `
     ${PCG.lifecyclePill(show.lifecycleState)} · ${PCG.escapeHtml(p.venueName||'')} ·
     Show <span class="mono">${PCG.fmtShort(show.dates.showStart)}</span>`;
 

@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Kit Rebuild &amp; Workbox Restock</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* ---- Scan console ---- */
+  .scan-shell {
+    background: linear-gradient(135deg, #0B2842 0%, #013558 100%);
+    border-radius: var(--r-md); padding: 18px 22px; margin-bottom: var(--sp-4);
+    border: 1px solid var(--border-accent); position: relative; overflow: hidden;
+  }
+  .scan-shell::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(1,153,253,0.25), transparent 50%);
+    pointer-events: none;
+  }
+  .scan-shell .eyebrow { color: #9DD4FF; margin-bottom: 6px; }
+  .scan-row {
+    display: grid; grid-template-columns: 1fr 110px 140px; gap: 10px;
+    position: relative; z-index: 1; margin-top: 6px;
+  }
+  .scan-input {
+    background: rgba(0,0,0,0.35); border: 2px solid rgba(1,153,253,0.4);
+    border-radius: var(--r-sm); color: #FFF;
+    padding: 12px 14px; font-size: 18px; font-family: var(--font-mono);
+    letter-spacing: 0.1em; outline: 0;
+  }
+  .scan-input:focus { border-color: var(--pcg-bright-blue); box-shadow: 0 0 0 3px rgba(1,153,253,0.2); }
+  .scan-btn {
+    background: var(--pcg-bright-blue); color: #001a2a; border: 0;
+    border-radius: var(--r-sm); font-family: var(--font-display); font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; font-size: 13px; cursor: pointer;
+  }
+  .scan-btn.ghost { background: transparent; color: #9DD4FF; border: 1px solid rgba(157,212,255,0.3); }
+
+  /* ---- Scan feedback / log ---- */
+  .scan-feedback {
+    margin-top: 10px; padding: 10px 14px; border-radius: var(--r-sm);
+    font-family: var(--font-mono); font-size: 12px;
+    display: flex; align-items: center; gap: 8px; min-height: 20px;
+  }
+  .scan-feedback.ok       { background: rgba(28,139,76,0.2); color: #7FE5A7; }
+  .scan-feedback.warn     { background: rgba(212,163,47,0.18); color: #FFD88F; }
+  .scan-feedback.err      { background: rgba(178,56,56,0.2); color: #FFA3A3; }
+  .scan-log {
+    max-height: 120px; overflow-y: auto; margin-top: 8px; font-size: 11px;
+    font-family: var(--font-mono); color: rgba(255,255,255,0.65);
+  }
+  .scan-log .line { padding: 2px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+  .scan-log .line.ok::before { content: "✓ "; color: #7FE5A7; }
+  .scan-log .line.warn::before { content: "⚠ "; color: #FFD88F; }
+  .scan-log .line.err::before { content: "✕ "; color: #FFA3A3; }
+
+  /* ---- Workbox queue ---- */
+  .wb-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color 0.15s;
+    display: grid; grid-template-columns: 80px 1fr 80px 60px; gap: 10px; align-items: center;
+  }
+  .wb-card:hover { border-color: var(--border-accent); }
+  .wb-card.selected { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.06); }
+  .wb-card.full-stock { opacity: 0.55; }
+  .wb-card.shortage { border-left: 3px solid var(--status-amber); }
+  .wb-card .bc {
+    font-family: var(--font-mono); font-size: 11px; color: var(--pcg-bright-blue);
+    background: rgba(1,153,253,0.08); padding: 3px 8px; border-radius: var(--r-sm); text-align: center;
+  }
+  .wb-card .nm { font-weight: 600; font-size: 13px; }
+  .wb-card .meta { color: var(--text-tertiary); font-size: 11px; margin-top: 2px; }
+  .wb-card .st { text-align: right; font-family: var(--font-display); font-size: 11px; }
+
+  /* ---- Pack list ---- */
+  .pack-row {
+    display: grid; grid-template-columns: 30px 1fr 60px 60px 60px 140px; gap: 10px;
+    padding: 10px 12px; align-items: center; font-size: var(--fs-sm);
+    border-bottom: 1px solid var(--border);
+  }
+  .pack-row.at-stock { background: rgba(28,139,76,0.04); }
+  .pack-row.short { background: rgba(212,163,47,0.06); }
+  .pack-row.severe { background: rgba(178,56,56,0.08); }
+  .pack-row .chk {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 13px;
+    background: var(--surface-3); color: var(--text-tertiary);
+  }
+  .pack-row.at-stock .chk { background: var(--status-green); color: #FFF; }
+  .pack-row.short .chk    { background: var(--status-amber); color: #FFF; }
+  .pack-row.severe .chk   { background: var(--status-red); color: #FFF; }
+  .pack-row .qty-bar {
+    height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; margin-top: 4px;
+  }
+  .pack-row .qty-bar > div {
+    height: 100%; background: var(--pcg-bright-blue); transition: width 0.3s;
+  }
+  .pack-row.short .qty-bar > div { background: var(--status-amber); }
+  .pack-row.severe .qty-bar > div { background: var(--status-red); }
+
+  /* ---- Tab bar ---- */
+  .tab-bar {
+    display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 3px; margin-bottom: var(--sp-4);
+  }
+  .tab-bar button {
+    flex: 1; padding: 10px 16px; background: transparent; border: 0; color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; cursor: pointer; border-radius: calc(var(--r-sm) - 2px);
+  }
+  .tab-bar button.on { background: var(--surface-1); color: var(--pcg-bright-blue); font-weight: 700; }
+
+  /* ---- BOM ---- */
+  .bom-row {
+    display: grid; grid-template-columns: 30px 1fr 70px 70px 130px; gap: 10px;
+    padding: 10px 12px; align-items: center; font-size: var(--fs-sm);
+    border-bottom: 1px solid var(--border);
+  }
+  .bom-row.scanned { background: rgba(28,139,76,0.06); }
+  .bom-row.short { background: rgba(212,163,47,0.06); }
+  .serial-chip {
+    display: inline-block; padding: 2px 8px; margin: 2px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill);
+    font-family: var(--font-mono); font-size: 10px;
+  }
+  .serial-chip.scanned { background: rgba(28,139,76,0.12); border-color: var(--status-green); color: var(--status-green); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Warehouse · Post-Return Scan</div>
+          <h1>Kit Rebuild &amp; Workbox Restock</h1>
+          <div class="muted">Scan a workbox or kit-rebuild container, then scan items in. Live short-list + serialized asset tracking (spec §LL).</div>
+        </div>
+        <div style="margin-left:auto;" id="headerKPI"></div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="on" data-tab="workbox">Workbox Restock</button>
+        <button data-tab="kit">Kit Rebuilds</button>
+        <button data-tab="consumable">Consumable Reconciliation</button>
+      </div>
+
+      <div id="tabBody"></div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'kit-rebuild', crumbs:[{label:'Warehouse'},{label:'Kit Rebuild & Restock'}]});
+
+  let activeTab = 'workbox';
+  let activeWorkboxId = null;
+  let activeKitTaskId = null;
+  let deptFilter = 'all';
+  let scanLog = []; // recent scan events (cleared per workbox/kit switch)
+
+  function render(){
+    renderHeaderKPI();
+    if(activeTab === 'workbox') renderWorkboxTab();
+    if(activeTab === 'kit') renderKitTab();
+    if(activeTab === 'consumable') renderConsumableTab();
+  }
+
+  function renderHeaderKPI(){
+    const wbs = PCG.api.getWorkboxes();
+    const totalShort = wbs.reduce((s,w) => s + (w.shortage||0), 0);
+    const shortUnits = wbs.reduce((s,w) => s + (w.needed||0), 0);
+    const kits = PCG.api.getKitRebuildTasks();
+    const kitInProg = kits.filter(k => k.status === 'InProgress').length;
+    document.getElementById('headerKPI').innerHTML = `
+      <div style="display: flex; gap: 10px;">
+        <div class="kpi" style="padding: 8px 14px;"><div class="label">Workboxes</div><div class="value" style="font-size: 18px;">${wbs.length}</div><div class="sub">${totalShort} short</div></div>
+        <div class="kpi amber" style="padding: 8px 14px;"><div class="label">Units Needed</div><div class="value" style="font-size: 18px;">${shortUnits}</div><div class="sub">from bin stock</div></div>
+        <div class="kpi blue" style="padding: 8px 14px;"><div class="label">Kit Rebuilds</div><div class="value" style="font-size: 18px;">${kits.length}</div><div class="sub">${kitInProg} in prog</div></div>
+      </div>`;
+  }
+
+  // ==========================================================================
+  // WORKBOX TAB — Scan workbox barcode → drill in → scan items to restock
+  // ==========================================================================
+  function renderWorkboxTab(){
+    const mount = document.getElementById('tabBody');
+    mount.innerHTML = `
+      <!-- Scan console -->
+      <div class="scan-shell">
+        <div class="eyebrow">SCAN CONSOLE</div>
+        <div style="color: #FFF; font-size: 16px; font-weight: 600;" id="scanTitle">
+          ${activeWorkboxId ? 'Scanning into: '+(PCG.api.getWorkbox(activeWorkboxId)||{}).name : 'Scan a workbox barcode to open'}
+        </div>
+        <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 4px;" id="scanSub">
+          ${activeWorkboxId ? 'Scan a pack-list item name, a serial barcode, or another workbox barcode to switch' : 'Try: WB-V-001 · WB-A-001 · WB-L-001 · WB-R-001'}
+        </div>
+        <div class="scan-row">
+          <input class="scan-input" id="scan-in" autofocus autocomplete="off" placeholder="Scan or type barcode…" />
+          <button class="scan-btn" id="scan-submit">Scan →</button>
+          <button class="scan-btn ghost" id="scan-close" ${activeWorkboxId?'':'disabled'}>Close Workbox</button>
+        </div>
+        <div class="scan-feedback" id="scanFeedback" style="display:${scanLog.length?'flex':'none'};">
+          ${scanLog.length ? (scanLog[scanLog.length-1].msg || '') : ''}
+        </div>
+        <div class="scan-log" id="scanLog">
+          ${scanLog.slice(-6).reverse().map(l => `<div class="line ${l.type}">${PCG.escapeHtml(l.text)}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Dept filter -->
+      <div style="display: flex; gap: 6px; margin-bottom: var(--sp-3); flex-wrap: wrap;">
+        <span class="eyebrow" style="font-size: 10px; align-self: center;">DEPT</span>
+        <button class="chip ${deptFilter==='all'?'on':''}" data-df="all">All</button>
+        <button class="chip ${deptFilter==='Video'?'on':''}" data-df="Video">Video (12)</button>
+        <button class="chip ${deptFilter==='Audio'?'on':''}" data-df="Audio">Audio (8)</button>
+        <button class="chip ${deptFilter==='Lighting'?'on':''}" data-df="Lighting">Lighting (6)</button>
+        <button class="chip ${deptFilter==='Rigging'?'on':''}" data-df="Rigging">Rigging (4)</button>
+        <div style="margin-left: auto;">
+          <button class="chip" id="filterShort">Show shortage only</button>
+        </div>
+      </div>
+
+      <div class="split" style="grid-template-columns: 400px 1fr;">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Workbox Queue</div>
+              <span class="muted" style="margin-left:auto; font-size: var(--fs-xs);" id="wbCount"></span>
+            </div>
+            <div id="wbList" style="padding: var(--sp-3); max-height: 600px; overflow-y: auto;"></div>
+          </div>
+        </div>
+        <div id="wbDetail"></div>
+      </div>`;
+
+    renderWorkboxList();
+    renderWorkboxDetail();
+    wireScan();
+    document.querySelectorAll('.chip[data-df]').forEach(c => c.addEventListener('click', e => {
+      deptFilter = e.target.dataset.df;
+      renderWorkboxList();
+      document.querySelectorAll('.chip[data-df]').forEach(x => x.classList.toggle('on', x.dataset.df === deptFilter));
+    }));
+  }
+
+  function renderWorkboxList(){
+    let list = PCG.api.getWorkboxes();
+    if(deptFilter !== 'all') list = list.filter(w => w.department === deptFilter);
+    document.getElementById('wbCount').textContent = `${list.length} workbox${list.length===1?'':'es'}`;
+    document.getElementById('wbList').innerHTML = list.length ? list.map(w => {
+      const fullStock = w.shortage === 0;
+      return `
+        <div class="wb-card ${activeWorkboxId===w.id?'selected':''} ${fullStock?'full-stock':'shortage'}" onclick="openWorkbox('${w.id}')">
+          <div class="bc">${PCG.escapeHtml(w.barcode)}</div>
+          <div>
+            <div class="nm">${PCG.escapeHtml(w.name)}</div>
+            <div class="meta">Last show: ${PCG.escapeHtml(w.lastShow||'—')}</div>
+          </div>
+          <div class="st">
+            ${fullStock ? '<span class="pill green plain" style="font-size: 9px;">AT STOCK</span>' : `<span class="pill amber plain" style="font-size: 9px;">${w.shortage} SHORT</span>`}
+          </div>
+          <div style="text-align: center; color: ${fullStock?'var(--status-green)':'var(--status-amber)'}; font-family: var(--font-mono); font-size: 18px; font-weight: 600;">
+            ${fullStock ? '✓' : w.needed}
+          </div>
+        </div>`;
+    }).join('') : PCG.states.empty('No workboxes match.');
+  }
+
+  function renderWorkboxDetail(){
+    if(!activeWorkboxId){
+      document.getElementById('wbDetail').innerHTML = `
+        <div class="card card-pad" style="text-align: center; padding: 40px;">
+          <div style="font-size: 40px; margin-bottom: 10px; opacity: 0.4;">📦</div>
+          <h3 style="margin: 0 0 6px;">Scan or click a workbox</h3>
+          <div class="muted" style="font-size: var(--fs-sm);">Each workbox has a barcode. Scan it in the console above, or tap a card on the left.</div>
+          <div class="muted" style="font-size: var(--fs-xs); margin-top: 10px;">
+            Demo barcodes: <code>WB-V-001</code> <code>WB-A-001</code> <code>WB-L-001</code> <code>WB-R-001</code>
+          </div>
+        </div>`;
+      return;
+    }
+    const w = PCG.api.getWorkbox(activeWorkboxId);
+    if(!w) return;
+    document.getElementById('wbDetail').innerHTML = `
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="card-header">
+          <div class="title">${PCG.escapeHtml(w.name)}</div>
+          <span class="mono" style="margin-left: auto; font-size: 12px; color: var(--pcg-bright-blue); background: rgba(1,153,253,0.08); padding: 3px 10px; border-radius: var(--r-sm);">${PCG.escapeHtml(w.barcode)}</span>
+        </div>
+        <div class="card-body">
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3);">
+            <div><div class="eyebrow" style="font-size: 9px;">Department</div><div><span class="pill gray plain">${PCG.escapeHtml(w.department).toUpperCase()}</span></div></div>
+            <div><div class="eyebrow" style="font-size: 9px;">Last Show</div><div class="mono" style="font-size: 12px;">${PCG.escapeHtml(w.lastShow||'—')}</div></div>
+            <div><div class="eyebrow" style="font-size: 9px;">Lines Short</div><div class="mono" style="font-size: 18px; color: ${w.shortage?'var(--status-amber)':'var(--status-green)'};">${w.shortage}</div></div>
+            <div><div class="eyebrow" style="font-size: 9px;">Units Needed</div><div class="mono" style="font-size: 18px; color: ${w.needed?'var(--status-amber)':'var(--status-green)'};">${w.needed}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pack list -->
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="card-header"><div class="title">Standard Pack List</div>
+          <span class="muted" style="margin-left: auto; font-size: var(--fs-xs);">Green = at stock · Amber = 1-4 short · Red = 5+ short</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 30px 1fr 60px 60px 60px 140px; gap: 10px; padding: 10px 12px; background: var(--surface-2); font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary);">
+          <div></div><div>Item</div>
+          <div style="text-align: right;">Std</div>
+          <div style="text-align: right;">Cur</div>
+          <div style="text-align: right;">Short</div>
+          <div>Action</div>
+        </div>
+        ${(w.standardPack||[]).map(p => {
+          const short = p.standardQty - p.currentQty;
+          const cls = short === 0 ? 'at-stock' : short <= 4 ? 'short' : 'severe';
+          const pct = Math.round(p.currentQty/p.standardQty*100);
+          return `
+            <div class="pack-row ${cls}">
+              <div class="chk">${short === 0 ? '✓' : short <= 4 ? '!' : '✕'}</div>
+              <div>
+                <strong>${PCG.escapeHtml(p.item)}</strong>
+                <div class="qty-bar"><div style="width: ${Math.min(100,pct)}%;"></div></div>
+              </div>
+              <div class="mono" style="text-align: right;">${p.standardQty}</div>
+              <div class="mono" style="text-align: right; color: ${short===0?'var(--status-green)':'var(--text-primary)'};">${p.currentQty}</div>
+              <div class="mono" style="text-align: right; color: ${short>0?'var(--status-red)':'var(--status-green)'}; font-weight: 600;">${short > 0 ? short : '—'}</div>
+              <div>
+                ${short > 0
+                  ? `<button class="btn sm primary" onclick="quickScanIn('${activeWorkboxId}','${PCG.escapeHtml(p.item)}', ${short})" style="font-size: 11px; padding: 3px 10px;">Pull ${short} from bin →</button>`
+                  : '<span class="muted" style="font-size: 11px;">At standard</span>'}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Serialized assets (if any expected) -->
+      ${(w.serialsExpected||[]).length || (w.serialsFound||[]).length ? `
+        <div class="card" style="margin-bottom: var(--sp-4);">
+          <div class="card-header"><div class="title">Serialized Assets</div></div>
+          <div class="card-body">
+            ${w.serialsExpected && w.serialsExpected.length ? `
+              <div style="margin-bottom: var(--sp-3);">
+                <div class="eyebrow" style="font-size: 9px; margin-bottom: 4px;">Expected (${w.serialsExpected.length})</div>
+                <div>${w.serialsExpected.map(s => `<span class="serial-chip ${(w.serialsFound||[]).includes(s)?'scanned':''}">${PCG.escapeHtml(s)}${(w.serialsFound||[]).includes(s)?' ✓':''}</span>`).join('')}</div>
+              </div>` : ''}
+            ${w.serialsFound && w.serialsFound.length ? `
+              <div>
+                <div class="eyebrow" style="font-size: 9px; margin-bottom: 4px;">Scanned In (${w.serialsFound.length})</div>
+                <div>${w.serialsFound.map(s => {
+                  const expected = (w.serialsExpected||[]).includes(s);
+                  return `<span class="serial-chip scanned" title="${expected?'expected + scanned':'unexpected - verify'}">${PCG.escapeHtml(s)}${expected?'':' ⚠'}</span>`;
+                }).join('')}</div>
+              </div>` : ''}
+          </div>
+        </div>` : ''}
+
+      <!-- Actions -->
+      <div class="card card-pad" style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button class="btn ghost" onclick="bulkPullAll('${activeWorkboxId}')" ${w.needed===0?'disabled':''}>Pull All Shortages (${w.needed})</button>
+        <button class="btn ghost" onclick="reportWorkbox('${activeWorkboxId}')">Report to Dept Lead</button>
+        <button class="btn primary" onclick="completeWorkbox('${activeWorkboxId}')" ${w.shortage>0?'disabled':''}>Mark Workbox Restocked ${w.shortage===0?'→':''}</button>
+      </div>
+    `;
+  }
+
+  window.openWorkbox = (id) => {
+    activeWorkboxId = id;
+    activeKitTaskId = null;
+    scanLog = [];
+    scanLog.push({ type:'ok', text:'Opened '+(PCG.api.getWorkbox(id)||{}).name, msg:'✓ Workbox opened · scan items to restock' });
+    render();
+    setTimeout(() => { const el = document.getElementById('scan-in'); if(el) el.focus(); }, 50);
+  };
+
+  window.quickScanIn = (wbId, itemName, qty) => {
+    const res = PCG.api.scanItemIntoWorkbox(wbId, itemName, qty);
+    if(res.ok){
+      scanLog.push({ type:'ok', text:`Pulled ${qty}× ${itemName} from bin → added to workbox`, msg:`✓ Added ${qty}× ${itemName}` });
+      renderWorkboxDetail();
+      renderWorkboxList();
+      renderHeaderKPI();
+    }
+  };
+
+  window.bulkPullAll = (wbId) => {
+    if(!confirm('Pull all shortage items from bin stock into this workbox?')) return;
+    const w = PCG.api.getWorkbox(wbId);
+    let pulled = 0;
+    (w.standardPack||[]).forEach(p => {
+      const short = p.standardQty - p.currentQty;
+      if(short > 0){
+        PCG.api.scanItemIntoWorkbox(wbId, p.item, short);
+        pulled += short;
+      }
+    });
+    scanLog.push({ type:'ok', text:`Bulk pulled ${pulled} units from bin stock`, msg:`✓ Bulk pull: ${pulled} units restocked` });
+    renderWorkboxDetail();
+    renderWorkboxList();
+    renderHeaderKPI();
+  };
+
+  window.completeWorkbox = (wbId) => {
+    const res = PCG.api.markWorkboxComplete(wbId);
+    if(res.ok){
+      alert('✓ Workbox restocked to standard pack.\n\nLogged to audit trail. Workbox returned to ready state for next deployment.');
+      activeWorkboxId = null;
+      scanLog = [];
+      render();
+    }
+  };
+
+  window.reportWorkbox = (wbId) => {
+    alert('Report sent to Department Lead with current pack-list state and shortage summary. Department Lead reviews for reorder decisions.');
+  };
+
+  // ==========================================================================
+  // KIT REBUILD TAB — Scan destination container, then scan components in
+  // ==========================================================================
+  function renderKitTab(){
+    const mount = document.getElementById('tabBody');
+    const tasks = PCG.api.getKitRebuildTasks();
+    const active = activeKitTaskId ? tasks.find(t => t.id === activeKitTaskId) : null;
+    const sd = active ? (PCG.systemDefinitions||[]).find(s => s.id === active.sysDefId) : null;
+
+    mount.innerHTML = `
+      <div class="scan-shell">
+        <div class="eyebrow">KIT REBUILD · SCAN CONSOLE</div>
+        <div style="color: #FFF; font-size: 16px; font-weight: 600;" id="kitScanTitle">
+          ${active && active.destinationContainerOpen
+            ? 'Scanning components into: '+PCG.escapeHtml(sd?sd.name:'—')
+            : active
+            ? 'Scan destination container: '+active.destinationContainerBarcode
+            : 'Pick a rebuild task, then scan the destination container'}
+        </div>
+        <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 4px;">
+          ${active && active.destinationContainerOpen
+            ? 'Scan each component barcode (serialized or model). System checks vs BOM — green = match, amber = unexpected, red = not found.'
+            : active
+            ? 'Wrong container = rejected. Right container = opens BOM scan mode.'
+            : 'Pick a task on the left to begin.'}
+        </div>
+        <div class="scan-row">
+          <input class="scan-input" id="kit-scan-in" autocomplete="off" placeholder="Scan container or component barcode…" />
+          <button class="scan-btn" id="kit-scan-submit">Scan →</button>
+          <button class="scan-btn ghost" id="kit-scan-close" ${active?'':'disabled'}>Close Kit</button>
+        </div>
+        <div class="scan-feedback" id="kitScanFeedback" style="display:${scanLog.length?'flex':'none'};">
+          ${scanLog.length ? (scanLog[scanLog.length-1].msg || '') : ''}
+        </div>
+        <div class="scan-log" id="kitScanLog">
+          ${scanLog.slice(-6).reverse().map(l => `<div class="line ${l.type}">${PCG.escapeHtml(l.text)}</div>`).join('')}
+        </div>
+      </div>
+
+      <div class="split" style="grid-template-columns: 360px 1fr;">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Rebuild Tasks</div><span class="muted" style="margin-left:auto; font-size: var(--fs-xs);">${tasks.length} tasks</span></div>
+            <div style="padding: var(--sp-3);">
+              ${tasks.map(t => {
+                const sdT = (PCG.systemDefinitions||[]).find(s => s.id === t.sysDefId);
+                const reqTotal = (sdT?sdT.requiredComponents:[]).reduce((s,c) => s+c.qty, 0);
+                const gotTotal = Object.values(t.scanned||{}).reduce((s,q) => s+q, 0);
+                return `
+                  <div class="wb-card ${activeKitTaskId===t.id?'selected':''}" onclick="pickKitTask('${t.id}')">
+                    <div class="bc" style="color: var(--pcg-spotlight-purple); background: rgba(122,65,229,0.08);">${PCG.escapeHtml(t.destinationContainerBarcode)}</div>
+                    <div>
+                      <div class="nm">${PCG.escapeHtml(sdT?sdT.name:t.sysDefId)}</div>
+                      <div class="meta">From ${PCG.escapeHtml(t.showId)} · ${gotTotal}/${reqTotal} scanned</div>
+                    </div>
+                    <div class="st">
+                      <span class="pill ${t.status==='Complete'?'green':t.status==='InProgress'?'blue':t.status==='PartialKit'?'amber':'gray'} plain" style="font-size: 9px;">${t.status.toUpperCase()}</span>
+                    </div>
+                    <div style="text-align: center; font-family: var(--font-mono); font-size: 14px; color: ${gotTotal===reqTotal?'var(--status-green)':'var(--text-primary)'};">
+                      ${Math.round(gotTotal/Math.max(1,reqTotal)*100)}%
+                    </div>
+                  </div>`;
+              }).join('') || PCG.states.empty('No rebuild tasks. They auto-create after show returns.')}
+            </div>
+          </div>
+        </div>
+        <div id="kitDetail"></div>
+      </div>`;
+
+    renderKitDetail();
+    wireKitScan();
+  }
+
+  window.pickKitTask = (id) => {
+    activeKitTaskId = id;
+    activeWorkboxId = null;
+    scanLog = [];
+    const t = (PCG.kitRebuildTasks||[]).find(x => x.id === id);
+    scanLog.push({ type: 'warn', text: 'Task selected. Scan destination container '+t.destinationContainerBarcode+' to begin.', msg: '⚠ Scan destination container: '+t.destinationContainerBarcode });
+    render();
+    setTimeout(() => { const el = document.getElementById('kit-scan-in'); if(el) el.focus(); }, 50);
+  };
+
+  function renderKitDetail(){
+    const t = activeKitTaskId ? (PCG.kitRebuildTasks||[]).find(x => x.id === activeKitTaskId) : null;
+    if(!t){
+      document.getElementById('kitDetail').innerHTML = `
+        <div class="card card-pad" style="text-align: center; padding: 40px;">
+          <div style="font-size: 40px; margin-bottom: 10px; opacity: 0.4;">📦</div>
+          <h3 style="margin: 0 0 6px;">Pick a rebuild task on the left</h3>
+          <div class="muted" style="font-size: var(--fs-sm);">After a show returns, each SystemDefinition that was deployed gets a rebuild task. Scan the destination container, then scan components into it.</div>
+        </div>`;
+      return;
+    }
+    const sd = (PCG.systemDefinitions||[]).find(s => s.id === t.sysDefId);
+    const required = sd ? (sd.requiredComponents||[]) : [];
+    const allComplete = required.every(c => (t.scanned[c.modelId]||0) >= c.qty);
+    const missing = required.filter(c => (t.scanned[c.modelId]||0) < c.qty);
+
+    document.getElementById('kitDetail').innerHTML = `
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="card-header">
+          <div class="title">${PCG.escapeHtml(sd?sd.name:'—')}</div>
+          <span class="mono" style="margin-left: auto; font-size: 12px; color: var(--pcg-spotlight-purple); background: rgba(122,65,229,0.08); padding: 3px 10px; border-radius: var(--r-sm);">${PCG.escapeHtml(t.destinationContainerBarcode)}</span>
+        </div>
+        <div class="card-body">
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3);">
+            <div><div class="eyebrow" style="font-size: 9px;">Source Show</div><div class="mono" style="font-size: 12px;">${PCG.escapeHtml(t.showId)}</div></div>
+            <div><div class="eyebrow" style="font-size: 9px;">Status</div><div><span class="pill ${t.status==='Complete'?'green':t.status==='InProgress'?'blue':t.status==='PartialKit'?'amber':'gray'} plain">${t.status.toUpperCase()}</span></div></div>
+            <div><div class="eyebrow" style="font-size: 9px;">Container</div><div style="font-size: 11px;">${t.destinationContainerOpen ? '<span style="color: var(--status-green);">OPEN</span>' : '<span class="muted">NOT YET SCANNED</span>'}</div></div>
+            <div><div class="eyebrow" style="font-size: 9px;">Components</div><div class="mono" style="font-size: 18px; color: ${allComplete?'var(--status-green)':'var(--text-primary)'};">${Object.values(t.scanned||{}).reduce((s,q)=>s+q,0)}/${required.reduce((s,c)=>s+c.qty,0)}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="card-header"><div class="title">Bill of Materials (BOM)</div></div>
+        <div style="display: grid; grid-template-columns: 30px 1fr 70px 70px 130px; gap: 10px; padding: 10px 12px; background: var(--surface-2); font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary);">
+          <div></div><div>Component</div>
+          <div style="text-align: right;">Required</div>
+          <div style="text-align: right;">Scanned</div>
+          <div>Status</div>
+        </div>
+        ${required.map(c => {
+          const inv = PCG.api.getInventoryItem(c.modelId);
+          const scanned = t.scanned[c.modelId] || 0;
+          const short = c.qty - scanned;
+          const cls = short <= 0 ? 'scanned' : 'short';
+          return `
+            <div class="bom-row ${cls}">
+              <div class="chk" style="width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: ${short<=0?'var(--status-green)':short>0?'var(--status-amber)':'var(--surface-3)'}; color: ${short<=0?'#FFF':'#FFF'};">${short<=0?'✓':'!'}</div>
+              <div>
+                <strong>${inv?PCG.escapeHtml(inv.name):PCG.escapeHtml(c.modelId)}</strong>
+                ${c.role ? `<div class="muted" style="font-size: 10px;">Role: ${PCG.escapeHtml(c.role)}</div>` : ''}
+              </div>
+              <div class="mono" style="text-align: right;">${c.qty}</div>
+              <div class="mono" style="text-align: right; color: ${short<=0?'var(--status-green)':'var(--text-primary)'};">${scanned}</div>
+              <div>
+                ${short <= 0 ? '<span class="pill green plain" style="font-size: 9px;">✓ COMPLETE</span>' : short < c.qty ? `<span class="pill amber plain" style="font-size: 9px;">SHORT ${short}</span>` : '<span class="pill gray plain" style="font-size: 9px;">NOT SCANNED</span>'}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+
+      ${(t.scannedSerials||[]).length ? `
+        <div class="card" style="margin-bottom: var(--sp-4);">
+          <div class="card-header"><div class="title">Scanned Serials (${(t.scannedSerials||[]).length})</div></div>
+          <div class="card-body">
+            ${(t.scannedSerials||[]).map(s => `<span class="serial-chip scanned">${PCG.escapeHtml(s)} ✓</span>`).join('')}
+          </div>
+        </div>` : ''}
+
+      ${(t.unexpectedScans||[]).length ? `
+        <div class="attn-item amber" style="margin-bottom: var(--sp-4);">
+          <div style="font-size: 18px;">⚠</div>
+          <div>
+            <div class="ttl">${(t.unexpectedScans||[]).length} unexpected scan${(t.unexpectedScans||[]).length===1?'':'s'}</div>
+            <div class="meta">${(t.unexpectedScans||[]).slice(0,3).map(u => `${PCG.escapeHtml(u.code||u.serial||'')} — ${PCG.escapeHtml(u.note||'')}`).join(' · ')}</div>
+          </div>
+        </div>` : ''}
+
+      <div class="card card-pad" style="display: flex; gap: 8px; justify-content: flex-end;">
+        ${missing.length > 0
+          ? `<button class="btn ghost" style="color: var(--status-amber);" onclick="acceptPartial('${t.id}')">Accept as Partial Kit (${missing.length} short)</button>`
+          : ''}
+        <button class="btn ghost">Report to WH Lead</button>
+        <button class="btn primary" onclick="completeKit('${t.id}')" ${missing.length>0?'disabled':''}>Mark Kit Complete ${missing.length===0?'→':''}</button>
+      </div>
+    `;
+  }
+
+  window.acceptPartial = (taskId) => {
+    if(!confirm('Accept this rebuild as a Partial Kit? SystemDefinition availability will show "partial". EQLPC is notified.')) return;
+    const res = PCG.api.markKitComplete(taskId, true);
+    if(res.ok){
+      alert('✓ Marked as Partial Kit. SystemDefinition.partialKitStatus flag set. Availability engine returns "partial" for this kit.\nEQLPC notified.');
+      activeKitTaskId = null;
+      scanLog = [];
+      render();
+    }
+  };
+
+  window.completeKit = (taskId) => {
+    const res = PCG.api.markKitComplete(taskId, false);
+    if(res.ok){
+      alert('✓ Kit rebuilt successfully. SystemDefinition returned to full availability. Container ready for next deployment.');
+      activeKitTaskId = null;
+      scanLog = [];
+      render();
+    } else {
+      alert('Cannot complete — still short on: '+(res.missing||[]).map(m => m.modelId+' ('+(m.qty-(res.missing.scanned||0))+' short)').join(', '));
+    }
+  };
+
+  // ==========================================================================
+  // Scan wiring
+  // ==========================================================================
+  function wireScan(){
+    const input = document.getElementById('scan-in');
+    const submit = document.getElementById('scan-submit');
+    const close = document.getElementById('scan-close');
+    if(input) input.addEventListener('keydown', e => { if(e.key === 'Enter') handleWorkboxScan(input.value); });
+    if(submit) submit.addEventListener('click', () => handleWorkboxScan(input.value));
+    if(close) close.addEventListener('click', () => { activeWorkboxId = null; scanLog = []; render(); });
+    if(input) input.focus();
+  }
+
+  function wireKitScan(){
+    const input = document.getElementById('kit-scan-in');
+    const submit = document.getElementById('kit-scan-submit');
+    const close = document.getElementById('kit-scan-close');
+    if(input) input.addEventListener('keydown', e => { if(e.key === 'Enter') handleKitScan(input.value); });
+    if(submit) submit.addEventListener('click', () => handleKitScan(input.value));
+    if(close) close.addEventListener('click', () => { activeKitTaskId = null; scanLog = []; render(); });
+    if(input) input.focus();
+  }
+
+  function handleWorkboxScan(code){
+    if(!code || !code.trim()) return;
+    const c = code.trim().toUpperCase();
+    const input = document.getElementById('scan-in');
+
+    // First: is this a workbox barcode?
+    const wbDirect = PCG.api.findWorkboxByBarcode(c);
+    if(wbDirect){
+      activeWorkboxId = wbDirect.id;
+      scanLog = [];
+      scanLog.push({ type: 'ok', text: 'Opened workbox '+wbDirect.barcode+' · '+wbDirect.name, msg: '✓ Opened '+wbDirect.name });
+      render();
+      setTimeout(() => { const el = document.getElementById('scan-in'); if(el){ el.value = ''; el.focus(); } }, 50);
+      return;
+    }
+
+    // Need an open workbox to scan items in
+    if(!activeWorkboxId){
+      scanLog.push({ type: 'err', text: 'No workbox open. Scan a workbox barcode (WB-V-001 etc.) first.', msg: '✕ Scan a workbox barcode first' });
+      renderWorkboxDetail();
+      input.value = '';
+      return;
+    }
+
+    // Try serial scan
+    const serialRes = PCG.api.scanSerialIntoWorkbox(activeWorkboxId, c);
+    if(serialRes.ok){
+      if(serialRes.matchKind === 'Duplicate'){
+        scanLog.push({ type: 'warn', text: 'Duplicate serial scan: '+serialRes.serial.serial, msg: '⚠ Already in workbox' });
+      } else if(serialRes.matchKind === 'Expected'){
+        scanLog.push({ type: 'ok', text: 'Serial '+serialRes.serial.serial+' → '+PCG.api.getWorkbox(activeWorkboxId).name, msg: '✓ Serial scanned · expected' });
+      } else {
+        scanLog.push({ type: 'warn', text: 'Serial '+serialRes.serial.serial+' scanned (unexpected)', msg: '⚠ Serial scanned · unexpected' });
+      }
+      renderWorkboxDetail();
+      renderWorkboxList();
+      renderHeaderKPI();
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // Try pack-list item
+    const itemRes = PCG.api.scanItemIntoWorkbox(activeWorkboxId, c, 1);
+    if(itemRes.ok){
+      if(itemRes.matchKind === 'PackItem'){
+        scanLog.push({ type: 'ok', text: '+1 '+itemRes.item.item+' · '+(itemRes.stillShort>0?'still short '+itemRes.stillShort:'at stock'), msg: itemRes.stillShort>0?`+1 ${itemRes.item.item} · ${itemRes.stillShort} more needed`:`✓ ${itemRes.item.item} at stock` });
+      } else {
+        scanLog.push({ type: 'warn', text: 'Unexpected: '+c+' (not in pack list)', msg: '⚠ Unexpected · logged' });
+      }
+      renderWorkboxDetail();
+      renderWorkboxList();
+      renderHeaderKPI();
+    } else {
+      scanLog.push({ type: 'err', text: 'Scan failed: '+c, msg: '✕ Scan failed' });
+      renderWorkboxDetail();
+    }
+    input.value = '';
+    input.focus();
+  }
+
+  function handleKitScan(code){
+    if(!code || !code.trim()) return;
+    const c = code.trim().toUpperCase();
+    const input = document.getElementById('kit-scan-in');
+
+    if(!activeKitTaskId){
+      scanLog.push({ type: 'err', text: 'Pick a rebuild task first', msg: '✕ No active kit' });
+      render();
+      return;
+    }
+
+    const t = (PCG.kitRebuildTasks||[]).find(x => x.id === activeKitTaskId);
+
+    // If container not yet open, this scan must be the destination container
+    if(!t.destinationContainerOpen){
+      const res = PCG.api.openKitRebuild(activeKitTaskId, c);
+      if(res.ok){
+        scanLog.push({ type: 'ok', text: 'Destination container opened: '+c, msg: '✓ Container open · now scan components' });
+      } else {
+        scanLog.push({ type: 'err', text: res.reason, msg: '✕ '+res.reason });
+      }
+      renderKitTab();
+      setTimeout(() => { const el = document.getElementById('kit-scan-in'); if(el){ el.value = ''; el.focus(); } }, 50);
+      return;
+    }
+
+    // Component scan
+    const res = PCG.api.scanComponentIntoKit(activeKitTaskId, c);
+    if(res.ok){
+      if(res.matchKind === 'BOM_Match'){
+        const name = res.serial ? res.serial.serial+' ('+(res.bomEntry.modelId)+')' : (res.inventoryModel?res.inventoryModel.name:c);
+        scanLog.push({ type: 'ok', text: 'BOM match: '+name+' · '+res.newScannedQty+'/'+res.bomEntry.qty, msg: `✓ ${name}` });
+      } else if(res.matchKind === 'Duplicate'){
+        scanLog.push({ type: 'warn', text: 'Duplicate serial: '+res.serial.serial, msg: '⚠ Already scanned' });
+      } else if(res.matchKind === 'Unexpected'){
+        scanLog.push({ type: 'warn', text: 'Unexpected: '+(res.serial?res.serial.serial:c)+' — not in BOM', msg: '⚠ Not in BOM · logged' });
+      }
+    } else {
+      scanLog.push({ type: 'err', text: (res.reason || 'Scan failed'), msg: '✕ '+(res.reason || 'scan failed') });
+    }
+    renderKitDetail();
+    input.value = '';
+    input.focus();
+  }
+
+  // ==========================================================================
+  // CONSUMABLE TAB — keep existing behavior, pull live from seeded data
+  // ==========================================================================
+  function renderConsumableTab(){
+    const consumables = [
+      { description: 'Gaff Tape 2" Black', show: 'LCE-2026', quoted: 24, deployed: 24, returned: 18, unit: 'roll', unitCost: 12 },
+      { description: 'Zip Ties 11" (100-pk)', show: 'LCE-2026', quoted: 6, deployed: 6, returned: 3, unit: 'pk', unitCost: 18 },
+      { description: 'AA Batteries', show: 'LCE-2026', quoted: 20, deployed: 20, returned: 8, unit: 'pk', unitCost: 32 },
+      { description: 'Haze Fluid (1gal)', show: 'LCE-2026', quoted: 4, deployed: 4, returned: 1, unit: 'gal', unitCost: 45 },
+      { description: 'Gel Sheets (full sheet)', show: 'GLBX-GSK26', quoted: 10, deployed: 10, returned: 8, unit: 'sheet', unitCost: 15 },
+      { description: 'Cable Ties · Velcro 12"', show: 'SAE-WCX-2026', quoted: 4, deployed: 4, returned: 2, unit: 'pk', unitCost: 12 }
+    ];
+    consumables.forEach(c => {
+      c.consumed = c.deployed - c.returned;
+      c.consumedCost = c.consumed * c.unitCost;
+    });
+    const totalCost = consumables.reduce((s,c) => s + c.consumedCost, 0);
+    document.getElementById('tabBody').innerHTML = `
+      <div class="card card-pad" style="margin-bottom: var(--sp-4);">
+        <div class="eyebrow">CONSUMABLE RECONCILIATION · spec §LL</div>
+        <div class="muted" style="font-size: var(--fs-sm); margin-top: 4px;">
+          Each show deployment decrements bin stock. On return, unused qty comes back. Delta = consumed (show cost). Delta vs quoted is visible to Finance.
+        </div>
+      </div>
+      <div class="card">
+        <table class="pcg-table">
+          <thead>
+            <tr>
+              <th>Consumable</th><th>Show</th>
+              <th style="text-align: right;">Quoted</th>
+              <th style="text-align: right;">Deployed</th>
+              <th style="text-align: right;">Returned</th>
+              <th style="text-align: right;">Consumed</th>
+              <th style="text-align: right;">Unit $</th>
+              <th style="text-align: right;">Show Cost</th>
+              <th>Delta vs Quote</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${consumables.map(c => {
+              const deltaQ = c.consumed - c.quoted;
+              return `
+                <tr>
+                  <td><strong>${PCG.escapeHtml(c.description)}</strong></td>
+                  <td class="mono">${PCG.escapeHtml(c.show)}</td>
+                  <td class="mono" style="text-align: right;">${c.quoted} ${c.unit}</td>
+                  <td class="mono" style="text-align: right;">${c.deployed}</td>
+                  <td class="mono" style="text-align: right;">${c.returned}</td>
+                  <td class="mono" style="text-align: right; font-weight: 600; color: var(--pcg-bright-blue);">${c.consumed}</td>
+                  <td class="mono" style="text-align: right;">${PCG.money(c.unitCost)}</td>
+                  <td class="mono" style="text-align: right; font-weight: 600;">${PCG.money(c.consumedCost)}</td>
+                  <td><span class="pill ${deltaQ > 0 ? 'red' : deltaQ < 0 ? 'green' : 'gray'} plain" style="font-size: 9px;">${deltaQ > 0 ? 'OVER +'+deltaQ : deltaQ < 0 ? 'UNDER '+deltaQ : 'ON TARGET'}</span></td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <div style="padding: var(--sp-3); border-top: 1px solid var(--border); background: var(--surface-2); display: flex; justify-content: flex-end; gap: 40px;">
+          <div style="font-size: var(--fs-sm);">
+            <span class="muted">Total consumable show cost:</span>
+            <strong class="mono" style="color: var(--pcg-bright-blue);">${PCG.money(totalCost)}</strong>
+          </div>
+          <button class="btn primary">Post to Finance Closeout →</button>
+        </div>
+      </div>`;
+  }
+
+  // Tab switching
+  document.addEventListener('click', e => {
+    if(e.target.matches('.tab-bar button')){
+      document.querySelectorAll('.tab-bar button').forEach(x => x.classList.remove('on'));
+      e.target.classList.add('on');
+      activeTab = e.target.dataset.tab;
+      scanLog = [];
+      render();
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>

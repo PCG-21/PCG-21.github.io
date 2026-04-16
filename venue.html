@@ -21,7 +21,7 @@
         </div>
         <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
           <input id="search" placeholder="Search venues…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-pill); padding:6px 14px; width:220px;" />
-          <button class="btn sm">＋ New Venue</button>
+          <button class="btn sm" id="btn-new-venue">＋ New Venue</button>
         </div>
       </div>
 
@@ -84,6 +84,100 @@
   }
   input.addEventListener('input', render);
   render();
+
+  // ---- New Venue modal ----
+  document.getElementById('btn-new-venue').addEventListener('click', () => {
+    const canCreate = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE);
+    if(!canCreate){ alert('Only Admin / Director / TSM / AE can create venue records.'); return; }
+    const modal = document.createElement('div');
+    modal.id = 'venueModal';
+    modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center;';
+    modal.innerHTML = `
+      <div class="card" style="width:min(540px,95vw); max-height:92vh; overflow:auto;">
+        <div class="card-header"><div class="title">New Venue Record</div>
+          <button class="btn sm ghost" style="margin-left:auto;" onclick="document.getElementById('venueModal').remove()">✕</button>
+        </div>
+        <div class="card-body" style="display:grid; gap:10px;">
+          <label class="muted" style="font-size:11px;">VENUE NAME</label>
+          <input id="v-name" type="text" placeholder="e.g. Huntington Place" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+
+          <label class="muted" style="font-size:11px;">TYPE</label>
+          <select id="v-type" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            <option>Convention Center</option>
+            <option>Hotel Ballroom</option>
+            <option>Theater</option>
+            <option>Arena</option>
+            <option>Corporate Campus</option>
+            <option>Outdoor</option>
+            <option>Other</option>
+          </select>
+
+          <div style="display:grid; grid-template-columns:1fr 140px 80px; gap:10px;">
+            <div>
+              <label class="muted" style="font-size:11px;">CITY</label>
+              <input id="v-city" type="text" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            </div>
+            <div>
+              <label class="muted" style="font-size:11px;">ADDRESS</label>
+              <input id="v-addr" type="text" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            </div>
+            <div>
+              <label class="muted" style="font-size:11px;">STATE</label>
+              <input id="v-state" type="text" maxlength="2" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); text-transform:uppercase;">
+            </div>
+          </div>
+
+          <label class="muted" style="font-size:11px;">AKA (comma-separated, optional)</label>
+          <input id="v-aka" type="text" placeholder="e.g. Cobo Center, Cobo Hall" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+
+          <div style="display:flex; gap:14px;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:var(--fs-sm);">
+              <input id="v-union" type="checkbox"> Union house
+            </label>
+            <input id="v-local" type="text" placeholder="Local # (if union)" style="flex:1; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+          </div>
+
+          <label class="muted" style="font-size:11px;">WARNING FLAGS (one per line, optional)</label>
+          <textarea id="v-flags" rows="2" placeholder="e.g. Dock restrictions before 7am&#10;Rigging approval required 48h in advance" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:inherit;"></textarea>
+
+          <label class="muted" style="font-size:11px;">LOAD-IN NOTES (optional)</label>
+          <textarea id="v-notes" rows="2" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:inherit;"></textarea>
+
+          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+            <button class="btn sm ghost" onclick="document.getElementById('venueModal').remove()">Cancel</button>
+            <button class="btn sm primary" onclick="submitVenue()">Create Venue</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  });
+
+  window.submitVenue = () => {
+    const name = document.getElementById('v-name').value.trim();
+    if(!name){ alert('Name required.'); return; }
+    const unionReq = document.getElementById('v-union').checked;
+    const v = {
+      id: 'v.'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,24)+'.'+Math.random().toString(36).slice(2,5),
+      name,
+      venueType: document.getElementById('v-type').value,
+      city: document.getElementById('v-city').value.trim(),
+      state: document.getElementById('v-state').value.trim().toUpperCase(),
+      address: document.getElementById('v-addr').value.trim(),
+      aka: document.getElementById('v-aka').value.split(',').map(s=>s.trim()).filter(Boolean),
+      union: unionReq ? { required:true, local: document.getElementById('v-local').value.trim() } : { required:false },
+      warningFlags: document.getElementById('v-flags').value.split('\n').map(s=>s.trim()).filter(Boolean),
+      loadInNotes: document.getElementById('v-notes').value.trim(),
+      priorShowIds: [],
+      status: 'Active',
+      createdAt: new Date().toISOString()
+    };
+    PCG.venues = PCG.venues || [];
+    PCG.venues.push(v);
+    PCG.auditLog.push({ at: v.createdAt, actor: PCG.user.id, action: 'venue.create', entityId: v.id, detail: v.name });
+    document.getElementById('venueModal').remove();
+    alert(`✓ Venue ${v.name} created.`);
+    location.href = 'venue-detail.html?id=' + v.id;
+  };
 </script>
 </body>
 </html>

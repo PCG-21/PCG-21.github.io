@@ -253,11 +253,11 @@
             </div>
           </div>
           <div style="display:flex; flex-direction:column; gap:4px;">
-            ${ao.status==='Requested' && PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS) ? '<button class="btn sm primary">Acknowledge</button>' : ''}
-            ${ao.status==='Acknowledged' ? '<button class="btn sm">Start Picking</button>' : ''}
-            ${ao.status==='Picking' ? '<button class="btn sm">Dispatch</button>' : ''}
-            ${ao.status==='Dispatched' ? '<button class="btn sm">Confirm Delivery</button>' : ''}
-            <button class="btn sm ghost">Details</button>
+            ${ao.status==='Requested' && PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS) ? `<button class="btn sm primary" onclick="ackAO('${ao.aoNumber}')">Acknowledge</button>` : ''}
+            ${ao.status==='Acknowledged' ? `<button class="btn sm" onclick="advAO('${ao.aoNumber}','Picking')">Start Picking</button>` : ''}
+            ${ao.status==='Picking' ? `<button class="btn sm" onclick="advAO('${ao.aoNumber}','Dispatched')">Dispatch</button>` : ''}
+            ${ao.status==='Dispatched' ? `<button class="btn sm" onclick="advAO('${ao.aoNumber}','Delivered')">Confirm Delivery</button>` : ''}
+            <button class="btn sm ghost" onclick="detailsAO('${ao.aoNumber}')">Details</button>
           </div>
         </div>`;
     }).join('') : PCG.states.empty('No add orders match.');
@@ -284,6 +284,38 @@
     filter = e.target.dataset.f; render();
   }));
   render();
+
+  window.ackAO = (aoNumber) => {
+    try { PCG.api.acknowledgeAddOrder(aoNumber); render(); }
+    catch(e){ alert(e.message); }
+  };
+  window.advAO = (aoNumber, toStatus) => {
+    try { PCG.api.advanceAddOrder(aoNumber, toStatus); render(); }
+    catch(e){ alert(e.message); }
+  };
+  window.detailsAO = (aoNumber) => {
+    const ao = (PCG.addOrders||[]).find(a => a.aoNumber === aoNumber);
+    if(!ao) return;
+    const requester = PCG.findPerson(ao.requestedById);
+    const lines = [
+      `Add Order ${ao.aoNumber}`,
+      `Show: ${ao.showId}`,
+      `Urgency: ${ao.urgency}`,
+      `Status: ${ao.status}`,
+      `Requested by: ${requester?requester.name:ao.requestedById} · ${PCG.ago(ao.requestedAt)}`,
+      ao.acknowledgedAt ? `Ack'd: ${PCG.fmtDate(ao.acknowledgedAt,{time:true})}` : '',
+      ao.pickingAt ? `Picking: ${PCG.fmtDate(ao.pickingAt,{time:true})}` : '',
+      ao.dispatchedAt ? `Dispatched: ${PCG.fmtDate(ao.dispatchedAt,{time:true})}` : '',
+      ao.deliveredAt ? `Delivered: ${PCG.fmtDate(ao.deliveredAt,{time:true})}` : '',
+      '',
+      'Description:',
+      ao.description,
+      '',
+      'Items:',
+      ...(ao.items||[]).map(i => `  ${i.qty}× ${i.description} (${i.unit})`)
+    ].filter(Boolean);
+    alert(lines.join('\n'));
+  };
 </script>
 </body>
 </html>

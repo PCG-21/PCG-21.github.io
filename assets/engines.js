@@ -315,6 +315,117 @@
         cost += PCG.engines.cost.costForLine(l) * (l.qty||0) * (l.days||1);
       });
       return { totalRevenue:rev, totalCost:cost, margin: rev ? (rev-cost)/rev : 0 };
+    },
+
+    /* FINAL SPEC §EE.1 — Fee Stacking Rules
+       Fee order is fixed + non-configurable:
+       1) Line discounts → 2) Section discounts → 3) Total discount
+       4) Service fee (% of equipment) → 5) Admin fee
+       6) Fuel surcharge (% of transport) → 7) Expedite charge → 8) Tax
+       HARD RULE: No fee-on-fee. Tax is the only exception.
+    */
+    computeStackedTotals(lines, opts){
+      opts = opts || {};
+      const types = {
+        equip:   ['Rental','SubRental','HeavyEquipment','Consumable'],
+        labor:   ['Labor','LaborPackage'],
+        service: ['Service'],
+        travel:  ['Travel'],
+        transport:['Transport'],
+        fee:     ['Fee'],
+        disc:    ['Discount'],
+        misc:    ['Misc','Purchase']
+      };
+      const typeOf = t => Object.entries(types).find(([,arr]) => arr.includes(t))[0] || 'misc';
+      const ext = l => (l.unitPrice||0) * (l.qty||0) * (l.days||1);
+
+      // 1-3) Discounts are already embedded as negative lines in our data model.
+      // We separate them for clear reporting.
+      const subtotals = { equip:0, labor:0, service:0, travel:0, transport:0, misc:0 };
+      const discounts = { line:0, section:0, total:0 };
+      (lines||[]).forEach(l => {
+        const category = typeOf(l.type);
+        if(l.type === 'Discount'){
+          const amt = ext(l); // already negative
+          if(l.discountScope==='Section') discounts.section += amt;
+          else if(l.discountScope==='Total') discounts.total += amt;
+          else discounts.line += amt;
+        } else if(l.type === 'Fee') {
+          /* fees handled below */
+        } else if(category in subtotals) {
+          subtotals[category] += ext(l);
+        }
+      });
+      // Post-discount equipment subtotal (spec fee base for §4)
+      const postDiscountEquip = subtotals.equip + discounts.line + discounts.section; // discounts are neg
+      const preFeeTotal = subtotals.equip + subtotals.labor + subtotals.service + subtotals.travel + subtotals.transport + subtotals.misc + discounts.line + discounts.section + discounts.total;
+      // 4) Service fee — default 5% of post-discount equipment
+      const serviceFeePct = opts.serviceFeePct != null ? opts.serviceFeePct : 0.05;
+      const serviceFee = Math.round(postDiscountEquip * serviceFeePct);
+      // 5) Admin fee (flat from opts, or 0)
+      const adminFee = opts.adminFee || 0;
+      // 6) Fuel surcharge (default 0 unless transport > 0)
+      const fuelPct = opts.fuelPct != null ? opts.fuelPct : 0;
+      const fuelSurcharge = Math.round(subtotals.transport * fuelPct);
+      // 7) Expedite flat
+      const expediteCharge = opts.expediteCharge || 0;
+      // 8) Tax — applied to taxable categories only, post-all-fees
+      const taxableBase = preFeeTotal + serviceFee + adminFee + fuelSurcharge + expediteCharge
+        - subtotals.travel  // travel typically tax exempt
+        - subtotals.transport; // transport often exempt
+      const taxRate = opts.taxRate || 0;
+      const tax = Math.round(taxableBase * taxRate);
+      const grandTotal = preFeeTotal + serviceFee + adminFee + fuelSurcharge + expediteCharge + tax;
+      return { subtotals, discounts, postDiscountEquip, preFeeTotal, serviceFee, adminFee, fuelSurcharge, expediteCharge, tax, grandTotal };
+    },
+
+    /* FINAL SPEC §YY — Margin Risk Warnings (6 triggers)
+       Runs per line AND per revision. Returns ranked risk list. */
+    computeMarginWarnings(rev){
+      if(!rev) return [];
+      const warnings = [];
+      const lines = rev.lines || [];
+      // Compute line ext rev/cost
+      const withMargin = lines.map(l => {
+        const extRev = (l.unitPrice||0) * (l.qty||0) * (l.days||1);
+        const extCost = PCG.engines.cost.costForLine(l) * (l.qty||0) * (l.days||1);
+        return { l, extRev, extCost, pct: extRev ? (extRev - extCost) / extRev : 0 };
+      });
+      // 1) Overall revision margin below 30% floor
+      if(rev.margin != null && rev.margin < 0.30){
+        warnings.push({ kind:'OVERALL_BELOW_FLOOR', level:'high',
+          message:`Quote margin ${Math.round(rev.margin*100)}% < 30% floor`, ref:rev.id });
+      }
+      // 2) Individual line margin negative
+      withMargin.filter(x => x.extCost > x.extRev && x.extRev > 0).forEach(x =>
+        warnings.push({ kind:'NEGATIVE_LINE_MARGIN', level:'high',
+          message:`Line "${x.l.description}" is below cost (margin ${Math.round(x.pct*100)}%)`, ref:x.l.id }));
+      // 3) Sub-rental without vendor cost set
+      lines.filter(l => l.type==='SubRental' && !l.vendorCost).forEach(l =>
+        warnings.push({ kind:'SUBRENTAL_COST_MISSING', level:'medium',
+          message:`Sub-rental "${l.description}" has no vendorCost — margin computed as 100%`, ref:l.id }));
+      // 4) Labor blend mixing Union + non-Union positions
+      const laborPositions = lines.filter(l => l.type==='Labor').map(l => {
+        const pos = (PCG.crewPositions||[]).find(p => p.id===l.crewPositionId);
+        return pos ? !!pos.union : null;
+      }).filter(x => x !== null);
+      if(laborPositions.some(u=>u) && laborPositions.some(u=>!u)){
+        warnings.push({ kind:'LABOR_BLEND_MIXED', level:'medium',
+          message:`Quote mixes union and non-union positions — verify blended rate assumptions` });
+      }
+      // 5) Heavy discount stacking (>20% total across all discount lines)
+      const discountTotal = lines.filter(l => l.type==='Discount').reduce((s,l) => s + Math.abs((l.unitPrice||0)), 0);
+      if(rev.totalRevenue && (discountTotal / rev.totalRevenue) > 0.20){
+        warnings.push({ kind:'HEAVY_DISCOUNT_STACK', level:'high',
+          message:`Discount lines total ${Math.round(discountTotal/rev.totalRevenue*100)}% — exceeds 20% threshold, Director approval required` });
+      }
+      // 6) Travel pass-through with zero cost (could signal miscategorized reimbursable)
+      const passthrough = lines.filter(l => l.type==='Travel' && l.billingMethod==='PassThrough' && (l.unitPrice - (l.cost||0)) === 0 && l.unitPrice > 0);
+      if(passthrough.length > 0 && passthrough.reduce((s,l)=>s+((l.unitPrice||0)*(l.qty||0)*(l.days||1)),0) > (rev.totalRevenue||0) * 0.10){
+        warnings.push({ kind:'TRAVEL_PASSTHRU_LARGE', level:'medium',
+          message:`${passthrough.length} travel line(s) billed pass-through with zero markup — confirm billing method` });
+      }
+      return warnings.sort((a,b) => (a.level==='high'?0:1) - (b.level==='high'?0:1));
     }
   };
 

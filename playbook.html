@@ -282,7 +282,7 @@
               <li><strong>Forum Ballroom</strong> — GS + Awards</li>
               <li><strong>Forum Ballroom South Foyer</strong> — Welcome reception (Tues)</li>
               <li><strong>Theater 330B</strong> — Battery Tech Theater</li>
-              <li><strong>Awards Ready Room</strong> — Added 4/14 (pending Flex)</li>
+              <li><strong>Awards Ready Room</strong> — Added 4/14 (pending on pull sheet)</li>
             </ul>`}
         </div>
       </div>
@@ -303,20 +303,20 @@
     ["LED Lead / Cam 1","Renée Benoit","RB",true],
     ["Scenic Lead / Cam 2","Dan Marino","DM",true],
     ["AV Tech 1–4","— 4 TBD","??",false],
-    ["ShoFlo / Schedules","Chelsea Oliver","CO",true]
+    ["Run of Show / Schedules","Chelsea Oliver","CO",true]
   ] : [
     ["Mini GS / Breakouts Lead","Tyler Scheff","TS",true],
     ["TD","Chris Taylor","CT",true],
     ["Floor Leads","140s: Kim, 250s: Ramos, 300s: Taylor, 400s: Scheff","—",true],
     ["Sweep Crew","6 rotating techs, 7am/12pm/5pm","—",false],
-    ["ShoFlo","Chelsea Oliver","CO",true]
+    ["Run of Show","Chelsea Oliver","CO",true]
   ];
   const laborHTML = `
   <section id="labor" class="pb-section section-anchor">
     <header>
       <div class="num">06</div>
       <div class="title">Crew & Labor Snapshot</div>
-      <div class="freshness">Lasso · synced 2h ago</div>
+      <div class="freshness">Live · synced 2h ago</div>
     </header>
     <div class="card">
       <table class="pcg-table">
@@ -327,7 +327,7 @@
               <td style="font-family:var(--font-display); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-secondary);">${r[0]}</td>
               <td>${PCG.escapeHtml(r[1])}</td>
               <td>${r[3]?'<span class="pill green">CONFIRMED</span>':'<span class="pill amber">TBD</span>'}</td>
-              <td style="text-align:right;"><a href="#" class="btn sm ghost">Lasso ↗</a></td>
+              <td style="text-align:right;"><a href="scheduling.html" class="btn sm ghost">Open →</a></td>
             </tr>`).join("")}
         </tbody>
       </table>
@@ -353,13 +353,13 @@
     <header>
       <div class="num">07</div>
       <div class="title">Gear Snapshot</div>
-      <div class="freshness">Flex pull sheet · ${p.pullSheetNo||"—"}</div>
+      <div class="freshness">Pull sheet · ${p.pullSheetNo||"—"}</div>
     </header>
     <div class="grid-2">
       <div class="card">
         <div class="card-header">
-          <div class="title">Functional Groups (from Flex)</div>
-          <a class="btn sm ghost" href="#">Full Pull Sheet ↗</a>
+          <div class="title">Functional Groups</div>
+          <a class="btn sm ghost" href="pull-sheet.html">Full Pull Sheet →</a>
         </div>
         <div class="card-body tree">
           ${Object.values(p.gearSummary||{}).some(x=>x && x.length) ? renderGearTree(p.gearSummary) : '<div class="empty">No gear summary available.</div>'}
@@ -423,7 +423,7 @@
     <div class="grid-2">
       ${(p.docs||[]).filter(d=>d.pinned).map(d=>`
         <div class="pinned">
-          <span class="icon">${d.cat==="Flex"?"⧈": d.cat==="Venue"?"▣": d.cat==="Quote"?"§": d.cat==="Script"?"⌘": d.cat==="Creative"?"◆": "◫"}</span>
+          <span class="icon">${d.cat==="PullSheet"||d.cat==="Flex"?"⧈": d.cat==="Venue"?"▣": d.cat==="Quote"?"§": d.cat==="Script"?"⌘": d.cat==="Creative"?"◆": "◫"}</span>
           <div>
             <div><strong>${PCG.escapeHtml(d.title)}</strong></div>
             <div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(d.cat)} · ${PCG.escapeHtml(d.sz)}</div>
@@ -533,10 +533,10 @@
     </div>
     <div class="divider"></div>
     <div style="display:grid; gap:6px;">
-      <a class="btn sm" href="#">Flex · Order ${p.manifestNo||"—"} ↗</a>
-      <a class="btn sm" href="#">Lasso · Project ${p.code} ↗</a>
-      <a class="btn sm" href="#">QuickBooks · ${p.customerPO||"—"} ↗</a>
-      <a class="btn sm" href="#">ShoFlo · Show Flow ↗</a>
+      <a class="btn sm" href="pull-sheet.html">Manifest ${p.manifestNo||"—"} · Pull Sheet →</a>
+      <a class="btn sm" href="scheduling.html?project=${p.code}">Crew Schedule →</a>
+      <a class="btn sm" href="finance.html">QuickBooks Handoff · ${p.customerPO||"—"} →</a>
+      <a class="btn sm" href="ros.html?project=${p.code}">Run of Show →</a>
       <a class="btn sm ghost" href="#">SharePoint Project Folder ↗</a>
     </div>
   `;

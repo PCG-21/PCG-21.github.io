@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Tour Edge Cases</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .ec-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 18px 22px; margin-bottom: var(--sp-3);
+    border-left: 4px solid var(--status-amber);
+  }
+  .ec-card.sev-high { border-left-color: var(--status-red); background: linear-gradient(135deg, rgba(178,56,56,0.04) 0%, var(--surface-1) 30%); }
+  .ec-card.sev-med  { border-left-color: var(--status-amber); }
+  .ec-card.sev-info { border-left-color: var(--pcg-bright-blue); }
+  .ec-card h3 { margin: 0 0 6px; font-family: var(--font-display); font-size: 18px; }
+  .ec-card .eyebrow { font-size: 10px; margin-bottom: 6px; }
+  .ec-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--text-tertiary); margin-top: 8px; }
+  .ec-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .ec-option {
+    padding: 10px 14px; background: var(--surface-2); border-radius: var(--r-sm);
+    margin-top: 8px; font-size: var(--fs-sm);
+  }
+  .ec-option .opt-label {
+    font-family: var(--font-display); font-size: 10px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--pcg-bright-blue); margin-bottom: 2px;
+  }
+  .ec-option.recommended {
+    border: 1px solid var(--pcg-bright-blue);
+    background: linear-gradient(135deg, rgba(1,153,253,0.08) 0%, var(--surface-2) 100%);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Touring · Edge Case Handbook</div>
+          <h1>Tour Edge Cases</h1>
+          <div class="muted">Real-time operational responses to tour-specific problems (spec §MM). Tours create edge cases single-show systems don't encounter — each has a defined system response + ownership.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size: 10px;">TOUR</span>
+          <select id="tourSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); min-width: 300px;"></select>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Active Edge Cases</div>
+              <div style="display:flex; gap:6px; margin-left:auto;">
+                <button class="chip on" data-f="all">All</button>
+                <button class="chip" data-f="damage">Damage</button>
+                <button class="chip" data-f="crew">Crew</button>
+                <button class="chip" data-f="logistics">Logistics</button>
+              </div>
+            </div>
+            <div id="ecList" style="padding: var(--sp-3);"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Edge-Case Playbook</div></div>
+            <div class="card-body" style="font-size: var(--fs-xs); line-height: 1.7;">
+              <div class="eyebrow" style="margin-bottom: 6px;">8 canonical scenarios (spec §MM)</div>
+              <ol style="margin: 0; padding-left: 18px;">
+                <li><strong>Item damaged mid-tour</strong> — source replacement / sub-rent / redesign</li>
+                <li><strong>Crew drops out mid-tour</strong> — replace from next stop forward</li>
+                <li><strong>Truck breaks down between stops</strong> — leg disrupted, reschedule</li>
+                <li><strong>Double-booked inventory</strong> — tour blocks general availability</li>
+                <li><strong>Stop cancelled mid-tour</strong> — cancellation fee + route adjust</li>
+                <li><strong>Local hire no-show</strong> — field coverage adjust + performance flag</li>
+                <li><strong>Client changes master ROS</strong> — future stops re-clone, past stops archive</li>
+                <li><strong>Partial shipment</strong> — catch-up shipment to next stop</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Log New Edge Case</div></div>
+            <div class="card-body">
+              <select id="newEcType" style="width: 100%; margin-bottom: 8px; background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 10px; border-radius: var(--r-sm); font-size: var(--fs-sm);">
+                <option value="damage">Item damaged mid-tour</option>
+                <option value="crew-dropout">Crew member drops out</option>
+                <option value="truck-breakdown">Truck breakdown on leg</option>
+                <option value="double-booked">Inventory double-booked</option>
+                <option value="stop-cancelled">Stop cancelled</option>
+                <option value="local-noshow">Local hire no-show</option>
+                <option value="ros-change">Client ROS change</option>
+                <option value="partial-shipment">Partial shipment</option>
+              </select>
+              <button class="btn sm primary" onclick="logEdge()" style="width: 100%;">Log Edge Case →</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'tours', crumbs:[{label:'Tours', href:'tours.html'},{label:'Edge Cases'}]});
+
+  // Tour selector
+  const tours = (PCG.api.getTours && PCG.api.getTours()) || [];
+  document.getElementById('tourSel').innerHTML = tours.map(t => `<option value="${t.id}">${PCG.escapeHtml(t.name)}</option>`).join('');
+  let currentTour = PCG.qs('tour') || (tours[0] ? tours[0].id : null);
+  if(currentTour) document.getElementById('tourSel').value = currentTour;
+  let filter = 'all';
+
+  // Synthesize edge cases — Lincoln tour has the Atlanta LED tile damage, V1 crew replacement at DFW
+  function getEdgeCases(tourId){
+    const tour = (PCG.api.getTour ? PCG.api.getTour(tourId) : null);
+    if(!tour) return [];
+    const stops = PCG.api.getTourStops(tourId);
+    const pkg = PCG.api.getTourInventoryPackage(tourId);
+    const crewPkg = PCG.api.getTourCrewPackage(tourId);
+
+    const cases = [];
+
+    // #1 — Damaged items from tour inventory damage notes
+    (pkg ? pkg.items : []).forEach(it => {
+      (it.damageNotes||[]).forEach(d => {
+        const stop = stops.find(s => s.id === d.stopId);
+        const inv = PCG.api.getInventoryItem(it.modelId);
+        const remaining = stops.filter(s => ['Upcoming','Prepping','Active','InTransit'].includes(s.stopStatus)).length;
+        cases.push({
+          kind: 'damage',
+          severity: 'high',
+          title: `${inv?inv.name:it.modelId} damaged at ${stop?stop.city:'unknown stop'}`,
+          at: d.reportedAt,
+          stop, stopId: d.stopId,
+          body: `${PCG.escapeHtml(d.note)}. Item stays in tour package — decide how to cover remaining ${remaining} stop${remaining===1?'':'s'}.`,
+          owner: 'Tour PM',
+          options: [
+            { label: 'Option A · Ship Replacement', recommended: remaining >= 3, body: 'EQLPC dispatches replacement from home warehouse, ships to next stop. Arrives ~2 days.' },
+            { label: 'Option B · Sub-Rent at Next City', recommended: remaining === 2, body: 'Source from local vendor at the next stop. Fastest but usually highest cost.' },
+            { label: 'Option C · Redesign Remaining Stops', recommended: remaining === 1, body: 'Reduce spec for remaining stops. Requires client approval.' }
+          ]
+        });
+      });
+    });
+
+    // #2 — Crew member replaced mid-tour (lincoln: p.arachilla → p.rbenoit at DFW)
+    (crewPkg ? crewPkg.travelingCrew : []).filter(c => c.replacedByCrewMemberId).forEach(c => {
+      const originalPerson = PCG.findPerson(c.crewMemberId);
+      const replacementPerson = PCG.findPerson(c.replacedByCrewMemberId);
+      const replacedAtStop = stops.find(s => s.id === c.replacedAtStopId);
+      const pos = (PCG.crewPositions||[]).find(p => p.id === c.positionId);
+      cases.push({
+        kind: 'crew',
+        severity: 'med',
+        title: `${originalPerson?originalPerson.name:c.crewMemberId} (${pos?pos.displayName:c.positionId}) withdrew — replaced by ${replacementPerson?replacementPerson.name:c.replacedByCrewMemberId}`,
+        at: null,
+        stop: replacedAtStop, stopId: c.replacedAtStopId,
+        body: `TourCrewMember.confirmationStatus → Withdrawn at ${replacedAtStop?replacedAtStop.city:'stop'}. ShiftAssignments cancelled for remaining stops. New TourCrewMember record created with startStopId = ${replacedAtStop?replacedAtStop.city:'next'}.`,
+        owner: 'Labor Coordinator',
+        options: [],
+        resolved: true
+      });
+    });
+
+    // #3 — Stop issues (active problems at a stop)
+    stops.forEach(s => {
+      (s.issues||[]).forEach(is => {
+        // Only non-damage issues here (damage already captured above via inventory package)
+        if(is.summary && !is.summary.toLowerCase().includes('led') && !is.summary.toLowerCase().includes('damage')){
+          cases.push({
+            kind: 'logistics',
+            severity: is.severity === 'major' ? 'high' : 'med',
+            title: `${s.city}: ${is.summary}`,
+            at: is.at, stop: s, stopId: s.id,
+            body: `Logged during ${s.stopStatus} state. Severity: ${is.severity}.`,
+            owner: 'Tour PM', options: []
+          });
+        }
+      });
+    });
+
+    // #4 — Show a synthesized example: partial shipment at next leg (for demo)
+    if(tourId === 'tour.lincoln-navigator-26'){
+      cases.push({
+        kind: 'logistics',
+        severity: 'med',
+        title: 'Catch-up shipment required for Atlanta → Dallas leg',
+        at: '2026-05-27T08:00',
+        stop: stops.find(s => s.id === 'tstop.lincoln-dfw'),
+        body: '2 monitor cases missed the outbound truck (loaded on wrong pallet). Shipping via air freight to next stop. Arrival by Thursday 4pm — before load-in Friday 6am.',
+        owner: 'WH Lead',
+        options: [
+          { label: 'Option A · Air Freight (booked)', recommended: true, body: 'Delta Cargo: 2 cases DTW → DFW. $890 cost. Confirmed.' },
+          { label: 'Option B · Last-Mile Van Rental', recommended: false, body: 'Rent van, drive overnight. $650 + driver diem.' }
+        ]
+      });
+    }
+    if(tourId === 'tour.stellantis-2026'){
+      cases.push({
+        kind: 'logistics',
+        severity: 'info',
+        title: 'Inventory committed through tour end (availability block)',
+        at: null,
+        stop: null,
+        body: 'The 10 × 50" Samsung Crystal monitors committed to Stellantis Tour are blocked from general availability through Jun 6. EQLPC attempted allocation to ACR-BOARD26 was denied. Alternative confirmed from bin stock.',
+        owner: 'EQLPC',
+        options: [], resolved: true
+      });
+    }
+
+    return cases;
+  }
+
+  function render(){
+    const cases = getEdgeCases(currentTour);
+    const filtered = cases.filter(c => filter === 'all' || c.kind === filter);
+
+    // KPIs
+    const high = cases.filter(c => c.severity === 'high' && !c.resolved).length;
+    const med = cases.filter(c => c.severity === 'med' && !c.resolved).length;
+    const resolved = cases.filter(c => c.resolved).length;
+    const byOwner = {};
+    cases.filter(c => !c.resolved).forEach(c => { byOwner[c.owner] = (byOwner[c.owner]||0) + 1; });
+    const topOwner = Object.entries(byOwner).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi red"><div class="label">High Severity</div><div class="value">${high}</div><div class="sub">need decision today</div></div>
+      <div class="kpi amber"><div class="label">Medium</div><div class="value">${med}</div><div class="sub">active, not urgent</div></div>
+      <div class="kpi green"><div class="label">Resolved</div><div class="value">${resolved}</div><div class="sub">closed edge cases</div></div>
+      <div class="kpi blue"><div class="label">Owner Load</div><div class="value" style="font-size:14px;">${topOwner ? PCG.escapeHtml(topOwner[0]) : '—'}</div><div class="sub">${topOwner ? topOwner[1]+' open' : 'none'}</div></div>
+      <div class="kpi"><div class="label">Total Cases</div><div class="value">${cases.length}</div><div class="sub">on this tour</div></div>
+      <div class="kpi purple"><div class="label">Stops w/ Issues</div><div class="value">${new Set(cases.map(c=>c.stopId).filter(Boolean)).size}</div><div class="sub">affected stops</div></div>
+    `;
+
+    // List
+    document.getElementById('ecList').innerHTML = filtered.length ? filtered.map(c => {
+      const kindLabel = { damage: 'DAMAGE', crew: 'CREW CHANGE', logistics: 'LOGISTICS', 'ros-change': 'ROS CHANGE' }[c.kind] || c.kind.toUpperCase();
+      return `
+        <div class="ec-card sev-${c.severity}">
+          <div style="display:flex; align-items: flex-start; gap: 10px;">
+            <div style="flex: 1;">
+              <div class="eyebrow">${kindLabel}${c.stop ? ' · Stop ' + (c.stop.stopNumber||'?') + ' · ' + PCG.escapeHtml(c.stop.city) : ''}${c.resolved ? ' · RESOLVED' : ''}</div>
+              <h3>${PCG.escapeHtml(c.title)}</h3>
+              <p class="muted" style="font-size: var(--fs-sm); margin: 6px 0 0; line-height: 1.5;">${PCG.escapeHtml(c.body)}</p>
+              <div class="ec-meta">
+                ${c.at ? `<span>🕒 ${PCG.fmtDate(c.at,{time:true})} (${PCG.ago(c.at)})</span>` : ''}
+                <span>👤 Owner: <strong>${PCG.escapeHtml(c.owner)}</strong></span>
+              </div>
+              ${c.options && c.options.length ? `
+                <div style="margin-top: 12px;">
+                  <div class="eyebrow" style="margin-bottom: 4px;">System-Surfaced Options</div>
+                  ${c.options.map(o => `
+                    <div class="ec-option ${o.recommended?'recommended':''}">
+                      <div class="opt-label">${PCG.escapeHtml(o.label)}${o.recommended?' · RECOMMENDED':''}</div>
+                      <div>${PCG.escapeHtml(o.body)}</div>
+                    </div>`).join('')}
+                </div>` : ''}
+              <div class="ec-actions">
+                ${!c.resolved ? `
+                  <button class="btn sm primary">Take Action →</button>
+                  <button class="btn sm ghost">Escalate to Director</button>
+                  <button class="btn sm ghost">Mark Resolved</button>
+                ` : '<span class="pill green plain" style="font-size: 10px;">✓ RESOLVED</span>'}
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }).join('') : PCG.states.empty('No edge cases match this filter. 🎉');
+  }
+
+  window.logEdge = () => {
+    const t = document.getElementById('newEcType').value;
+    alert(`✓ Logged edge case: ${t}\n\nOn a real tour, this would:\n• Create a TourEdgeCase record linked to the tour and affected stop\n• Notify the canonical owner per spec §MM\n• Surface system-generated options where applicable\n• Block affected downstream records (inventory, crew, logistics, ROS) as defined\n• Log to tour audit trail`);
+  };
+
+  document.getElementById('tourSel').addEventListener('change', e => {
+    currentTour = e.target.value;
+    render();
+  });
+  document.querySelectorAll('.chip[data-f]').forEach(b => b.addEventListener('click', e => {
+    document.querySelectorAll('.chip[data-f]').forEach(x => x.classList.toggle('on', x===e.target));
+    filter = e.target.dataset.f;
+    render();
+  }));
+  render();
+</script>
+</body>
+</html>

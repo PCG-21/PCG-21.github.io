@@ -49,7 +49,128 @@
 <script>
   PCG.mountShell({active:"action", crumbs:[{label:"Action Queue"}]});
 
-  const q = PCG.actionQueue;
+  // Build live action queue from ALL cross-module sources (pitches, tours, sub-rentals, substitutions, cycle counts, add orders, ROS)
+  const live = [];
+
+  // 1. Pitch comments from clients (need AE response)
+  (PCG.pitches||[]).forEach(p => {
+    const pendingClientComments = (p.comments||[]).filter(c => {
+      if(c.fromSide !== 'client') return false;
+      // Check if there's a later PCG reply
+      const laterReplies = (p.comments||[]).filter(r => r.fromSide==='pcg' && new Date(r.at) > new Date(c.at));
+      return laterReplies.length === 0;
+    });
+    pendingClientComments.forEach(c => {
+      const client = PCG.api.getClient(p.clientId);
+      live.push({
+        kind:'decision', priority:'medium',
+        title:`Client comment awaiting reply: "${c.body.slice(0,60)}${c.body.length>60?'…':''}"`,
+        proj: p.pitchNo,
+        waitOn: 'AE (Jeff Springer)',
+        stale: PCG.ago(c.at),
+        href: 'pitch.html?id='+p.id
+      });
+    });
+    // Option selected but pitch not yet converted
+    if(p.selectedOptionId && !p.convertedQuoteId && p.status !== 'Accepted'){
+      live.push({
+        kind:'decision', priority:'high',
+        title:`Client picked option on "${p.projectIdea}" — follow up`,
+        proj: p.pitchNo,
+        waitOn: 'AE',
+        stale: PCG.ago(p.engagementEvents && p.engagementEvents.length ? p.engagementEvents[p.engagementEvents.length-1].at : p.issuedAt),
+        href: 'pitch.html?id='+p.id
+      });
+    }
+  });
+
+  // 2. Pitches issued but not opened after 3+ days
+  (PCG.pitches||[]).filter(p => p.status==='Issued' && p.issuedAt).forEach(p => {
+    const days = (Date.now() - new Date(p.issuedAt).getTime()) / 86400000;
+    if(days > 3 && !(p.engagementEvents||[]).some(e => e.type==='Opened')){
+      live.push({
+        kind:'risk', priority:'medium',
+        title:`Pitch ${p.pitchNo} — sent ${Math.round(days)}d ago, never opened`,
+        proj: p.pitchNo, waitOn:'Client open',
+        stale: PCG.ago(p.issuedAt),
+        href: 'pitch.html?id='+p.id
+      });
+    }
+  });
+
+  // 3. Tour stop issues
+  (PCG.tourStops||[]).forEach(s => {
+    (s.issues||[]).forEach(i => {
+      live.push({
+        kind:'risk', priority: i.severity==='major'?'high':'medium',
+        title:`${s.city}: ${i.summary}`,
+        proj: s.linkedProjectId,
+        waitOn: 'Tour PM',
+        stale: PCG.ago(i.at),
+        href: 'tour-view.html?id='+s.tourId
+      });
+    });
+  });
+
+  // 4. Substitution proposals pending PM approval
+  (PCG.substitutionProposals||[]).filter(s => s.status==='Proposed').forEach(s => {
+    live.push({
+      kind:'approval', priority: s.costDelta > 0 ? 'high' : 'medium',
+      title:`Substitution: ${s.originalName} → ${s.substituteName} ${s.costDelta===0?'(transparent)':s.costDelta>0?'(+'+PCG.money(s.costDelta)+' — escalate)':'('+PCG.money(s.costDelta)+' credit)'}`,
+      proj: s.showId, waitOn: s.requiresApproval||'PM',
+      stale: PCG.ago(s.proposedAt),
+      href: 'eqlpc.html'
+    });
+  });
+
+  // 5. Sub-rentals awaiting approval
+  (PCG.subRentals||[]).filter(r => r.status==='PendingApproval' || r.status==='Draft').forEach(r => {
+    live.push({
+      kind:'approval', priority:'medium',
+      title:`Sub-Rental ${r.id}: ${r.itemDescription} · ${r.quotedCost?PCG.money(r.quotedCost):''}`,
+      proj: r.projectCode || r.showId, waitOn: r.quotedCost > 10000 ? 'CFO' : 'Director',
+      stale: r.createdAt ? PCG.ago(r.createdAt) : '—',
+      href: 'procurement.html'
+    });
+  });
+
+  // 6. Add orders from field
+  (PCG.addOrders||[]).filter(ao => ao.status==='Requested' || ao.status==='Acknowledged').forEach(ao => {
+    live.push({
+      kind: ao.urgency==='Emergency'?'risk':'decision',
+      priority: ao.urgency==='Emergency'?'high':ao.urgency==='Urgent'?'high':'medium',
+      title:`Add Order ${ao.aoNumber}: ${ao.description}`,
+      proj: ao.showId, waitOn:'WH Lead',
+      stale: PCG.ago(ao.requestedAt),
+      href: 'add-order.html'
+    });
+  });
+
+  // 7. Cycle counts pending review
+  (PCG.cycleCounts||[]).filter(c => c.status==='PendingReview').forEach(c => {
+    live.push({
+      kind:'approval', priority:'medium',
+      title:`Cycle Count ${c.countNumber} — ${c.varianceSummary?c.varianceSummary.linesWithVariance:0} variance line(s) need review`,
+      proj: c.warehouseId, waitOn:'WH Lead',
+      stale: c.completedAt ? PCG.ago(c.completedAt) : '—',
+      href: 'cycle-count.html'
+    });
+  });
+
+  // 8. Work items (from proposal + approval writes)
+  (PCG.workItems||[]).filter(w => w.status==='Open').forEach(w => {
+    live.push({
+      kind: w.type==='SubstitutionApproval'?'approval':'decision',
+      priority: w.priority==='High'?'high':'medium',
+      title: w.title,
+      proj: '—', waitOn: (PCG.findPerson(w.ownerId)||{}).name || w.ownerId,
+      stale: w.createdAt ? PCG.ago(w.createdAt) : '—',
+      href: 'eqlpc.html'
+    });
+  });
+
+  // Merge with static seeded queue, then de-duplicate
+  const q = live.concat(PCG.actionQueue||[]);
   const countBy = k => q.filter(x=>x.kind===k).length;
   const kpi = document.getElementById("q-kpis");
   kpi.innerHTML = `
@@ -79,7 +200,7 @@
           <div>${pr}</div>
           <div class="mono muted">${it.stale}</div>
           <div style="display:flex; gap:4px; justify-content:flex-end;">
-            <a class="btn sm" href="playbook.html?project=${it.proj}">Open</a>
+            <a class="btn sm" href="${it.href || ('playbook.html?project='+it.proj)}">Open</a>
             ${it.kind==="approval"?`<button class="btn sm primary">Approve</button>`:""}
           </div>
         </div>`;

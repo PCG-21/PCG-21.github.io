@@ -7,19 +7,66 @@
 <link rel="stylesheet" href="assets/tokens.css" />
 <link rel="stylesheet" href="assets/app.css" />
 <style>
+  .pif-type-picker {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3);
+    margin-bottom: var(--sp-5);
+  }
+  .pif-type-card {
+    background: var(--surface-1); border: 2px solid var(--border);
+    border-radius: var(--r-md); padding: 22px 24px; cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .pif-type-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+  .pif-type-card.selected {
+    border-color: var(--pcg-bright-blue);
+    background: linear-gradient(135deg, rgba(1,153,253,0.08) 0%, rgba(122,65,229,0.04) 100%);
+    box-shadow: 0 0 0 3px rgba(1,153,253,0.12);
+  }
+  .pif-type-card.selected::before {
+    content: "✓"; position: absolute; top: 10px; right: 14px;
+    width: 24px; height: 24px; background: var(--pcg-bright-blue); color: #001a2a;
+    border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px;
+  }
+  .pif-type-card .ico { font-size: 32px; margin-bottom: 8px; }
+  .pif-type-card h3 {
+    margin: 0 0 6px; font-family: var(--font-display); font-size: 20px;
+  }
+  .pif-type-card p { color: var(--text-secondary); font-size: var(--fs-sm); margin: 0; line-height: 1.5; }
+  .pif-type-card .eg {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);
+  }
+
   .pif-grid { display:grid; grid-template-columns: 200px 1fr; gap: 12px var(--sp-4); align-items:center; }
   .pif-grid .lbl { font-family: var(--font-display); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-tertiary); text-align:right; }
+  .pif-grid .lbl.req::after { content: " *"; color: var(--status-red); }
   .pif-grid input, .pif-grid select, .pif-grid textarea {
     background: var(--surface-2); color: var(--text-primary); border:1px solid var(--border);
     border-radius: var(--r-sm); padding: 7px 10px; font-size: var(--fs-sm); font-family: inherit;
     width: 100%;
   }
   .pif-grid textarea { min-height: 72px; }
-  .pif-bar {
-    height:10px; background: var(--surface-2); border-radius: 5px; overflow:hidden;
-    position:relative;
+  .pif-grid .hint { color: var(--text-tertiary); font-size: 11px; margin-top: 2px; }
+
+  .pif-section-hdr {
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--pcg-bright-blue);
+    margin: var(--sp-4) 0 var(--sp-2); grid-column: 1 / -1;
+    padding-bottom: 4px; border-bottom: 1px solid var(--border);
   }
+  .pif-bar { height:10px; background: var(--surface-2); border-radius: 5px; overflow:hidden; position:relative; }
   .pif-bar > div { height:100%; background: var(--grad-show-light-spectrum); transition: width 0.25s; }
+
+  .stop-row {
+    display: grid; grid-template-columns: 40px 1fr 1fr 110px 100px 30px;
+    gap: 8px; align-items: center; padding: 8px 10px; margin-bottom: 6px;
+    background: var(--surface-2); border-radius: var(--r-sm); font-size: var(--fs-sm);
+  }
+  .stop-row input, .stop-row select {
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+    padding: 4px 8px; border-radius: var(--r-sm); font-size: var(--fs-xs); width: 100%;
+  }
 </style>
 </head>
 <body>
@@ -31,12 +78,39 @@
       <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
         <div>
           <div class="eyebrow">Project Intake Form · Upstream Lifecycle Trigger</div>
-          <h1 id="hdr">—</h1>
-          <div class="muted">The PIF is the seed record for every project. Weak PIFs produce weak projects.</div>
+          <h1 id="hdr">New Project · Pick a Type</h1>
+          <div class="muted">The PIF is the seed record for every Show, Program, or Tour. Weak PIFs produce weak projects (spec §4).</div>
         </div>
         <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
-          <select id="pifSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
-          <button class="btn sm">＋ New PIF</button>
+          <select id="pifSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); max-width: 360px;"></select>
+          <button class="btn sm primary" id="newBtn">＋ New PIF</button>
+        </div>
+      </div>
+
+      <!-- Project Type Picker (always visible for new PIF) -->
+      <div id="typePickerWrap" class="card card-pad" style="margin-bottom: var(--sp-4);">
+        <div class="eyebrow" style="margin-bottom: 4px;">STEP 1 · PROJECT TYPE</div>
+        <h3 style="margin: 0 0 4px; font-family: var(--font-display); font-size: 22px;">What are you creating?</h3>
+        <div class="muted" style="font-size: var(--fs-sm); margin-bottom: var(--sp-4);">Each type has different upstream fields and triggers different downstream setup (spec §II vs §2.2 vs §4).</div>
+        <div class="pif-type-picker" id="typePicker">
+          <div class="pif-type-card" data-type="Show">
+            <div class="ico">🎤</div>
+            <h3>Show</h3>
+            <p>A single commercial event for a client — one venue, one (or a few) contiguous dates. The default 90% of the time.</p>
+            <div class="eg">Examples: LCE 2026 Conference · Accrue Board Retreat · Microsoft Summer Summit</div>
+          </div>
+          <div class="pif-type-card" data-type="Program">
+            <div class="ico">🗂</div>
+            <h3>Program</h3>
+            <p>A group of related Shows (possibly simultaneous) under one client/budget umbrella. Each sub-show is its own Project, but they share scope and reporting.</p>
+            <div class="eg">Examples: SAE WCX (5 breakout pavilions) · Annual road-show series · ELSO annual circuit</div>
+          </div>
+          <div class="pif-type-card" data-type="Tour">
+            <div class="ico">🚌</div>
+            <h3>Tour</h3>
+            <p>Sequential execution — same gear + core crew + ROS travel city-to-city with local adaptations. Requires inventory & crew <em>package</em>, not per-stop allocations.</p>
+            <div class="eg">Examples: Lincoln Navigator National Tour · Stellantis 2026 · Brand roadshows</div>
+          </div>
         </div>
       </div>
 
@@ -44,14 +118,14 @@
         <div>
           <div class="card">
             <div class="card-header">
-              <div class="title">PIF Fields</div>
+              <div class="title" id="formTitle">PIF Fields</div>
               <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="pifStatus"></span>
             </div>
             <div class="card-body">
               <div class="pif-grid" id="form"></div>
               <div style="margin-top:var(--sp-5); display:flex; gap:var(--sp-2);">
-                <button class="btn ghost">Save Draft</button>
-                <button class="btn primary" id="submitBtn">Submit PIF → Convert to Project</button>
+                <button class="btn ghost" id="saveDraftBtn">Save Draft</button>
+                <button class="btn primary" id="submitBtn">Submit PIF → Convert</button>
                 <span class="muted" style="margin-left:auto; align-self:center; font-size:var(--fs-xs);" id="submitNote"></span>
               </div>
             </div>
@@ -74,16 +148,7 @@
 
           <div class="card" style="margin-top:var(--sp-4);">
             <div class="card-header"><div class="title">On Submission, STAGE Will:</div></div>
-            <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary);">
-              <ul style="margin:0; padding-left:18px;">
-                <li>Create the Project record + assign projectCode</li>
-                <li>Build a Quote skeleton (cloned from prior year if referenced)</li>
-                <li>Seed workback schedule from the show-type template</li>
-                <li>Route to each listed department's Director for review</li>
-                <li>Surface venue warning flags if prior shows exist there</li>
-                <li>Notify Labor Coordinator to begin staffing planning</li>
-              </ul>
-            </div>
+            <div class="card-body" id="submissionSteps" style="font-size:var(--fs-xs); color:var(--text-secondary);"></div>
           </div>
 
           <div class="card" style="margin-top:var(--sp-4);">
@@ -104,70 +169,450 @@
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
 <script>
-  PCG.mountShell({active:'portfolio', crumbs:[{label:'PIF'}]});
+  PCG.mountShell({active:'pif', crumbs:[{label:'Projects'},{label:'PIF'}]});
 
-  const pifs = PCG.api.getPIFs();
+  // Working PIF — stored in memory; can be seeded from an existing PIF
+  let working = {
+    id: 'pif.new',
+    projectType: 'Show', // Show | Program | Tour
+    status: 'Draft',
+    projectName: '',
+    projectCode: '',
+    clientId: '',
+    aeId: PCG.user.id,
+    pmId: '',
+    venueId: '',
+    showType: 'GeneralSession',
+    dates: {},
+    estimatedBudget: '',
+    estimatedAttendance: '',
+    departments: [],
+    estimatedHeadcount: '',
+    breakoutRoomCount: 0,
+    travelRequired: false,
+    subRentalAnticipated: false,
+    clientContactName: '',
+    clientContactEmail: '',
+    priorProjectRef: '',
+    notes: '',
+    // Tour-specific
+    tourType: '',
+    tourStartDate: '',
+    tourEndDate: '',
+    tourStops: [],
+    tourInventoryPackage: false,
+    tourCrewPackage: false,
+    masterROSTemplate: false,
+    // Program-specific
+    programChildren: [],
+    sharedBudget: '',
+    programCoordinator: ''
+  };
+
+  const pifs = (PCG.api.getPIFs && PCG.api.getPIFs()) || [];
   const sel = document.getElementById('pifSel');
-  sel.innerHTML = pifs.map(p=>`<option value="${p.id}">${p.projectCode||'DRAFT'} — ${p.projectName||'Untitled'} · ${p.status}</option>`).join('');
+  const opts = ['<option value="__new__">— New PIF —</option>']
+    .concat(pifs.map(p=>`<option value="${p.id}">${p.projectCode||'DRAFT'} — ${PCG.escapeHtml(p.projectName||'Untitled')} · ${p.status}</option>`));
+  sel.innerHTML = opts.join('');
+  sel.value = '__new__';
 
-  function render(){
-    const pif = PCG.api.getPIF(sel.value);
-    if(!pif){ document.getElementById('form').innerHTML = PCG.states.empty('No PIF'); return; }
-    document.getElementById('hdr').textContent = pif.projectName || 'New Project';
-    document.getElementById('pifStatus').innerHTML = `<span class="pill ${pif.status==='Converted'?'green':pif.status==='Approved'?'blue':'amber'}">${pif.status.toUpperCase()}</span>`;
+  function pickType(t){
+    working.projectType = t;
+    document.querySelectorAll('.pif-type-card').forEach(c =>
+      c.classList.toggle('selected', c.dataset.type === t));
+    renderForm();
+    renderSidebar();
+  }
 
-    const ro = pif.status==='Converted'; // read-only after conversion
+  document.querySelectorAll('.pif-type-card').forEach(c =>
+    c.addEventListener('click', () => pickType(c.dataset.type)));
+  pickType('Show'); // default
+
+  function updateWorking(field, value){
+    // supports nested 'dates.estimatedLoadIn'
+    if(field.includes('.')){
+      const [a,b] = field.split('.');
+      working[a] = working[a] || {};
+      working[a][b] = value;
+    } else {
+      working[field] = value;
+    }
+    renderSidebar();
+  }
+  window.updateWorking = updateWorking;
+
+  function addStop(){
+    working.tourStops = working.tourStops || [];
+    working.tourStops.push({ city: '', state: '', loadIn: '', loadOut: '', venueHint: '' });
+    renderForm();
+  }
+  window.addStop = addStop;
+
+  function removeStop(i){
+    working.tourStops.splice(i, 1);
+    renderForm();
+  }
+  window.removeStop = removeStop;
+
+  function addChild(){
+    working.programChildren = working.programChildren || [];
+    working.programChildren.push({ name: '', venueId: '', estimatedBudget: '' });
+    renderForm();
+  }
+  window.addChild = addChild;
+
+  function removeChild(i){
+    working.programChildren.splice(i, 1);
+    renderForm();
+  }
+  window.removeChild = removeChild;
+
+  function renderForm(){
     const venues = (PCG.venues||[]);
     const people = (PCG.people||[]);
+    const clients = (PCG.clients||[]);
     const priors = (PCG.projects||[]).filter(p=>p.show && p.show.lifecycleState==='Archived');
 
-    document.getElementById('form').innerHTML = `
-      <div class="lbl">Project Name</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.projectName||'')}"/></div>
-      <div class="lbl">Project Code</div><div><input readonly value="${PCG.escapeHtml(pif.projectCode||'auto-generate on submit')}"/></div>
-      <div class="lbl">Client</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.clientId||'')}"/></div>
-      <div class="lbl">AE</div><div><select ${ro?'disabled':''}>${people.map(p=>`<option ${p.id===pif.aeId?'selected':''}>${PCG.escapeHtml(p.name)}</option>`).join('')}</select></div>
-      <div class="lbl">PM</div><div><select ${ro?'disabled':''}><option value="">— Unassigned —</option>${people.map(p=>`<option ${p.id===pif.pmId?'selected':''}>${PCG.escapeHtml(p.name)}</option>`).join('')}</select></div>
-      <div class="lbl">Venue</div><div><select ${ro?'disabled':''}><option value="">— Select —</option>${venues.map(v=>`<option ${v.id===pif.venueId?'selected':''}>${PCG.escapeHtml(v.name)}</option>`).join('')}</select></div>
-      <div class="lbl">Show Type</div><div><select ${ro?'disabled':''}>${['GeneralSession','BreakoutConference','Expo','Arena','Hybrid','Other'].map(t=>`<option ${t===pif.showType?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="lbl">Load-In</div><div><input type="datetime-local" ${ro?'readonly':''} value="${(pif.dates&&pif.dates.estimatedLoadIn)||''}"/></div>
-      <div class="lbl">Show Start</div><div><input type="datetime-local" ${ro?'readonly':''} value="${(pif.dates&&pif.dates.estimatedShowStart)||''}"/></div>
-      <div class="lbl">Show End</div><div><input type="datetime-local" ${ro?'readonly':''} value="${(pif.dates&&pif.dates.estimatedShowEnd)||''}"/></div>
-      <div class="lbl">Est. Budget</div><div><input ${ro?'readonly':''} value="${pif.estimatedBudget||''}"/></div>
-      <div class="lbl">Est. Attendance</div><div><input ${ro?'readonly':''} value="${pif.estimatedAttendance||''}"/></div>
-      <div class="lbl">Departments</div><div>${['Audio','Video','Lighting','Rigging','Scenic','Creative','Labor','Other'].map(d=>`
-        <label style="margin-right:12px; font-size:var(--fs-sm);"><input type="checkbox" ${ro?'disabled':''} ${(pif.departments||[]).includes(d)?'checked':''}/> ${d}</label>`).join('')}</div>
-      <div class="lbl">Headcount Est.</div><div><input ${ro?'readonly':''} value="${pif.estimatedHeadcount||''}"/></div>
-      <div class="lbl">Breakout Rooms</div><div><input ${ro?'readonly':''} value="${pif.breakoutRoomCount||0}"/></div>
-      <div class="lbl">Travel Required</div><div><label style="font-size:var(--fs-sm);"><input type="checkbox" ${ro?'disabled':''} ${pif.travelRequired?'checked':''}/> Yes</label></div>
-      <div class="lbl">Sub-Rentals Anticipated</div><div><label style="font-size:var(--fs-sm);"><input type="checkbox" ${ro?'disabled':''} ${pif.subRentalAnticipated?'checked':''}/> Yes</label></div>
-      <div class="lbl">Client Contact</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.clientContactName||'')}" placeholder="Name"/></div>
-      <div class="lbl">Client Email</div><div><input ${ro?'readonly':''} value="${PCG.escapeHtml(pif.clientContactEmail||'')}" placeholder="email@client.com"/></div>
-      <div class="lbl">Prior Project Ref</div><div><select ${ro?'disabled':''}><option value="">— None —</option>${priors.map(p=>`<option ${p.code===pif.priorProjectRef?'selected':''}>${PCG.escapeHtml(p.code)} — ${PCG.escapeHtml(p.name)}</option>`).join('')}</select></div>
-      <div class="lbl">Notes</div><div><textarea ${ro?'readonly':''} placeholder="Anything important…">${PCG.escapeHtml(pif.notes||'')}</textarea></div>
+    document.getElementById('formTitle').textContent =
+      working.projectType === 'Tour' ? 'Tour PIF · Multi-City Setup' :
+      working.projectType === 'Program' ? 'Program PIF · Umbrella Setup' :
+      'Show PIF · Single Event';
+
+    // Common fields
+    let html = `
+      <div class="pif-section-hdr">Identity</div>
+      <div class="lbl req">Project Name</div>
+      <div>
+        <input value="${PCG.escapeHtml(working.projectName||'')}" placeholder="${working.projectType==='Tour'?'e.g. Lincoln Navigator 2027 National Launch Tour':working.projectType==='Program'?'e.g. SAE WCX 2026 Program':'e.g. LCE Conference 2026'}"
+               onchange="updateWorking('projectName', this.value)" />
+        <div class="hint">This is the client-facing name. ${working.projectType==='Tour'?'For tours, convention is "[Sponsor] [Year] [Descriptor] Tour".':''}</div>
+      </div>
+      <div class="lbl">Project Code</div>
+      <div>
+        <input readonly value="auto-generate on submit · ${working.projectType==='Tour'?'TOUR-[ABBR]-[YY]':working.projectType==='Program'?'PGM-[ABBR]-[YY]':'[CLIENT]-[YY]'}" />
+        <div class="hint">${working.projectType==='Tour'?'e.g. TOUR-LINC-26 · Each stop gets its own sub-code (LIN-NYC-26, etc.).':working.projectType==='Program'?'e.g. PGM-SAE-26 · Each child project gets its own code.':'e.g. LCE-2026 · Single project code.'}</div>
+      </div>
+      <div class="lbl req">Client</div>
+      <div>
+        <select onchange="updateWorking('clientId', this.value)">
+          <option value="">— Select client —</option>
+          ${clients.map(c=>`<option value="${c.id}" ${c.id===working.clientId?'selected':''}>${PCG.escapeHtml(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="lbl req">AE of Record</div>
+      <div>
+        <select onchange="updateWorking('aeId', this.value)">
+          ${people.map(p=>`<option value="${p.id}" ${p.id===working.aeId?'selected':''}>${PCG.escapeHtml(p.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="lbl">${working.projectType==='Tour'?'Tour PM':working.projectType==='Program'?'Program Coordinator':'PM (optional at PIF)'}</div>
+      <div>
+        <select onchange="updateWorking('${working.projectType==='Program'?'programCoordinator':'pmId'}', this.value)">
+          <option value="">— Unassigned —</option>
+          ${people.map(p=>`<option value="${p.id}" ${p.id===(working.projectType==='Program'?working.programCoordinator:working.pmId)?'selected':''}>${PCG.escapeHtml(p.name)} · ${PCG.escapeHtml(p.role||'')}</option>`).join('')}
+        </select>
+        <div class="hint">${working.projectType==='Tour'?'The Tour PM owns cross-stop coordination. Each stop may have its own local PM.':'PM assignment is the §4.2 gate — requires PIF score ≥ 60.'}</div>
+      </div>
     `;
 
-    // Readiness
-    const r = PCG.api.getPIFReadiness(pif.id);
+    if(working.projectType === 'Show'){
+      // Single-venue, single-event fields
+      html += `
+        <div class="pif-section-hdr">Venue · Dates</div>
+        <div class="lbl req">Venue</div>
+        <div>
+          <select onchange="updateWorking('venueId', this.value)">
+            <option value="">— Select venue (or create new in Venue Library) —</option>
+            ${venues.map(v=>`<option value="${v.id}" ${v.id===working.venueId?'selected':''}>${PCG.escapeHtml(v.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="lbl">Show Type</div>
+        <div>
+          <select onchange="updateWorking('showType', this.value)">
+            ${['GeneralSession','BreakoutConference','AwardsGala','ProductLaunch','TradeShowBooth','Expo','Arena','Hybrid','Other'].map(t=>`<option ${t===working.showType?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="lbl req">Load-In</div><div><input type="datetime-local" value="${(working.dates&&working.dates.estimatedLoadIn)||''}" onchange="updateWorking('dates.estimatedLoadIn', this.value)"/></div>
+        <div class="lbl req">Show Start</div><div><input type="datetime-local" value="${(working.dates&&working.dates.estimatedShowStart)||''}" onchange="updateWorking('dates.estimatedShowStart', this.value)"/></div>
+        <div class="lbl req">Show End</div><div><input type="datetime-local" value="${(working.dates&&working.dates.estimatedShowEnd)||''}" onchange="updateWorking('dates.estimatedShowEnd', this.value)"/></div>
+        <div class="lbl">Load-Out</div><div><input type="datetime-local" value="${(working.dates&&working.dates.estimatedLoadOut)||''}" onchange="updateWorking('dates.estimatedLoadOut', this.value)"/></div>
+
+        <div class="pif-section-hdr">Scope</div>
+        <div class="lbl">Est. Budget</div><div><input value="${working.estimatedBudget||''}" placeholder="e.g. 350000" onchange="updateWorking('estimatedBudget', this.value)"/></div>
+        <div class="lbl">Est. Attendance</div><div><input value="${working.estimatedAttendance||''}" placeholder="e.g. 450" onchange="updateWorking('estimatedAttendance', this.value)"/></div>
+        <div class="lbl">Departments Needed</div>
+        <div>${['Audio','Video','Lighting','Rigging','Scenic','LED','Creative','Labor','Other'].map(d=>`
+          <label style="margin-right:12px; font-size:var(--fs-sm);"><input type="checkbox" ${(working.departments||[]).includes(d)?'checked':''} onchange="toggleDept('${d}')"/> ${d}</label>`).join('')}</div>
+        <div class="lbl">Crew Headcount Est.</div><div><input value="${working.estimatedHeadcount||''}" placeholder="e.g. 13" onchange="updateWorking('estimatedHeadcount', this.value)"/></div>
+        <div class="lbl">Breakout Rooms</div><div><input value="${working.breakoutRoomCount||0}" type="number" onchange="updateWorking('breakoutRoomCount', this.value)"/></div>
+        <div class="lbl">Travel Required</div><div><label><input type="checkbox" ${working.travelRequired?'checked':''} onchange="updateWorking('travelRequired', this.checked)"/> Yes — crew traveling</label></div>
+        <div class="lbl">Sub-Rentals Anticipated</div><div><label><input type="checkbox" ${working.subRentalAnticipated?'checked':''} onchange="updateWorking('subRentalAnticipated', this.checked)"/> Yes — external partner gear needed</label></div>
+      `;
+    } else if(working.projectType === 'Tour'){
+      // Multi-stop tour fields
+      html += `
+        <div class="pif-section-hdr">Tour Structure (Spec §II)</div>
+        <div class="lbl req">Tour Type</div>
+        <div>
+          <select onchange="updateWorking('tourType', this.value)">
+            <option value="">— Select —</option>
+            ${['Automotive','Music','Brand','Conference','Sports','Other'].map(t=>`<option ${t===working.tourType?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="lbl req">Tour Start</div><div><input type="date" value="${working.tourStartDate||''}" onchange="updateWorking('tourStartDate', this.value)"/></div>
+        <div class="lbl req">Tour End</div><div><input type="date" value="${working.tourEndDate||''}" onchange="updateWorking('tourEndDate', this.value)"/></div>
+
+        <div class="pif-section-hdr">Stops (${(working.tourStops||[]).length})</div>
+        <div style="grid-column: 1 / -1;">
+          ${(working.tourStops||[]).length ? `
+            <div class="stop-row" style="font-family: var(--font-display); font-size:10px; text-transform:uppercase; color: var(--text-tertiary); background: transparent; padding-bottom: 0;">
+              <div>#</div><div>City</div><div>Venue / Hint</div><div>Load-In</div><div>Load-Out</div><div></div>
+            </div>
+            ${(working.tourStops||[]).map((s,i)=>`
+              <div class="stop-row">
+                <div class="mono" style="text-align:center; color: var(--pcg-spotlight-purple); font-weight: 600;">${i+1}</div>
+                <input value="${PCG.escapeHtml(s.city||'')}" placeholder="City, ST" oninput="updateStop(${i}, 'city', this.value)" />
+                <input value="${PCG.escapeHtml(s.venueHint||'')}" placeholder="venue or TBD" oninput="updateStop(${i}, 'venueHint', this.value)" />
+                <input type="date" value="${s.loadIn||''}" oninput="updateStop(${i}, 'loadIn', this.value)" />
+                <input type="date" value="${s.loadOut||''}" oninput="updateStop(${i}, 'loadOut', this.value)" />
+                <button class="btn sm ghost" onclick="removeStop(${i})" style="padding: 2px 8px; font-size: 11px;">✕</button>
+              </div>`).join('')}
+          ` : '<div class="muted" style="font-size:var(--fs-sm); padding: 10px 0;">No stops yet — add at least one to continue.</div>'}
+          <button class="btn sm" onclick="addStop()" style="margin-top: var(--sp-2);">＋ Add Stop</button>
+        </div>
+
+        <div class="pif-section-hdr">Tour Package Decisions (Spec §II.3 + §II.4)</div>
+        <div class="lbl">Primary Inventory</div>
+        <div>
+          <label><input type="checkbox" ${working.tourInventoryPackage?'checked':''} onchange="updateWorking('tourInventoryPackage', this.checked)"/> Same gear travels stop-to-stop (creates TourInventoryPackage)</label>
+          <div class="hint">Items in the package are blocked from general availability for the full tour window.</div>
+        </div>
+        <div class="lbl">Core Crew</div>
+        <div>
+          <label><input type="checkbox" ${working.tourCrewPackage?'checked':''} onchange="updateWorking('tourCrewPackage', this.checked)"/> Core crew travels with the tour (creates TourCrewPackage)</label>
+          <div class="hint">Local hires added per stop by Labor Coord. Each TourCrewMember has startStopId / endStopId.</div>
+        </div>
+        <div class="lbl">Master ROS Template</div>
+        <div>
+          <label><input type="checkbox" ${working.masterROSTemplate?'checked':''} onchange="updateWorking('masterROSTemplate', this.checked)"/> Same show-flow template clones to each stop</label>
+          <div class="hint">Tour TD updates the master; each stop's ROS is cloned + customized per venue.</div>
+        </div>
+
+        <div class="pif-section-hdr">Commercial</div>
+        <div class="lbl">Est. Total Revenue</div><div><input value="${working.estimatedBudget||''}" placeholder="e.g. 3850000 (all stops)" onchange="updateWorking('estimatedBudget', this.value)"/></div>
+        <div class="lbl">Travel Budget</div><div><input value="${working.travelBudget||''}" placeholder="e.g. 285000" onchange="updateWorking('travelBudget', this.value)"/></div>
+        <div class="lbl">Freight Budget</div><div><input value="${working.freightBudget||''}" placeholder="e.g. 185000" onchange="updateWorking('freightBudget', this.value)"/></div>
+      `;
+    } else if(working.projectType === 'Program'){
+      html += `
+        <div class="pif-section-hdr">Program Structure</div>
+        <div class="lbl">Program Lifespan</div>
+        <div>
+          <select onchange="updateWorking('programLifespan', this.value)">
+            <option value="SingleYear" ${working.programLifespan==='SingleYear'?'selected':''}>Single Year</option>
+            <option value="Recurring" ${working.programLifespan==='Recurring'?'selected':''}>Recurring Annual</option>
+            <option value="MultiYear" ${working.programLifespan==='MultiYear'?'selected':''}>Multi-Year (explicit)</option>
+          </select>
+        </div>
+        <div class="lbl">Shared Budget</div><div><input value="${working.sharedBudget||''}" placeholder="Umbrella budget across child projects" onchange="updateWorking('sharedBudget', this.value)"/></div>
+        <div class="lbl">Billing Model</div>
+        <div>
+          <select onchange="updateWorking('billingModel', this.value)">
+            <option value="PerChild" ${working.billingModel==='PerChild'?'selected':''}>Per-child invoicing</option>
+            <option value="Umbrella" ${working.billingModel==='Umbrella'?'selected':''}>Single umbrella invoice + child cost allocation</option>
+            <option value="Hybrid"  ${working.billingModel==='Hybrid'?'selected':''}>Hybrid</option>
+          </select>
+        </div>
+
+        <div class="pif-section-hdr">Child Projects (${(working.programChildren||[]).length})</div>
+        <div style="grid-column: 1 / -1;">
+          ${(working.programChildren||[]).length ? `
+            <div class="stop-row" style="grid-template-columns: 40px 2fr 1fr 1fr 30px; font-family: var(--font-display); font-size:10px; text-transform:uppercase; color: var(--text-tertiary); background: transparent; padding-bottom: 0;">
+              <div>#</div><div>Name</div><div>Venue</div><div>Budget</div><div></div>
+            </div>
+            ${(working.programChildren||[]).map((c,i)=>`
+              <div class="stop-row" style="grid-template-columns: 40px 2fr 1fr 1fr 30px;">
+                <div class="mono" style="text-align:center; color: var(--pcg-spotlight-purple); font-weight: 600;">${i+1}</div>
+                <input value="${PCG.escapeHtml(c.name||'')}" placeholder="e.g. Keynote Ballroom" oninput="updateChild(${i}, 'name', this.value)" />
+                <select onchange="updateChild(${i}, 'venueId', this.value)">
+                  <option value="">— Venue —</option>
+                  ${venues.map(v=>`<option value="${v.id}" ${v.id===c.venueId?'selected':''}>${PCG.escapeHtml(v.name)}</option>`).join('')}
+                </select>
+                <input value="${PCG.escapeHtml(c.estimatedBudget||'')}" placeholder="$" oninput="updateChild(${i}, 'estimatedBudget', this.value)" />
+                <button class="btn sm ghost" onclick="removeChild(${i})" style="padding: 2px 8px; font-size: 11px;">✕</button>
+              </div>`).join('')}
+          ` : '<div class="muted" style="font-size:var(--fs-sm); padding: 10px 0;">No child projects yet — add at least one to continue.</div>'}
+          <button class="btn sm" onclick="addChild()" style="margin-top: var(--sp-2);">＋ Add Child Project</button>
+        </div>
+      `;
+    }
+
+    // Shared footer fields
+    html += `
+      <div class="pif-section-hdr">Client Contact</div>
+      <div class="lbl">Contact Name</div><div><input value="${PCG.escapeHtml(working.clientContactName||'')}" placeholder="e.g. Jordan Beth" onchange="updateWorking('clientContactName', this.value)"/></div>
+      <div class="lbl">Contact Email</div><div><input value="${PCG.escapeHtml(working.clientContactEmail||'')}" placeholder="e.g. jbeth@lce.com" onchange="updateWorking('clientContactEmail', this.value)"/></div>
+      <div class="lbl">Prior Project Ref</div>
+      <div>
+        <select onchange="updateWorking('priorProjectRef', this.value)">
+          <option value="">— None (new relationship) —</option>
+          ${priors.map(p=>`<option value="${p.code}" ${p.code===working.priorProjectRef?'selected':''}>${PCG.escapeHtml(p.code)} — ${PCG.escapeHtml(p.name)}</option>`).join('')}
+        </select>
+        <div class="hint">Used to clone prior-year scope, crew, and quote as starting template.</div>
+      </div>
+      <div class="lbl">Notes</div><div><textarea placeholder="Anything important — special requirements, politics, client quirks…" onchange="updateWorking('notes', this.value)">${PCG.escapeHtml(working.notes||'')}</textarea></div>
+    `;
+
+    document.getElementById('form').innerHTML = html;
+  }
+
+  window.updateStop = (i, field, value) => { working.tourStops[i][field] = value; renderSidebar(); };
+  window.updateChild = (i, field, value) => { working.programChildren[i][field] = value; renderSidebar(); };
+  window.toggleDept = (d) => {
+    working.departments = working.departments || [];
+    const idx = working.departments.indexOf(d);
+    if(idx >= 0) working.departments.splice(idx, 1); else working.departments.push(d);
+    renderSidebar();
+  };
+
+  function scorePIF(w){
+    let score = 0, missing = [];
+    const t = w.projectType;
+    // Universal fields
+    if(w.projectName) score += 10; else missing.push('Project Name');
+    if(w.clientId)    score += 10; else missing.push('Client');
+    if(w.aeId)        score += 8;  else missing.push('AE of Record');
+    if(w.clientContactEmail) score += 8; else missing.push('Client Contact Email');
+    if(w.clientContactName)  score += 4;
+    if(w.estimatedBudget)    score += 6;
+    if(w.notes)              score += 2;
+
+    if(t === 'Show'){
+      if(w.venueId) score += 15; else missing.push('Venue');
+      if(w.dates && w.dates.estimatedLoadIn)   score += 10; else missing.push('Load-In Date');
+      if(w.dates && w.dates.estimatedShowStart)score += 10; else missing.push('Show Start');
+      if(w.dates && w.dates.estimatedShowEnd)  score += 10; else missing.push('Show End');
+      if((w.departments||[]).length) score += 6; else missing.push('Departments Needed');
+      if(w.estimatedHeadcount) score += 3;
+      if(w.estimatedAttendance) score += 2;
+    } else if(t === 'Tour'){
+      if(w.tourType)      score += 10; else missing.push('Tour Type');
+      if(w.tourStartDate) score += 8;  else missing.push('Tour Start Date');
+      if(w.tourEndDate)   score += 8;  else missing.push('Tour End Date');
+      if((w.tourStops||[]).length >= 2) score += 20;
+      else missing.push('At least 2 tour stops');
+      if(w.tourInventoryPackage) score += 6;
+      if(w.tourCrewPackage) score += 6;
+      if(w.masterROSTemplate) score += 4;
+    } else if(t === 'Program'){
+      if(w.sharedBudget) score += 10; else missing.push('Shared Budget');
+      if(w.billingModel) score += 6;
+      if((w.programChildren||[]).length >= 2) score += 20;
+      else missing.push('At least 2 child projects');
+      if((w.programChildren||[]).every(c => c.name && c.venueId)) score += 10;
+      else if((w.programChildren||[]).length) missing.push('Each child needs name + venue');
+    }
+    return { score: Math.min(100, score), missing };
+  }
+
+  function renderSidebar(){
+    const r = scorePIF(working);
     document.getElementById('scoreBig').textContent = r.score;
     document.getElementById('scoreBar').style.width = `${r.score}%`;
-    document.getElementById('gateBadge').innerHTML = r.canAssignPM
+    document.getElementById('gateBadge').innerHTML = r.score >= 60
       ? '<span class="pill green">✓ READY FOR PM</span>'
       : '<span class="pill amber">BELOW GATE (60)</span>';
     document.getElementById('missing').innerHTML = r.missing.length ? r.missing.map(m=>`
       <div class="attn-item amber" style="margin-bottom:6px;"><div><div class="ttl">${PCG.escapeHtml(m)}</div></div></div>
     `).join('') : PCG.states.empty('All fields present.');
 
+    // Type-specific on-submission steps
+    const t = working.projectType;
+    let steps = [];
+    if(t === 'Show'){
+      steps = [
+        'Create Project record · assign projectCode · seed Show entity',
+        'Build Quote skeleton (cloned from prior-year if referenced)',
+        'Seed workback schedule from the show-type template',
+        'Route to each listed department\'s Director for review',
+        'Surface venue warning flags if prior shows exist there',
+        'Notify Labor Coordinator to begin staffing planning'
+      ];
+    } else if(t === 'Tour'){
+      steps = [
+        'Create Tour entity with tourId',
+        'Create one Project record per stop (linkedProjectId set)',
+        'Seed TourRoute + TourRouteLeg records between stops',
+        'If tourInventoryPackage: seed empty TourInventoryPackage (Tour PM adds items)',
+        'If tourCrewPackage: seed empty TourCrewPackage (Labor Coord fills)',
+        'If masterROSTemplate: allow Tour TD to build master (clonable per stop)',
+        'Block referenced inventory from general availability across tour window',
+        'Notify Tour PM + AE · create cross-stop readiness dashboard'
+      ];
+    } else if(t === 'Program'){
+      steps = [
+        'Create Program entity (umbrella record)',
+        'Create one Project record per child (all linked via programId)',
+        'Apply shared client pricing rules + PO requirements across all children',
+        'Route to AE + Director for budget allocation review',
+        'Seed per-child quote skeleton',
+        'Create Program dashboard showing readiness rollup'
+      ];
+    }
+    document.getElementById('submissionSteps').innerHTML = `
+      <ul style="margin:0; padding-left:18px;">
+        ${steps.map(s=>`<li>${PCG.escapeHtml(s)}</li>`).join('')}
+      </ul>
+    `;
+
     const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = ro || r.score < 60;
-    document.getElementById('submitNote').textContent = ro
-      ? 'PIF already converted to project.'
-      : r.score < 60
-        ? 'PIF Conversion Gate: score must reach 60 before submission (§4.3).'
-        : 'Ready to convert to project record.';
+    submitBtn.disabled = r.score < 60;
+    document.getElementById('submitNote').textContent = r.score < 60
+      ? 'PIF Conversion Gate: score must reach 60 (§4.3).'
+      : `Ready to convert to ${t} record.`;
   }
 
-  sel.addEventListener('change', render);
-  render();
+  sel.addEventListener('change', () => {
+    if(sel.value === '__new__'){
+      // Reset to draft new PIF
+      working = {
+        id:'pif.new', projectType:'Show', status:'Draft', aeId: PCG.user.id,
+        dates:{}, departments:[], tourStops:[], programChildren:[]
+      };
+      pickType('Show');
+      return;
+    }
+    const p = PCG.api.getPIF(sel.value);
+    if(p){
+      working = Object.assign({
+        dates:{}, departments:[], tourStops:[], programChildren:[], projectType:'Show'
+      }, p);
+      pickType(working.projectType || 'Show');
+    }
+  });
+
+  document.getElementById('newBtn').addEventListener('click', () => {
+    sel.value = '__new__';
+    sel.dispatchEvent(new Event('change'));
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', () => {
+    const r = scorePIF(working);
+    if(r.score < 60){ alert('Score below 60 — gate blocks submission.'); return; }
+    const t = working.projectType;
+    if(t === 'Tour'){
+      const code = 'TOUR-'+(working.projectName||'NEW').replace(/[^A-Z]/gi,'').slice(0,4).toUpperCase()+'-'+new Date().getFullYear().toString().slice(-2);
+      alert(`✓ Tour PIF submitted.\n\nWould create:\n• Tour entity (${code})\n• ${(working.tourStops||[]).length} Project records (one per stop)\n• TourRoute + ${Math.max(0,(working.tourStops||[]).length-1)} TourRouteLegs\n${working.tourInventoryPackage?'• TourInventoryPackage (empty)\n':''}${working.tourCrewPackage?'• TourCrewPackage (empty)\n':''}${working.masterROSTemplate?'• Master ROS template stub\n':''}\n→ Opens tour-view.html for Tour PM to populate.`);
+    } else if(t === 'Program'){
+      const code = 'PGM-'+(working.projectName||'NEW').replace(/[^A-Z]/gi,'').slice(0,4).toUpperCase()+'-'+new Date().getFullYear().toString().slice(-2);
+      alert(`✓ Program PIF submitted.\n\nWould create:\n• Program entity (${code})\n• ${(working.programChildren||[]).length} Project records (all linked via programId)\n• Shared rate card + PO rules applied across children\n\n→ Opens program dashboard for AE.`);
+    } else {
+      alert(`✓ Show PIF submitted.\n\nWould create:\n• Project record with auto projectCode\n• Quote skeleton (cloned from ${working.priorProjectRef||'blank'})\n• Workback schedule from ${working.showType} template\n• Routed to ${(working.departments||[]).length} department directors\n\n→ Opens project playbook.`);
+    }
+  });
+
+  renderForm();
+  renderSidebar();
 </script>
 </body>
 </html>

@@ -40,6 +40,12 @@
             <div id="timeline"></div>
           </div>
 
+          <!-- Active Tours strip -->
+          <div class="card" id="toursCard" style="margin-bottom: var(--sp-4); display:none;">
+            <div class="card-header"><div class="title">🚌 Active Tours</div><a class="btn sm ghost" href="tours.html" style="margin-left:auto;">All Tours →</a></div>
+            <div id="toursStrip" style="padding: var(--sp-3); display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;"></div>
+          </div>
+
           <div class="card">
             <div class="card-header">
               <div class="title">Active Projects</div>
@@ -148,6 +154,34 @@
   `;
 
   PCG.renderTimeline(document.getElementById("timeline"), { start:"2026-04-01", days:42 });
+
+  // Render Active Tours strip
+  const activeTours = (PCG.api.getTours ? PCG.api.getTours() : []).filter(t => t.status === 'Executing');
+  if(activeTours.length){
+    document.getElementById('toursCard').style.display = 'block';
+    document.getElementById('toursStrip').innerHTML = activeTours.map(t => {
+      const stops = PCG.api.getTourStops(t.id);
+      const complete = stops.filter(s => s.stopStatus==='Complete').length;
+      const active = stops.find(s => s.stopStatus==='Active');
+      const pct = stops.length ? Math.round(complete / stops.length * 100) : 0;
+      const client = PCG.api.getClient(t.clientId);
+      return `
+        <a href="tour-view.html?id=${t.id}" style="text-decoration:none; color:inherit;">
+          <div style="padding: 12px 14px; border: 1px solid var(--border-accent); border-radius: var(--r-md); background: var(--surface-1);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom: 6px;">
+              <span class="pill blue plain" style="font-size: 9px;">${t.tourType}</span>
+              ${active?`<span class="pill green plain" style="font-size: 9px;">NOW · ${PCG.escapeHtml(active.city)}</span>`:''}
+            </div>
+            <div style="font-weight: 600;">${PCG.escapeHtml(t.name)}</div>
+            <div class="muted" style="font-size: 11px; margin-top: 2px;">${client?PCG.escapeHtml(client.name):''} · ${stops.length} stops · ${PCG.fmtShort(t.startDate)} → ${PCG.fmtShort(t.endDate)}</div>
+            <div style="margin-top: 8px; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden;">
+              <div style="width: ${pct}%; height: 100%; background: linear-gradient(90deg, var(--pcg-bright-blue), var(--pcg-spotlight-purple));"></div>
+            </div>
+            <div class="mono muted" style="font-size: 10px; margin-top: 4px;">${complete}/${stops.length} complete · ${pct}%</div>
+          </div>
+        </a>`;
+    }).join('');
+  }
 
   // Conflict rail (bridges the seed-level conflicts + live engine conflicts)
   const unresolved = (PCG.conflicts||[]).filter(c=>!c.resolved);

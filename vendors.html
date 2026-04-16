@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Vendor Library</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .vendor-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 16px 20px; margin-bottom: 10px;
+    cursor: pointer; transition: border-color 0.15s, transform 0.15s;
+  }
+  .vendor-card:hover { border-color: var(--border-accent); transform: translateY(-1px); }
+  .vendor-card.selected { border-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.04); }
+  .vendor-card.preferred { border-left: 3px solid var(--status-green); }
+
+  .score-bar { display: flex; gap: 2px; align-items: center; margin-top: 6px; }
+  .score-bar .star { color: var(--status-amber); font-size: 12px; }
+  .score-bar .star.empty { color: var(--text-tertiary); opacity: 0.4; }
+
+  .metric-card {
+    background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 10px 14px; text-align: center;
+  }
+  .metric-card .lbl {
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .metric-card .val {
+    font-family: var(--font-mono); font-size: 20px; color: var(--text-primary);
+    font-weight: 600; margin-top: 2px;
+  }
+  .metric-card .sub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+  .metric-card.good .val { color: var(--status-green); }
+  .metric-card.warn .val { color: var(--status-amber); }
+  .metric-card.bad  .val { color: var(--status-red); }
+
+  .pref-chip {
+    display: inline-block; padding: 3px 10px; margin: 2px 4px 2px 0;
+    border-radius: var(--r-pill); font-size: 10px;
+    font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase;
+    background: rgba(1,153,253,0.1); color: var(--pcg-bright-blue);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Procurement · Vendor Library</div>
+          <h1>Vendor Library &amp; Sub-Rental Intelligence</h1>
+          <div class="muted">Quality-scored vendors with response time, on-time rate, damage rate, preferred-category flags. Drives EQLPC sub-rental recommendations (spec §DD).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <input id="q" placeholder="Search vendors…" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 12px; border-radius:var(--r-pill); width:200px; font-size:var(--fs-sm);" />
+          <button class="btn sm primary">＋ New Vendor</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div style="display: flex; gap: 8px; margin: var(--sp-4) 0; flex-wrap: wrap;">
+        <span class="eyebrow" style="font-size: 10px; align-self: center;">FILTER</span>
+        <button class="chip on" data-f="all">All Vendors</button>
+        <button class="chip" data-f="preferred">Preferred Only (4.5+)</button>
+        <button class="chip" data-f="audio">Audio</button>
+        <button class="chip" data-f="video">Video</button>
+        <button class="chip" data-f="lighting">Lighting</button>
+        <button class="chip" data-f="led">LED</button>
+        <button class="chip" data-f="heavy">Heavy Equipment</button>
+      </div>
+
+      <div class="split" style="grid-template-columns: 1fr 1.3fr;">
+        <!-- LEFT: Vendor list -->
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Vendor Directory</div>
+              <span class="muted" style="margin-left:auto; font-size: var(--fs-xs);" id="vendCount"></span>
+            </div>
+            <div id="vendorList" style="padding: var(--sp-3);"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Quality Scoring (spec §DD.3)</div></div>
+            <div class="card-body" style="font-size: var(--fs-xs); line-height: 1.7; color: var(--text-secondary);">
+              <strong>Composite Score (0-5):</strong> weighted avg of:<br>
+              • On-Time Delivery Rate · 30% · from Manifest.arrivalCompare<br>
+              • Damage-on-Arrival Rate · 25% · from InboundQC inspection<br>
+              • Response Time · 20% · hours from RPO send to quote<br>
+              • Price Competitiveness · 15% · vs benchmark for category<br>
+              • Relationship · 10% · AE / PM subjective rating<br><br>
+              Scores auto-update after each RPO closes. Preferred-vendor flag set ≥ 4.5.
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Vendor detail -->
+        <div id="detail"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'procurement', crumbs:[{label:'Procurement'},{label:'Vendor Library'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    const vendors = PCG.api.getVendors();
+    let activeId = vendors[0] ? vendors[0].id : null;
+    let filter = 'all';
+
+    function stars(score){
+      const full = Math.round(score);
+      let html = '';
+      for(let i = 0; i < 5; i++) html += `<span class="star ${i<full?'':'empty'}">★</span>`;
+      return html;
+    }
+
+    function filtered(){
+      let list = PCG.api.getVendors();
+      if(filter === 'preferred') list = list.filter(v => v.qualityScore >= 4.5);
+      else if(filter === 'audio')    list = list.filter(v => v.category==='Audio' || (v.preferredFor||[]).includes('Audio') || (v.preferredFor||[]).includes('LineArray'));
+      else if(filter === 'video')    list = list.filter(v => v.category==='Video' || (v.preferredFor||[]).some(p => ['Video','Cameras'].includes(p)));
+      else if(filter === 'lighting') list = list.filter(v => v.category==='Lighting' || (v.preferredFor||[]).some(p => ['Lighting','Moving Lights'].includes(p)));
+      else if(filter === 'led')      list = list.filter(v => v.category==='LED' || (v.preferredFor||[]).includes('LED'));
+      else if(filter === 'heavy')    list = list.filter(v => v.category==='HeavyEquipment' || (v.preferredFor||[]).some(p => ['HeavyEquipment','Lifts'].includes(p)));
+      const q = (document.getElementById('q').value||'').toLowerCase();
+      if(q) list = list.filter(v => v.name.toLowerCase().includes(q) || (v.category||'').toLowerCase().includes(q));
+      return list;
+    }
+
+    function render(){
+      const list = filtered();
+      document.getElementById('vendCount').textContent = `${list.length} of ${vendors.length}`;
+
+      // KPIs
+      const avgScore = vendors.reduce((s,v) => s + v.qualityScore, 0) / vendors.length;
+      const preferred = vendors.filter(v => v.qualityScore >= 4.5).length;
+      const totalRPOs = vendors.reduce((s,v) => s + (v.lifetimeRPOs||0), 0);
+      const totalSpend = vendors.reduce((s,v) => s + (v.lifetimeSpend||0), 0);
+      const activeRPOs = vendors.reduce((s,v) => s + (v.activeRPOs||0), 0);
+      const avgResponse = Math.round(vendors.reduce((s,v) => s + v.responseHours, 0) / vendors.length);
+
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi"><div class="label">Total Vendors</div><div class="value">${vendors.length}</div><div class="sub">in library</div></div>
+        <div class="kpi green"><div class="label">Preferred (4.5+)</div><div class="value">${preferred}</div><div class="sub">first-choice pool</div></div>
+        <div class="kpi blue"><div class="label">Avg Score</div><div class="value">${avgScore.toFixed(1)} <span style="font-size:14px; color:var(--status-amber);">★</span></div><div class="sub">weighted avg</div></div>
+        <div class="kpi amber"><div class="label">Active RPOs</div><div class="value">${activeRPOs}</div><div class="sub">in flight</div></div>
+        <div class="kpi"><div class="label">Lifetime RPOs</div><div class="value">${totalRPOs}</div><div class="sub">${PCG.canSeeTier('T2_MARGINS')?PCG.money(totalSpend)+' spend':'spend 🔒'}</div></div>
+        <div class="kpi"><div class="label">Avg Response</div><div class="value">${avgResponse}h</div><div class="sub">RPO → quote</div></div>
+      `;
+
+      document.getElementById('vendorList').innerHTML = list.length ? list.map(v => {
+        const scoreClass = v.qualityScore >= 4.5 ? 'good' : v.qualityScore >= 4.0 ? 'warn' : 'bad';
+        return `
+          <div class="vendor-card ${activeId===v.id?'selected':''} ${v.qualityScore>=4.5?'preferred':''}" onclick="pickVendor('${v.id}')">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <div style="flex: 1;">
+                <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px;">
+                  ${v.qualityScore >= 4.5 ? '<span class="pill green plain" style="font-size: 9px;">PREFERRED</span>' : ''}
+                  ${v.activeRPOs ? `<span class="pill blue plain" style="font-size: 9px;">${v.activeRPOs} ACTIVE RPO</span>` : ''}
+                  <strong>${PCG.escapeHtml(v.name)}</strong>
+                </div>
+                <div class="muted" style="font-size: 11px;">${PCG.escapeHtml(v.category)} · ${PCG.escapeHtml(v.primaryContact||'—')}</div>
+                <div class="score-bar">
+                  ${stars(v.qualityScore)}
+                  <span class="mono" style="margin-left: 6px; font-size: 11px; color: var(--text-secondary);">${v.qualityScore.toFixed(1)}</span>
+                </div>
+              </div>
+              <div style="text-align: right; font-size: 10px; color: var(--text-tertiary);">
+                ${v.responseHours}h response<br>
+                ${Math.round(v.onTimeRate*100)}% on-time
+              </div>
+            </div>
+          </div>`;
+      }).join('') : PCG.states.empty('No vendors match this filter.');
+
+      renderDetail();
+    }
+
+    window.pickVendor = (id) => { activeId = id; render(); };
+
+    function renderDetail(){
+      const v = vendors.find(x => x.id === activeId);
+      if(!v){ document.getElementById('detail').innerHTML = `<div class="card card-pad">${PCG.states.empty('Pick a vendor.')}</div>`; return; }
+      const activeRPOs = (PCG.subRentals||[]).filter(r => r.vendorId && (r.vendorId === v.id || r.vendorName === v.name));
+
+      document.getElementById('detail').innerHTML = `
+        <div class="card" style="margin-bottom: var(--sp-4);">
+          <div class="card-header">
+            <div class="title">${PCG.escapeHtml(v.name)}</div>
+            ${v.qualityScore >= 4.5 ? '<span class="pill green plain" style="margin-left: auto; font-size: 10px;">PREFERRED · AUTO-SURFACED BY EQLPC</span>' : ''}
+          </div>
+          <div class="card-body">
+            <div class="kv-grid">
+              <div class="k">Category</div><div class="v">${PCG.escapeHtml(v.category)}</div>
+              <div class="k">Primary Contact</div><div class="v">${PCG.escapeHtml(v.primaryContact||'—')}</div>
+              <div class="k">Email</div><div class="v mono">${PCG.escapeHtml(v.email||'—')}</div>
+              <div class="k">Phone</div><div class="v mono">${PCG.escapeHtml(v.phone||'—')}</div>
+            </div>
+            ${(v.preferredFor||[]).length ? `
+              <div style="margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border);">
+                <div class="eyebrow" style="margin-bottom: 6px;">Preferred For</div>
+                <div>${(v.preferredFor||[]).map(p => `<span class="pref-chip">${PCG.escapeHtml(p)}</span>`).join('')}</div>
+              </div>` : ''}
+            ${v.notes ? `
+              <div style="margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border);">
+                <div class="eyebrow" style="margin-bottom: 4px;">Relationship Notes</div>
+                <div class="muted" style="font-size: var(--fs-sm);">${PCG.escapeHtml(v.notes)}</div>
+              </div>` : ''}
+          </div>
+        </div>
+
+        <!-- Quality metrics -->
+        <div class="card" style="margin-bottom: var(--sp-4);">
+          <div class="card-header"><div class="title">Quality Metrics</div><span class="muted" style="margin-left: auto; font-size: var(--fs-xs);">auto-updates after each closed RPO</span></div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+              <div class="metric-card ${v.qualityScore >= 4.5 ? 'good' : v.qualityScore >= 4.0 ? 'warn' : 'bad'}">
+                <div class="lbl">Composite Score</div>
+                <div class="val">${v.qualityScore.toFixed(1)}<span style="font-size: 14px; color: var(--status-amber);"> ★</span></div>
+                <div class="sub">out of 5.0</div>
+              </div>
+              <div class="metric-card ${v.onTimeRate >= 0.95 ? 'good' : v.onTimeRate >= 0.90 ? 'warn' : 'bad'}">
+                <div class="lbl">On-Time Rate</div>
+                <div class="val">${Math.round(v.onTimeRate*100)}%</div>
+                <div class="sub">last ${v.lifetimeRPOs||0} RPOs</div>
+              </div>
+              <div class="metric-card ${v.damageRate <= 0.02 ? 'good' : v.damageRate <= 0.04 ? 'warn' : 'bad'}">
+                <div class="lbl">Damage Rate</div>
+                <div class="val">${(v.damageRate*100).toFixed(1)}%</div>
+                <div class="sub">on arrival</div>
+              </div>
+              <div class="metric-card ${v.responseHours <= 4 ? 'good' : v.responseHours <= 8 ? 'warn' : 'bad'}">
+                <div class="lbl">Response Time</div>
+                <div class="val">${v.responseHours}h</div>
+                <div class="sub">RPO → quote</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lifetime stats -->
+        <div class="card" style="margin-bottom: var(--sp-4);">
+          <div class="card-header"><div class="title">Lifetime Statistics</div></div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+              <div class="metric-card">
+                <div class="lbl">Lifetime RPOs</div>
+                <div class="val">${v.lifetimeRPOs||0}</div>
+                <div class="sub">closed + complete</div>
+              </div>
+              <div class="metric-card">
+                <div class="lbl">Lifetime Spend</div>
+                <div class="val" style="font-size: 16px;">${PCG.canSeeTier('T2_MARGINS')?PCG.money(v.lifetimeSpend||0):'🔒'}</div>
+                <div class="sub">${PCG.canSeeTier('T2_MARGINS')?'all-time':'T2 gated'}</div>
+              </div>
+              <div class="metric-card ${v.activeRPOs>0?'warn':''}">
+                <div class="lbl">Active RPOs</div>
+                <div class="val">${v.activeRPOs||0}</div>
+                <div class="sub">in flight today</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active RPOs -->
+        ${activeRPOs.length ? `
+          <div class="card">
+            <div class="card-header"><div class="title">Active RPOs with this Vendor</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>RPO</th><th>Project</th><th>Item</th><th>Qty</th><th>Window</th><th>Status</th><th style="text-align:right;">${PCG.canSeeTier('T2_MARGINS')?'Cost':'Cost 🔒'}</th></tr></thead>
+              <tbody>
+                ${activeRPOs.map(r => `
+                  <tr>
+                    <td class="mono" style="font-size: 11px;">${PCG.escapeHtml(r.id)}</td>
+                    <td class="mono">${PCG.escapeHtml(r.projectCode||'—')}</td>
+                    <td>${PCG.escapeHtml(r.itemDescription||r.itemId||'—')}</td>
+                    <td class="mono">${r.qty||'—'}</td>
+                    <td class="mono" style="font-size: 11px;">${r.fromDate?PCG.fmtShort(r.fromDate):'—'} → ${r.toDate?PCG.fmtShort(r.toDate):'—'}</td>
+                    <td><span class="pill ${r.status==='Approved'?'green':r.status==='PendingApproval'?'amber':'blue'} plain" style="font-size: 10px;">${PCG.escapeHtml((r.status||'').toUpperCase())}</span></td>
+                    <td class="mono" style="text-align: right;">${PCG.canSeeTier('T2_MARGINS')?PCG.money(r.quotedCost||0):'—'}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : `<div class="card card-pad"><div class="muted" style="font-size: var(--fs-sm);">No active RPOs with this vendor.</div></div>`}
+
+        <!-- Actions -->
+        <div class="card card-pad" style="margin-top: var(--sp-4); display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn ghost">View History</button>
+          <button class="btn ghost">Edit Scorecard Weights</button>
+          <a class="btn primary" href="procurement.html">＋ Start New RPO with ${PCG.escapeHtml(v.name.split(' ')[0])} →</a>
+        </div>
+      `;
+    }
+
+    // Filter wiring
+    document.querySelectorAll('.chip[data-f]').forEach(c => c.addEventListener('click', e => {
+      document.querySelectorAll('.chip[data-f]').forEach(x => x.classList.toggle('on', x === e.target));
+      filter = e.target.dataset.f;
+      render();
+    }));
+    document.getElementById('q').addEventListener('input', render);
+
+    render();
+  }
+</script>
+</body>
+</html>

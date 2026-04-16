@@ -141,7 +141,7 @@
       document.getElementById('gateStatus').innerHTML = gate.allowed ? `
         <div class="attn-item blue"><div><div class="ttl">✓ READY TO ADVANCE: ${show.lifecycleState} → ${nextState}</div>
           <div class="meta">No blocking items open in required phases.</div></div>
-          <div class="act"><button class="btn sm primary">Advance Now</button></div>
+          <div class="act"><button class="btn sm primary" onclick="advanceShow('${nextState}')">Advance Now</button></div>
         </div>
       ` : `
         <div class="attn-item red"><div><div class="ttl">⛔ ADVANCE BLOCKED: ${show.lifecycleState} → ${nextState}</div>
@@ -237,6 +237,20 @@
   window.closeModal = () => {
     document.getElementById('bd').classList.remove('show');
     document.getElementById('mbox').classList.remove('show');
+  };
+
+  window.advanceShow = (toState) => {
+    const showId = sel.value;
+    if(!confirm(`Advance ${showId} → ${toState}?\n\nThis transitions the show lifecycle and will trigger downstream state (readiness, notifications, timeline).`)) return;
+    try {
+      const result = PCG.api.transitionShow(showId, toState);
+      if(result.ok){
+        alert(`✓ ${showId} advanced to ${toState}.`);
+        location.reload();
+      } else {
+        alert('Transition blocked:\n• '+(result.reasons||['Unknown reason']).join('\n• '));
+      }
+    } catch(e){ alert('Advance failed: '+e.message); }
   };
 
   sel.addEventListener('change', render);

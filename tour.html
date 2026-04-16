@@ -151,7 +151,7 @@
         <div class="tag" style="color:#9DD4FF;">WHAT'S NEXT</div>
         <h2 style="font-family:var(--font-display); font-size:28px; text-transform:uppercase; letter-spacing:0.04em; position:relative;">Ready for the real build?</h2>
         <p style="font-size:var(--fs-md); color: var(--text-secondary); margin: var(--sp-3) auto 0; max-width: 640px; position: relative;">
-          This demo runs 100% in the browser with static seed data. Behind every page is the real API abstraction (<code>PCG.api.*</code>), the real state machine, the real permission layer. Phase 1 wires this UI to SharePoint Lists + Azure SQL. Phase 2 replaces Flex quoting. Phase 3 replaces Lasso. Phase 4 replaces Flex warehouse.
+          This demo runs 100% in the browser with static seed data. Behind every page is the real API abstraction (<code>PCG.api.*</code>), the real state machine, and the real permission layer. Phase 1 wires this UI to SharePoint Lists + Azure SQL. Phases 2–4 replace the legacy quoting, scheduling, and warehouse tools.
         </p>
         <div style="margin-top: var(--sp-5); position: relative; display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap;">
           <a class="btn spectrum" href="home.html">Start in the app →</a>
@@ -217,7 +217,7 @@
       num: 4,
       eyebrow: 'Staffing',
       title: 'Labor Coord Staffs the Show',
-      body: 'Lasso replacement. The Labor Coordinator opens the Show, sees Placeholder positions seeded from the quote. For each open slot, the crew pool filters to qualified members with live conflict detection. Multi-step confirmation workflow (Invited → Applied → Approved → Confirmed → Acknowledged). Clone Prior Roster cuts setup to minutes.',
+      body: 'The Labor Coordinator opens the Show, sees Placeholder positions seeded from the quote. For each open slot, the crew pool filters to qualified members with live conflict detection. Multi-step confirmation workflow (Invited → Applied → Approved → Confirmed → Acknowledged). Clone Prior Roster cuts setup to minutes.',
       steps: [
         { href:'labor-home.html',    label:'Labor Home — morning work-queue' },
         { href:'crew-assign.html?project=LCE-2026',  label:'Assign Crew — fill Placeholder slots' },
@@ -241,7 +241,7 @@
       num: 6,
       eyebrow: 'Crew experience',
       title: 'Crew PWA (separate product)',
-      body: 'Switch persona to Mike Chen and open the Crew PWA. Standalone mobile-first app. 5 tabs match the Lasso pattern: Home · Events · Time · Inbox · Sheets. Clock in/out, submit timesheet, see travel, acknowledge shifts.',
+      body: 'Switch persona to Mike Chen and open the Crew PWA. Standalone mobile-first app. 5 tabs: Home · Events · Time · Inbox · Sheets. Clock in/out, submit timesheet, see travel, acknowledge shifts. No training required.',
       steps: [
         { href:'crew/index.html#/home',      label:'Home — today\'s shifts, roster confirmations, recent messages' },
         { href:'crew/index.html#/time',      label:'Time — big clock-in / clock-out screen' },
@@ -253,7 +253,7 @@
     {
       num: 7,
       eyebrow: 'Warehouse execution',
-      title: 'Flex Replacement',
+      title: 'Warehouse Operations',
       body: 'Three warehouse roles with distinct surfaces. Lead sees the 4-quadrant command view (outbound / returns / prep / issues). Tech gets clock-in + daily tasks + scan shortcut. EQLPC owns the inventory conflict dashboard.',
       steps: [
         { href:'wh-sup-home.html',  label:'Warehouse Lead Home — 4-quadrant daily view' },

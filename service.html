@@ -42,7 +42,7 @@
           <button class="chip" data-f="client">Client-caused</button>
           <button class="chip" data-f="recurring">Recurring Failures</button>
           <button class="chip" data-f="all">All</button>
-          <button class="btn sm">＋ New Ticket</button>
+          <button class="btn sm primary" id="btn-new-ticket">＋ New Ticket</button>
         </div>
       </div>
 
@@ -146,10 +146,12 @@
         <td class="mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(t.estimatedCost):'🔒'}</td>
         <div>${t.warrantyVendor ? `<span class="pill blue plain" style="font-size:10px;">${PCG.escapeHtml(t.warrantyVendor.toUpperCase())} · ${t.warrantyClaimStatus||'—'}</span>` : '<span class="muted" style="font-size:11px;">—</span>'}</div>
         <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
-          ${t.status==='ReturnToService' && PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS) ? '<button class="btn sm primary">Approve RTS</button>' : ''}
-          ${t.status==='BenchTest' ? '<button class="btn sm">→ RTS</button>' : ''}
-          ${t.clientCaused && !t.damageChargeId ? '<button class="btn sm">Create Damage Charge</button>' : ''}
-          <button class="btn sm ghost">Open</button>
+          ${t.status==='ReturnToService' && PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS) ? `<button class="btn sm primary" onclick="approveRTS('${t.id}')">Approve RTS</button>` : ''}
+          ${t.status==='BenchTest' ? `<button class="btn sm" onclick="moveToRTS('${t.id}')">→ RTS</button>` : ''}
+          ${t.status==='Open' ? `<button class="btn sm" onclick="moveStatus('${t.id}','InRepair')">Start Repair</button>` : ''}
+          ${t.status==='InRepair' ? `<button class="btn sm" onclick="moveStatus('${t.id}','BenchTest')">→ Bench</button>` : ''}
+          ${t.clientCaused && !t.damageChargeId ? `<button class="btn sm" onclick="createDamageCharge('${t.id}')">Damage Charge</button>` : ''}
+          <button class="btn sm ghost" onclick="viewTicket('${t.id}')">Open</button>
         </div>
       </div>`;
     }).join('') : PCG.states.empty('No tickets match.');
@@ -204,6 +206,137 @@
     document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
     filter = e.target.dataset.f; render();
   }));
+
+  // ---- Ticket action handlers ----
+  window.approveRTS = (ticketId) => {
+    if(!confirm('Approve Return-to-Service? Serial will flip back to Available and re-enter inventory.')) return;
+    try {
+      PCG.api.approveReturnToService(ticketId);
+      PCG.toast && PCG.toast('RTS approved — serial back in inventory.');
+      render();
+    } catch(e){ alert('Could not approve: '+e.message); }
+  };
+  window.moveToRTS = (ticketId) => {
+    try {
+      PCG.api.advanceServiceTicket(ticketId, 'ReturnToService');
+      render();
+    } catch(e){ alert(e.message); }
+  };
+  window.moveStatus = (ticketId, toStatus) => {
+    try {
+      PCG.api.advanceServiceTicket(ticketId, toStatus);
+      render();
+    } catch(e){ alert(e.message); }
+  };
+  window.createDamageCharge = (ticketId) => {
+    try {
+      const dc = PCG.api.createDamageChargeFromTicket(ticketId);
+      PCG.toast && PCG.toast(`Damage charge ${dc.id} drafted — routed to Accounting.`);
+      render();
+    } catch(e){ alert(e.message); }
+  };
+  window.viewTicket = (ticketId) => {
+    const t = (PCG.serviceTickets||[]).find(x=>x.id===ticketId);
+    if(!t) return;
+    const item = PCG.api.getInventoryItem(t.itemId);
+    const lines = [
+      `Ticket ${t.id}`,
+      `Serial: ${t.serialId||'—'}`,
+      `Item:   ${(item&&item.name)||'—'}`,
+      `Triage: ${t.triage}`,
+      `Status: ${t.status}`,
+      `Est. Cost: ${PCG.money(t.estimatedCost||0)}`,
+      t.clientCaused ? 'CLIENT-CAUSED' : '',
+      t.recurringFailure ? '⚠ RECURRING FAILURE (3+ tickets / 12mo)' : '',
+      '',
+      'Description:',
+      t.description,
+      '',
+      'Notes:',
+      t.notes || '—'
+    ].filter(Boolean);
+    alert(lines.join('\n'));
+  };
+
+  // ---- Create Ticket modal ----
+  document.getElementById('btn-new-ticket').addEventListener('click', () => {
+    openNewTicketModal();
+  });
+
+  function openNewTicketModal(){
+    // Build a simple modal inline
+    const items = PCG.api.getInventory ? PCG.api.getInventory({}).slice(0, 50) : [];
+    const modal = document.createElement('div');
+    modal.id = 'newTicketModal';
+    modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center;';
+    modal.innerHTML = `
+      <div class="card" style="width:min(560px,92vw); max-height:90vh; overflow:auto;">
+        <div class="card-header"><div class="title">New Service Ticket</div>
+          <button class="btn sm ghost" style="margin-left:auto;" onclick="document.getElementById('newTicketModal').remove()">✕</button>
+        </div>
+        <div class="card-body" style="display:grid; gap:10px;">
+          <label class="muted" style="font-size:11px;">SERIAL / BARCODE (optional)</label>
+          <input id="nt-serial" type="text" placeholder="e.g. SR-SM58-0042" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+
+          <label class="muted" style="font-size:11px;">ITEM MODEL</label>
+          <select id="nt-item" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            <option value="">— select model —</option>
+            ${items.map(i=>`<option value="${i.id}">${PCG.escapeHtml(i.name)}</option>`).join('')}
+          </select>
+
+          <label class="muted" style="font-size:11px;">DESCRIPTION OF ISSUE</label>
+          <textarea id="nt-desc" rows="3" placeholder="e.g. Capsule intermittent, drops out at high SPL" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:inherit;"></textarea>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label class="muted" style="font-size:11px;">TRIAGE</label>
+              <select id="nt-triage" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+                <option value="Minor">Minor</option>
+                <option value="Major" selected>Major</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+            <div>
+              <label class="muted" style="font-size:11px;">EST. COST ($)</label>
+              <input id="nt-cost" type="number" min="0" step="25" value="150" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            </div>
+          </div>
+
+          <label style="display:flex; align-items:center; gap:8px; font-size:var(--fs-sm);">
+            <input id="nt-client" type="checkbox"> Client-caused (damage charge will be offered)
+          </label>
+
+          <label class="muted" style="font-size:11px;">WARRANTY VENDOR (optional)</label>
+          <input id="nt-warr" type="text" placeholder="e.g. Shure, Yamaha" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+
+          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+            <button class="btn sm ghost" onclick="document.getElementById('newTicketModal').remove()">Cancel</button>
+            <button class="btn sm primary" onclick="submitNewTicket()">Create Ticket</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  window.submitNewTicket = () => {
+    const data = {
+      serialId: document.getElementById('nt-serial').value.trim() || null,
+      itemId:   document.getElementById('nt-item').value || null,
+      description: document.getElementById('nt-desc').value.trim(),
+      triage:   document.getElementById('nt-triage').value,
+      estimatedCost: parseFloat(document.getElementById('nt-cost').value)||0,
+      clientCaused: document.getElementById('nt-client').checked,
+      warrantyVendor: document.getElementById('nt-warr').value.trim() || null
+    };
+    if(!data.description){ alert('Description required.'); return; }
+    if(!data.itemId && !data.serialId){ alert('Provide at least a serial or an item model.'); return; }
+    try {
+      const t = PCG.api.createServiceTicket(data);
+      document.getElementById('newTicketModal').remove();
+      PCG.toast && PCG.toast(`Ticket ${t.id} created — serial flipped to OOC.`);
+      render();
+    } catch(e){ alert('Could not create ticket: '+e.message); }
+  };
 </script>
 </body>
 </html>

@@ -265,14 +265,19 @@
           return;
         }
         const allVerified = (ps.lines||[]).every(l=>l.scanStatus==='verified');
+        const unverifiedCount = (ps.lines||[]).filter(l=>l.scanStatus!=='verified').length;
         if(!allVerified){
-          alert('Not all lines are verified. Authorize anyway?') &&
-            (ps.authorizedById = PCG.user.id, ps.authorizedAt = new Date().toISOString(), ps.status = 'Finalized');
-        } else {
-          ps.authorizedById = PCG.user.id; ps.authorizedAt = new Date().toISOString(); ps.status = 'Finalized';
+          if(!confirm(`⚠ ${unverifiedCount} line(s) not verified. Authorize Walk-the-Pile anyway?\n\nOverride will be logged to the audit trail.`)) return;
+          PCG.auditLog = PCG.auditLog || [];
+          PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'pullSheet.walkThePile.override', entityId:ps.id, detail:`${unverifiedCount} unverified lines` });
         }
+        ps.authorizedById = PCG.user.id;
+        ps.authorizedAt = new Date().toISOString();
+        ps.status = 'Finalized';
+        PCG.auditLog = PCG.auditLog || [];
+        PCG.auditLog.push({ at:ps.authorizedAt, actor:PCG.user.id, action:'pullSheet.walkThePile', entityId:ps.id });
         PCG.engines.notify.emit('WalkThePileAuthorized', { pullSheetId: ps.id, by: PCG.user.id });
-        log('ok', `Walk-the-Pile authorized by ${PCG.user.name}.`);
+        log('ok', `Walk-the-Pile authorized by ${PCG.user.name}.${!allVerified?' (override)':''}`);
         renderLines();
       });
     }

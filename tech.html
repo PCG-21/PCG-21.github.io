@@ -14,87 +14,58 @@
     <div class="container">
       <div class="eyebrow">Technical</div>
       <h1>Crew, Tech Scope, Venue Intelligence</h1>
-      <div class="muted" style="margin-bottom:var(--sp-4);">Cross-show technical coordination — conflicts, gear dependencies, venue quirks.</div>
+      <div class="muted" style="margin-bottom:var(--sp-4);">Cross-show technical coordination — conflicts, gear dependencies, venue quirks (spec §23).</div>
 
-      <div class="kpi-strip">
-        <div class="kpi red"><div class="label">Crew Conflicts</div><div class="value">1</div><div class="sub">Unresolved</div></div>
-        <div class="kpi amber"><div class="label">Roles TBD</div><div class="value">8</div><div class="sub">across 3 shows</div></div>
-        <div class="kpi"><div class="label">Active Techs</div><div class="value">43</div><div class="sub">on payroll this week</div></div>
-        <div class="kpi blue"><div class="label">Union Calls</div><div class="value">2</div><div class="sub">IATSE 720 · IATSE 38</div></div>
-        <div class="kpi"><div class="label">Shows Live Now</div><div class="value">1</div><div class="sub">TCO-EXPO Chicago</div></div>
-        <div class="kpi"><div class="label">Plots Pending</div><div class="value">2</div><div class="sub">SAE Keynote · WOC Main</div></div>
-      </div>
+      <div class="kpi-strip" id="kpis"></div>
 
       <div class="split">
         <div>
           <div class="card">
             <div class="card-header"><div class="title" style="color:var(--status-red);">Crew Conflict Board</div></div>
-            <div class="card-body">
-              <div class="conflict" style="opacity:0.55;">
-                <div class="icon">✓</div>
-                <div class="body">
-                  <strong>Mike Chen (A1) — LCE ↔ SAE WCX (RESOLVED)</strong>
-                  <div class="meta">Reassigned LCE A1 to Priya Shah on 4/13. Mike covers SAE Keynote Ballroom only.</div>
-                </div>
-              </div>
-              <div class="conflict">
-                <div class="icon">⚠</div>
-                <div class="body">
-                  <strong>Chris Taylor (TD) — LCE strike 4/15 PM ↔ SAE 4/16 escalation coverage thin</strong>
-                  <div class="meta">Backfill plan: Dan Marino rolls from DAS-BOOTH prep if needed.</div>
-                </div>
-              </div>
-            </div>
+            <div class="card-body" id="conflicts"></div>
           </div>
 
           <div class="card" style="margin-top:var(--sp-5);">
             <div class="card-header"><div class="title">Tech Scope by Show</div></div>
-            <table class="pcg-table">
-              <thead><tr><th>Code</th><th>Show</th><th>A1</th><th>V1</th><th>LD</th><th>TD</th><th>Plot</th></tr></thead>
-              <tbody>
-                <tr class="health-amber"><td class="mono">LCE-2026</td><td>LCE Conference</td><td>Priya Shah</td><td>Dana Kim</td><td>Elliot Reyes</td><td>Chris Taylor</td><td><span class="pill green">V2 APPROVED</span></td></tr>
-                <tr class="health-amber"><td class="mono">SAE-WCX-2026</td><td>SAE WCX</td><td>Mike Chen</td><td>—</td><td>—</td><td>Chris Taylor</td><td><span class="pill amber">V1 REVIEW</span></td></tr>
-                <tr class="health-green"><td class="mono">GLBX-GSK26</td><td>Globex GSK</td><td>J. Morris</td><td>R. Halevi</td><td>E. Reyes</td><td>C. Taylor</td><td><span class="pill green">V3 APPROVED</span></td></tr>
-                <tr class="health-green"><td class="mono">WOC-2026</td><td>Women of Color</td><td>P. Shah</td><td>D. Kim</td><td>E. Reyes</td><td>D. Marino</td><td><span class="pill amber">DRAFT</span></td></tr>
-                <tr class="health-green"><td class="mono">TCO-EXPO</td><td>TechCo Expo · LIVE</td><td>—</td><td>D. Kim</td><td>—</td><td>D. Marino</td><td><span class="pill purple">LIVE</span></td></tr>
-              </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>Code</th><th>Show</th><th>A1</th><th>V1</th><th>LD</th><th>TD</th><th>Status</th></tr></thead>
+                <tbody id="techScope"></tbody>
+              </table>
+            </div>
           </div>
 
           <div class="card" style="margin-top:var(--sp-5);">
-            <div class="card-header"><div class="title">Venue Intelligence</div></div>
-            <table class="pcg-table">
-              <thead><tr><th>Venue</th><th>Union</th><th>Quirk to Remember</th></tr></thead>
-              <tbody>
-                <tr><td><strong>Caesars Forum · LV</strong></td><td><span class="pill red">IATSE 720</span></td><td>Freight elevator #3 rated higher · non-standard truss points in Forum Ballroom</td></tr>
-                <tr><td><strong>Huntington Place · Detroit</strong></td><td><span class="pill red">IATSE 38</span></td><td>Room numbers by floor (110–116, 140s, 250s, 300s, 400s) · cell coverage weak in 140/142 sub-level</td></tr>
-                <tr><td><strong>MGM Grand · LV</strong></td><td><span class="pill gray">NON-UNION</span></td><td>House tech must be on clock during rig</td></tr>
-                <tr><td><strong>Crocker Park · OH</strong></td><td><span class="pill gray">NON-UNION</span></td><td>NO stopping on Vine St · trucks to Promenade lot</td></tr>
-                <tr><td><strong>McCormick Place · Chicago</strong></td><td><span class="pill red">IATSE 2 + T-727</span></td><td>Marshalling yard mandatory for 53'+</td></tr>
-              </tbody>
-            </table>
+            <div class="card-header"><div class="title">Venue Intelligence</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="venueCount"></span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>Venue</th><th>City</th><th>Union</th><th>Quirk to Remember</th></tr></thead>
+                <tbody id="venueIntel"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         <aside>
           <div class="card">
             <div class="card-header"><div class="title">Shared Gear Dependencies</div></div>
-            <div class="card-body" style="font-size:var(--fs-sm);">
-              <div class="pinned"><span class="icon">◫</span><div><strong>6× 50″ LCD monitors</strong><div class="muted" style="font-size:var(--fs-xs);">LCE → SAE (4/15→4/14 collision)</div></div></div>
-              <div class="pinned"><span class="icon">◫</span><div><strong>2× d&b JSub</strong><div class="muted" style="font-size:var(--fs-xs);">LCE sub-rental via Solotech</div></div></div>
-              <div class="pinned"><span class="icon">◫</span><div><strong>Shure Axient G57+ RF</strong><div class="muted" style="font-size:var(--fs-xs);">Coordinate RF scan LCE + SAE (different cities OK)</div></div></div>
-              <div class="pinned"><span class="icon">◫</span><div><strong>Fujinon 42× long lens</strong><div class="muted" style="font-size:var(--fs-xs);">LCE → GLBX rollover (4/15→4/18 OK)</div></div></div>
-            </div>
+            <div class="card-body" id="gearDeps"></div>
           </div>
 
           <div class="card" style="margin-top:var(--sp-4);">
-            <div class="card-header"><div class="title">Tech Roles · TBD Across Shows</div></div>
-            <div class="card-body" style="font-size:var(--fs-sm);">
-              <div class="attn-item red" style="margin-bottom:6px;"><div><div class="ttl">A2 — LCE-2026</div><div class="meta">Needed by Apr 10</div></div></div>
-              <div class="attn-item red" style="margin-bottom:6px;"><div><div class="ttl">Video Director — LCE-2026</div><div class="meta">Needed by Apr 11</div></div></div>
-              <div class="attn-item"><div><div class="ttl">ME — LCE-2026</div><div class="meta">Needed by Apr 11</div></div></div>
-              <div class="attn-item"><div><div class="ttl">AV Tech 1–4 — LCE-2026</div><div class="meta">Needed by Apr 10</div></div></div>
-              <div class="attn-item blue"><div><div class="ttl">Sweep Crew (2 of 6) — SAE</div><div class="meta">Needed by Apr 13</div></div></div>
+            <div class="card-header"><div class="title">Tech Roles · Unfilled</div></div>
+            <div class="card-body" id="unfilledRoles"></div>
+          </div>
+
+          <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header"><div class="title">Quick Links</div></div>
+            <div class="card-body" style="display: grid; gap: 6px;">
+              <a class="btn sm" href="video-io.html?showId=GLBX-GSK26">Video I/O Plans</a>
+              <a class="btn sm" href="intercom.html?showId=GLBX-GSK26">Intercom Plans</a>
+              <a class="btn sm" href="tech-reuse.html">Historical Plan Reuse</a>
+              <a class="btn sm ghost" href="eqlpc.html">EQLPC Conflict Dashboard</a>
             </div>
           </div>
         </aside>
@@ -109,6 +80,173 @@
 <script src="assets/api.js"></script>
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
-<script>PCG.mountShell({active:"tech", crumbs:[{label:"Technical"}]});</script>
+<script>
+  PCG.mountShell({active:'tech', crumbs:[{label:'Technical'}]});
+
+  const projects = PCG.api.getProjects().filter(p => p.show && !['Archived'].includes(p.show.lifecycleState));
+  const today = PCG.today || new Date();
+
+  // --- Crew conflicts: crew members with shifts on the same date across shows ---
+  const assns = (PCG.shiftAssignments||[]).filter(a => a.crewMemberId);
+  const dateMap = {};
+  assns.forEach(a => {
+    (a.dates||[]).forEach(d => {
+      const k = `${a.crewMemberId}|${d}`;
+      (dateMap[k] = dateMap[k] || []).push(a);
+    });
+  });
+  const conflictMap = {};
+  Object.values(dateMap).forEach(list => {
+    if(list.length > 1){
+      const crewId = list[0].crewMemberId;
+      const shows = Array.from(new Set(list.map(l => l.showId)));
+      if(shows.length > 1){
+        if(!conflictMap[crewId]) conflictMap[crewId] = { crewId, shows: new Set(), resolved: false };
+        shows.forEach(s => conflictMap[crewId].shows.add(s));
+      }
+    }
+  });
+  // Also surface tour-crew partial replacements as "logged" conflicts
+  (PCG.tourCrewPackages||[]).forEach(pkg => {
+    (pkg.travelingCrew||[]).filter(c => c.replacedByCrewMemberId).forEach(c => {
+      conflictMap[c.crewMemberId+'_tour'] = {
+        crewId: c.crewMemberId,
+        shows: new Set(['Tour: '+pkg.name]),
+        resolved: true,
+        note: 'Mid-tour handoff to '+PCG.findPerson(c.replacedByCrewMemberId)?.name
+      };
+    });
+  });
+  const conflicts = Object.values(conflictMap);
+
+  document.getElementById('conflicts').innerHTML = conflicts.length ? conflicts.map(c => {
+    const p = PCG.findPerson(c.crewId);
+    const showsText = Array.from(c.shows).join(' · ');
+    const icon = c.resolved ? '✓' : '⚠';
+    const cls = c.resolved ? 'style="opacity:0.6;"' : '';
+    return `
+      <div class="conflict" ${cls}>
+        <div class="icon" style="color: ${c.resolved?'var(--status-green)':'var(--status-amber)'};">${icon}</div>
+        <div class="body">
+          <strong>${p ? PCG.escapeHtml(p.name) : PCG.escapeHtml(c.crewId)} — ${PCG.escapeHtml(showsText)}${c.resolved?' (RESOLVED)':''}</strong>
+          <div class="meta">${c.resolved ? PCG.escapeHtml(c.note||'Resolved') : 'Overlapping dates across '+c.shows.size+' shows · Labor Coord must split or reassign.'}</div>
+        </div>
+      </div>`;
+  }).join('') : PCG.states.empty('No crew conflicts detected. 🎉');
+
+  // --- Tech scope by show: pull A1/V1/LD/TD per project ---
+  const positionMap = { 'pos.a1':'a1', 'pos.v1':'v1', 'pos.ld':'ld', 'pos.td':'td' };
+  document.getElementById('techScope').innerHTML = projects.map(p => {
+    const roles = { a1:null, v1:null, ld:null, td:null };
+    const showAssns = assns.filter(a => a.showId === p.code);
+    showAssns.forEach(a => {
+      const k = positionMap[a.positionId];
+      if(k && !roles[k]){
+        const person = PCG.findPerson(a.crewMemberId);
+        roles[k] = person ? person.name.split(' ').map(s=>s[0]).join('.'): '—';
+        if(person) roles[k] = person.name.split(' ').slice(0,2).join(' ');
+      }
+    });
+    const readiness = PCG.api.getReadiness(p.code);
+    const labor = readiness && readiness.components && readiness.components.labor;
+    const statusPill = labor && labor.status === 'Green' ? '<span class="pill green plain" style="font-size:10px;">STAFFED</span>'
+                     : labor && labor.status === 'Yellow' ? '<span class="pill amber plain" style="font-size:10px;">INCOMPLETE</span>'
+                     : '<span class="pill red plain" style="font-size:10px;">NEEDS WORK</span>';
+    const life = p.show && p.show.lifecycleState;
+    const rowCls = life === 'OnShow' ? 'health-green' : life === 'Closing' ? 'health-amber' : '';
+    return `<tr class="${rowCls}" onclick="location.href='project-crew.html?project=${p.code}'" style="cursor:pointer;">
+      <td class="mono">${p.code}</td>
+      <td><strong>${PCG.escapeHtml(p.name)}</strong>${p.tourId ? `<span class="pill purple plain" style="font-size:9px; margin-left:4px;">🚌 TOUR</span>` : ''}</td>
+      <td>${roles.a1 ? PCG.escapeHtml(roles.a1) : '<span class="pill gray plain" style="font-size:9px;">TBD</span>'}</td>
+      <td>${roles.v1 ? PCG.escapeHtml(roles.v1) : '<span class="pill gray plain" style="font-size:9px;">TBD</span>'}</td>
+      <td>${roles.ld ? PCG.escapeHtml(roles.ld) : '<span class="pill gray plain" style="font-size:9px;">TBD</span>'}</td>
+      <td>${roles.td ? PCG.escapeHtml(roles.td) : '<span class="pill gray plain" style="font-size:9px;">TBD</span>'}</td>
+      <td>${PCG.lifecyclePill(life)} ${statusPill}</td>
+    </tr>`;
+  }).join('');
+
+  // --- Venue intelligence ---
+  const venues = (PCG.venues||[]).filter(v => v.name);
+  document.getElementById('venueCount').textContent = `${venues.length} venues in library`;
+  document.getElementById('venueIntel').innerHTML = venues.map(v => {
+    const quirk = (v.knownQuirks && v.knownQuirks[0]) || v.loadInNotes || '';
+    const unionPill = v.union ? '<span class="pill red plain" style="font-size:10px;">UNION</span>' : '<span class="pill gray plain" style="font-size:10px;">NON-UNION</span>';
+    const cityLine = v.city || (v.address ? v.address.split(',').slice(-2, -1)[0] : '—');
+    return `<tr onclick="location.href='venue-detail.html?id=${v.id}'" style="cursor:pointer;">
+      <td><strong>${PCG.escapeHtml(v.name)}</strong></td>
+      <td>${PCG.escapeHtml(cityLine || '—')}</td>
+      <td>${unionPill}</td>
+      <td class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml((quirk||'').slice(0,120))}${quirk.length > 120 ? '…' : ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" class="empty">No venues in library.</td></tr>';
+
+  // --- Shared gear dependencies: items with overlapping allocations ---
+  const allocations = PCG.api.getAllocations ? PCG.api.getAllocations() : (PCG.allocations||[]);
+  const itemToShows = {};
+  allocations.forEach(a => {
+    if(!a.inventoryItemId) return;
+    (itemToShows[a.inventoryItemId] = itemToShows[a.inventoryItemId] || new Set()).add(a.showId);
+  });
+  const shared = Object.entries(itemToShows).filter(([,s]) => s.size >= 2).slice(0, 5);
+  document.getElementById('gearDeps').innerHTML = shared.length ? shared.map(([id, showSet]) => {
+    const inv = PCG.api.getInventoryItem(id);
+    return `<div class="pinned" style="margin-bottom:6px;">
+      <span class="icon">◫</span>
+      <div>
+        <strong>${inv ? PCG.escapeHtml(inv.name) : PCG.escapeHtml(id)}</strong>
+        <div class="muted" style="font-size: var(--fs-xs);">${Array.from(showSet).join(' · ')} · ${showSet.size} shows</div>
+      </div>
+    </div>`;
+  }).join('') : PCG.states.empty('No shared-gear conflicts.');
+
+  // --- Unfilled tech roles ---
+  const unfilled = [];
+  projects.forEach(p => {
+    const openSlots = (PCG.shiftAssignments||[]).filter(a => a.showId === p.code && !a.crewMemberId);
+    openSlots.forEach(a => {
+      const pos = (PCG.crewPositions||[]).find(x => x.id === a.positionId);
+      if(pos){
+        unfilled.push({
+          show: p, position: pos,
+          urgency: new Date(p.dates.loadIn) - today < 7*86400000 ? 'high' : 'med',
+          loadIn: p.dates.loadIn
+        });
+      }
+    });
+  });
+  unfilled.sort((a,b) => new Date(a.loadIn) - new Date(b.loadIn));
+  document.getElementById('unfilledRoles').innerHTML = unfilled.length ? unfilled.slice(0, 10).map(u => {
+    const hrs = Math.round((new Date(u.loadIn) - today) / 3600000);
+    return `<div class="attn-item ${u.urgency==='high'?'red':''}" style="margin-bottom:6px;">
+      <div>
+        <div class="ttl">${PCG.escapeHtml(u.position.displayName || u.position.name)} — ${PCG.escapeHtml(u.show.code)}</div>
+        <div class="meta">Load-in ${PCG.fmtShort(u.loadIn)} · ${hrs > 0 ? hrs+'h away' : 'PAST'}</div>
+      </div>
+    </div>`;
+  }).join('') : PCG.states.empty('All roles filled.');
+
+  // --- KPIs ---
+  const activeConflicts = conflicts.filter(c => !c.resolved).length;
+  const totalTBD = unfilled.length;
+  const activeTechCount = new Set(assns.filter(a => ['Confirmed','Acknowledged'].includes(a.status)).map(a => a.crewMemberId)).size;
+  const unionShows = projects.filter(p => {
+    const v = (PCG.venues||[]).find(x => x.id === p.venueId);
+    return v && v.union;
+  }).length;
+  const liveShows = projects.filter(p => p.show.lifecycleState === 'OnShow').length;
+  const plotsPending = projects.filter(p => {
+    const r = PCG.api.getReadiness(p.code);
+    const ros = r && r.components && r.components.ros;
+    return ros && ros.status !== 'Green' && ['InPrep','Awarded'].includes(p.show.lifecycleState);
+  }).length;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi ${activeConflicts?'red':'green'}"><div class="label">Crew Conflicts</div><div class="value">${activeConflicts}</div><div class="sub">unresolved</div></div>
+    <div class="kpi amber"><div class="label">Roles TBD</div><div class="value">${totalTBD}</div><div class="sub">across ${new Set(unfilled.map(u=>u.show.code)).size} shows</div></div>
+    <div class="kpi"><div class="label">Active Techs</div><div class="value">${activeTechCount}</div><div class="sub">confirmed this window</div></div>
+    <div class="kpi blue"><div class="label">Union Shows</div><div class="value">${unionShows}</div><div class="sub">of ${projects.length} active</div></div>
+    <div class="kpi purple"><div class="label">Shows Live Now</div><div class="value">${liveShows}</div><div class="sub">on-show</div></div>
+    <div class="kpi"><div class="label">Plots Pending</div><div class="value">${plotsPending}</div><div class="sub">ROS/prep gaps</div></div>
+  `;
+</script>
 </body>
 </html>

@@ -17,7 +17,7 @@
         <div>
           <div class="eyebrow">Labor Coordinator · Work Queue</div>
           <h1 id="hello">—</h1>
-          <div class="muted">Unconfirmed positions, travel gaps, OT flags, payroll ready — the Lasso replacement workflow (§25.1).</div>
+          <div class="muted">Unconfirmed positions, travel gaps, OT flags, payroll ready — the Labor Coordinator work queue (§25.1).</div>
         </div>
         <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
           <a class="btn sm primary" href="crew-assign.html">＋ Assign Crew</a>
@@ -31,6 +31,11 @@
 
       <div class="split">
         <div>
+
+          <div class="card" style="margin-bottom:var(--sp-5);">
+            <div class="card-header"><div class="title">🚌 Active Tours · Crew Packages</div></div>
+            <div class="card-body" id="tourCrewPackages"></div>
+          </div>
 
           <div class="card">
             <div class="card-header"><div class="title" style="color:var(--status-red);">⛔ Unconfirmed Positions — by Show Urgency</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="urgentCount"></span></div>
@@ -98,6 +103,34 @@
     const today = new Date();
     const activeShows = PCG.api.getProjects().filter(p=>p.show && !['Archived','Closing'].includes(p.show.lifecycleState));
     const hrsTo = show => (new Date(show.dates.loadIn) - today) / 3600000;
+
+    // Tour crew packages (traveling crew + local hire)
+    const activeTours = (PCG.api.getTours ? PCG.api.getTours() : []).filter(t => t.status === 'Executing');
+    document.getElementById('tourCrewPackages').innerHTML = activeTours.length ? activeTours.map(t => {
+      const pkg = PCG.api.getTourCrewPackage(t.id);
+      const stops = PCG.api.getTourStops(t.id);
+      const travelingCore = pkg ? (pkg.travelingCrew||[]).filter(c => c.role === 'Core').length : 0;
+      const partial = pkg ? (pkg.travelingCrew||[]).filter(c => c.role !== 'Core').length : 0;
+      const totalLocalNeeded = stops.reduce((s, x) => s + (x.localCrewCount || 0), 0);
+      const activeStop = stops.find(s => s.stopStatus === 'Active');
+      return `
+        <a href="tour-view.html?id=${t.id}" class="pinned" style="text-decoration:none; color:inherit; margin-bottom:8px;">
+          <span class="icon">🚌</span>
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span class="pill blue plain" style="font-size:9px;">${t.status.toUpperCase()}</span>
+              <strong>${PCG.escapeHtml(t.name)}</strong>
+              ${activeStop ? `<span class="pill green plain" style="font-size:9px;">NOW · ${PCG.escapeHtml(activeStop.city)}</span>` : ''}
+            </div>
+            <div class="muted" style="font-size:11px; margin-top:4px;">
+              <strong>${travelingCore}</strong> core traveling${partial ? ' · +'+partial+' partial/fly-in' : ''} · <strong>${totalLocalNeeded}</strong> local hires across ${stops.length} stops
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+            <span class="btn sm" style="font-size:10px;">Staff Stops →</span>
+          </div>
+        </a>`;
+    }).join('') : PCG.states.empty('No active tours.');
 
     // ---- Urgent unconfirmed ----
     const urgentRows = [];

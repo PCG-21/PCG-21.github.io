@@ -49,7 +49,7 @@
           <button class="chip on" data-f="all">All</button>
           <button class="chip" data-f="outbound">Outbound</button>
           <button class="chip" data-f="returning">Returning</button>
-          <button class="btn sm">＋ Schedule Manifest</button>
+          <button class="btn sm" id="btn-schedule">＋ Schedule Manifest</button>
         </div>
       </div>
 
@@ -85,14 +85,8 @@
 
         <aside>
           <div class="card">
-            <div class="card-header"><div class="title">Marshalling Yards</div></div>
-            <div class="card-body" style="font-size:var(--fs-sm);">
-              <div><strong>Huntington Place · Detroit</strong><br><span class="muted">SAE WCX + DAS Booth · stagger required</span></div>
-              <div class="divider"></div>
-              <div><strong>Silver State Industrial · LV</strong><br><span class="muted">LCE / GLBX overnight staging</span></div>
-              <div class="divider"></div>
-              <div><strong>McCormick Place · Chicago</strong><br><span class="muted">Mandatory for 53'+ trucks</span></div>
-            </div>
+            <div class="card-header"><div class="title">Marshalling / Staging Venues</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);" id="marshalling"></div>
           </div>
           <div class="card" style="margin-top:var(--sp-4);">
             <div class="card-header"><div class="title">Load Zone Logic (§20)</div></div>
@@ -218,6 +212,126 @@
     filter = e.target.dataset.f; render();
   }));
   render();
+
+  // ---- Marshalling venues (data-driven from active shows × venue library) ----
+  const activeProjects = PCG.api.getProjects().filter(p => p.show && !['Archived','Closing'].includes(p.show.lifecycleState));
+  const inUseVenueIds = new Set(activeProjects.map(p => p.venueId).filter(Boolean));
+  const marshalVenues = (PCG.venues||[]).filter(v => inUseVenueIds.has(v.id) || (v.warningFlags||[]).some(f => /marshall|stagger|truck/i.test(f)));
+  const marshalHtml = marshalVenues.length ? marshalVenues.slice(0, 6).map((v, i) => {
+    const projs = activeProjects.filter(p => p.venueId === v.id);
+    const flag = (v.warningFlags||[]).find(f => /marshall|stagger|truck|dock/i.test(f));
+    const note = flag || (v.loadInNotes||'').slice(0, 80) || `Active show${projs.length===1?'':'s'}: ${projs.map(p=>p.code).join(', ')||'—'}`;
+    return `<div>
+      <a href="venue-detail.html?id=${v.id}" style="color:inherit; text-decoration:none;"><strong>${PCG.escapeHtml(v.name)}</strong></a>${v.city?` · ${PCG.escapeHtml(v.city)}`:''}<br>
+      <span class="muted" style="font-size:11px;">${PCG.escapeHtml(note)}</span>
+    </div>${i < marshalVenues.slice(0,6).length-1 ? '<div class="divider"></div>' : ''}`;
+  }).join('') : PCG.states.empty('No active venues in play.');
+  document.getElementById('marshalling').innerHTML = marshalHtml;
+
+  // ---- Schedule Manifest modal ----
+  document.getElementById('btn-schedule').addEventListener('click', () => {
+    const canSched = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS);
+    if(!canSched){ alert('Only Admin / WH Supervisor / TSM can schedule manifests.'); return; }
+    const shows = PCG.api.getProjects().filter(p=>p.show && !['Archived'].includes(p.show.lifecycleState));
+    const drivers = PCG.api.getDrivers ? PCG.api.getDrivers() : [];
+    const vehicles = PCG.api.getVehicles ? PCG.api.getVehicles() : [];
+    const modal = document.createElement('div');
+    modal.id = 'mfModal';
+    modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center;';
+    modal.innerHTML = `
+      <div class="card" style="width:min(560px,95vw); max-height:92vh; overflow:auto;">
+        <div class="card-header"><div class="title">Schedule Manifest</div>
+          <button class="btn sm ghost" style="margin-left:auto;" onclick="document.getElementById('mfModal').remove()">✕</button>
+        </div>
+        <div class="card-body" style="display:grid; gap:10px;">
+          <label class="muted" style="font-size:11px;">SHOW</label>
+          <select id="mf-show" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            ${shows.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('')}
+          </select>
+
+          <label class="muted" style="font-size:11px;">DIRECTION</label>
+          <select id="mf-dir" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+            <option value="Outbound">Outbound (WH → venue)</option>
+            <option value="Returning">Returning (venue → WH)</option>
+          </select>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label class="muted" style="font-size:11px;">VEHICLE</label>
+              <select id="mf-veh" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+                ${vehicles.map(v=>`<option value="${v.id}">${PCG.escapeHtml(v.name)} (${PCG.escapeHtml(v.type||'—')})</option>`).join('')}
+                <option value="tbd">TBD — assign later</option>
+              </select>
+            </div>
+            <div>
+              <label class="muted" style="font-size:11px;">DRIVER</label>
+              <select id="mf-driver" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+                ${drivers.map(d=>`<option value="${d.id}">${PCG.escapeHtml(d.name)} (${d.licenseClass})</option>`).join('')}
+                <option value="tbd">TBD — assign later</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label class="muted" style="font-size:11px;">DEPARTURE</label>
+              <input id="mf-dep" type="datetime-local" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:inherit;">
+            </div>
+            <div>
+              <label class="muted" style="font-size:11px;">ARRIVAL</label>
+              <input id="mf-arr" type="datetime-local" style="width:100%; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:inherit;">
+            </div>
+          </div>
+
+          <label class="muted" style="font-size:11px;">DOCK INFO (optional)</label>
+          <input id="mf-dock" type="text" placeholder="e.g. Dock 4, bay B · badge required at gate" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text);">
+
+          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+            <button class="btn sm ghost" onclick="document.getElementById('mfModal').remove()">Cancel</button>
+            <button class="btn sm primary" onclick="submitManifest()">Schedule</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  });
+
+  window.submitManifest = () => {
+    const showId = document.getElementById('mf-show').value;
+    const direction = document.getElementById('mf-dir').value;
+    const vehId = document.getElementById('mf-veh').value;
+    const driverId = document.getElementById('mf-driver').value;
+    const dep = document.getElementById('mf-dep').value;
+    const arr = document.getElementById('mf-arr').value;
+    if(!dep || !arr){ alert('Departure and arrival required.'); return; }
+    const veh = (PCG.api.getVehicles()||[]).find(v=>v.id===vehId);
+    const drv = (PCG.api.getDrivers()||[]).find(d=>d.id===driverId);
+    const proj = PCG.api.getProject(showId);
+    const mf = {
+      id: 'man.'+showId.toLowerCase()+'.'+(direction==='Outbound'?'out':'ret')+'.'+((PCG.manifests||[]).filter(m=>m.showId===showId).length+1),
+      showId,
+      direction,
+      vehicleId: vehId !== 'tbd' ? vehId : null,
+      vehicle: veh ? veh.name : 'TBD',
+      driverId: driverId !== 'tbd' ? driverId : null,
+      driverName: drv ? drv.name : 'TBD',
+      departureDate: new Date(dep).toISOString(),
+      arrivalDate: new Date(arr).toISOString(),
+      dockInfo: document.getElementById('mf-dock').value.trim() || (proj&&proj.venueName?'@ '+proj.venueName:''),
+      address: proj ? proj.venueName : '',
+      status: direction === 'Outbound' ? 'Staged' : 'Returning',
+      loadZones: [],
+      items: [],
+      createdAt: new Date().toISOString(),
+      createdById: PCG.user.id
+    };
+    PCG.manifests = PCG.manifests || [];
+    PCG.manifests.push(mf);
+    PCG.auditLog.push({ at: mf.createdAt, actor: PCG.user.id, action: 'manifest.create', entityId: mf.id, detail: `${showId} ${direction}` });
+    if(PCG.engines && PCG.engines.notify) PCG.engines.notify.emit('ManifestScheduled', { id: mf.id, showId, direction });
+    document.getElementById('mfModal').remove();
+    alert(`✓ Manifest ${mf.id} scheduled.`);
+    render();
+  };
 </script>
 </body>
 </html>

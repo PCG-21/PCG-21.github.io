@@ -191,8 +191,8 @@
           </div>
         </div>
         <div style="display:flex; gap:4px; justify-content:flex-end;">
-          ${n.category==='damage' ? '<button class="btn sm ghost" style="font-size:10px;">Svc Ticket</button>' : ''}
-          ${n.category==='change' ? '<button class="btn sm ghost" style="font-size:10px;">File CO</button>' : ''}
+          ${n.category==='damage' ? `<button class="btn sm ghost" style="font-size:10px;" onclick="openSvcTicket('${n.id}')">Svc Ticket</button>` : ''}
+          ${n.category==='change' ? `<button class="btn sm ghost" style="font-size:10px;" onclick="fileCO('${n.id}')">File CO</button>` : ''}
         </div>
       </div>`;
     }).join('') : PCG.states.empty('No notes in this filter. Capture one above.');
@@ -256,6 +256,36 @@
 
   sel.addEventListener('change', render);
   render();
+
+  // ---- Per-note action handlers ----
+  window.openSvcTicket = (noteId) => {
+    const all = PCG.api.getFieldNotes(sel.value);
+    const note = all.find(n => n.id === noteId);
+    if(!note) return;
+    if(!confirm(`Create a service ticket pre-filled from this damage note?\n\n"${note.text.slice(0,100)}${note.text.length>100?'…':''}"`)) return;
+    try {
+      const t = PCG.api.createServiceTicket({
+        showId: sel.value,
+        description: note.text,
+        triage: 'Major',
+        estimatedCost: 250,
+        clientCaused: false,
+        notes: `Linked from field note ${note.id}`
+      });
+      if(confirm(`Service ticket ${t.id} created. Open Service page to complete details?`)){
+        location.href = 'service.html';
+      } else {
+        render();
+      }
+    } catch(e){ alert('Could not create ticket: '+e.message); }
+  };
+  window.fileCO = (noteId) => {
+    const all = PCG.api.getFieldNotes(sel.value);
+    const note = all.find(n => n.id === noteId);
+    if(!note) return;
+    if(!confirm(`Open the Changes tab on the project playbook to file this as a CO or Add Order?`)) return;
+    location.href = 'project.html?project=' + sel.value + '&tab=changes';
+  };
 </script>
 </body>
 </html>
