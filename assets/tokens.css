@@ -1,0 +1,155 @@
+/* ==========================================================================
+   PCG STAGE — Design Tokens
+   Derived from PCG Brand Style Guidelines 2025.2
+   ========================================================================== */
+
+:root {
+  /* Brand — Primary */
+  --pcg-confident-blue: #013558;
+  --pcg-confident-blue-d1: #012D4B;
+  --pcg-confident-blue-d2: #011F34;
+  --pcg-confident-blue-l1: #013D65;
+  --pcg-confident-blue-l2: #024A7B;
+
+  --pcg-bright-blue: #0199FD;
+  --pcg-bright-blue-d1: #0182D7;
+  --pcg-bright-blue-l1: #019AFF;
+  --pcg-bright-blue-l2: #33B1FE;
+
+  /* Brand — Accents */
+  --pcg-spotlight-purple: #7A41E5;
+  --pcg-spotlight-purple-d1: #6837C3;
+  --pcg-spotlight-purple-l1: #8848FF;
+
+  --pcg-energetic-magenta: #D92FB4;
+  --pcg-energetic-magenta-d1: #B82899;
+  --pcg-energetic-magenta-l1: #FA35CF;
+
+  /* Neutrals */
+  --pcg-white: #FFFFFF;
+  --pcg-off-white: #F7F8FA;
+  --pcg-black: #000000;
+
+  /* Operational grays (derived) */
+  --gray-0: #FFFFFF;
+  --gray-50: #F7F8FA;
+  --gray-100: #ECEFF3;
+  --gray-200: #D7DCE3;
+  --gray-300: #B6BEC9;
+  --gray-400: #8892A0;
+  --gray-500: #5C6777;
+  --gray-600: #3E4858;
+  --gray-700: #28303C;
+  --gray-800: #171D27;
+  --gray-900: #0B0F16;
+
+  /* Surfaces — dark operational theme (primary) */
+  --surface-0: #0A1220;       /* page bg */
+  --surface-1: #0F1B2E;       /* card bg */
+  --surface-2: #14253C;       /* elevated card */
+  --surface-3: #1B3150;       /* hover / active */
+  --surface-rail: #081524;    /* left nav */
+  --surface-topbar: #0B1A2D;
+
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.16);
+  --border-accent: rgba(1,153,253,0.4);
+
+  /* Text */
+  --text-primary: #ECF3FA;
+  --text-secondary: #AAB8CC;
+  --text-tertiary: #6E7D94;
+  --text-inverse: #0A1220;
+  --text-link: var(--pcg-bright-blue);
+
+  /* Status (operational) */
+  --status-green: #2FBF71;
+  --status-green-bg: rgba(47,191,113,0.14);
+  --status-green-border: rgba(47,191,113,0.55);
+
+  --status-amber: #F5B73C;
+  --status-amber-bg: rgba(245,183,60,0.14);
+  --status-amber-border: rgba(245,183,60,0.55);
+
+  --status-red: #F04E55;
+  --status-red-bg: rgba(240,78,85,0.14);
+  --status-red-border: rgba(240,78,85,0.55);
+
+  --status-gray: #6E7D94;
+  --status-gray-bg: rgba(110,125,148,0.14);
+  --status-gray-border: rgba(110,125,148,0.45);
+
+  --status-blue: var(--pcg-bright-blue);
+  --status-blue-bg: rgba(1,153,253,0.14);
+  --status-blue-border: rgba(1,153,253,0.55);
+
+  --status-purple: var(--pcg-spotlight-purple);
+  --status-purple-bg: rgba(122,65,229,0.14);
+  --status-purple-border: rgba(122,65,229,0.55);
+
+  /* Gradients — from brand */
+  --grad-show-light-blue: linear-gradient(135deg, #0199FD 0%, #013558 100%);
+  --grad-show-light-purple: linear-gradient(135deg, #7A41E5 0%, #013558 100%);
+  --grad-show-light-spectrum: linear-gradient(90deg, #D92FB4 0%, #7A41E5 45%, #0199FD 100%);
+  --grad-hero: radial-gradient(1200px 600px at 0% 0%, rgba(122,65,229,0.35) 0%, transparent 60%),
+               radial-gradient(900px 500px at 100% 0%, rgba(1,153,253,0.25) 0%, transparent 55%),
+               linear-gradient(180deg, #0F1B2E 0%, #0A1220 100%);
+  --grad-spectrum-text: linear-gradient(90deg, #D92FB4 0%, #8848FF 40%, #0199FD 100%);
+
+  /* Typography */
+  --font-display: "Oswald", "Oswald Medium", "HelveticaNeue-CondensedBold", "Arial Narrow", sans-serif;
+  --font-body: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+  --font-mono: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --fs-3xl: 34px;
+  --fs-4xl: 44px;
+  --fs-hero: 56px;
+
+  --lh-tight: 1.15;
+  --lh-body: 1.5;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* Radii — rounded-pill motif from brand */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.35);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.45);
+  --shadow-glow-blue: 0 0 0 1px rgba(1,153,253,0.35), 0 6px 20px rgba(1,153,253,0.18);
+  --shadow-glow-purple: 0 0 0 1px rgba(122,65,229,0.35), 0 6px 20px rgba(122,65,229,0.18);
+
+  /* Layout */
+  --rail-w: 232px;
+  --rail-w-collapsed: 64px;
+  --topbar-h: 54px;
+  --content-max: 1480px;
+
+  /* Transitions */
+  --t-fast: 120ms ease;
+  --t: 180ms ease;
+  --t-slow: 280ms ease;
+}
