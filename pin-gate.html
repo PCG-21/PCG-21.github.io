@@ -29,18 +29,26 @@
     font-family: var(--font-display); font-size: 28px; margin: 0 0 6px; letter-spacing: 0.01em;
   }
   .pin-sub { color: var(--text-secondary); font-size: var(--fs-sm); margin-bottom:22px; line-height:1.5; }
-  .pin-row { display:flex; gap:10px; align-items:stretch; }
+  .pin-row {
+    display: flex; gap: 10px; align-items: stretch; flex-wrap: nowrap;
+  }
   .pin-row input {
-    flex: 1; background: var(--surface-2); color: var(--text-primary);
+    flex: 1 1 auto; min-width: 0;
+    height: 46px; box-sizing: border-box;
+    background: var(--surface-2); color: var(--text-primary);
     border: 1px solid var(--border); border-radius: var(--r-sm);
-    padding: 11px 14px; font-size: 16px; font-family: var(--font-mono);
-    letter-spacing: 0.25em; outline: 0; text-align:center;
+    padding: 0 14px; font-size: 16px; font-family: var(--font-mono);
+    letter-spacing: 0.25em; outline: 0; text-align: center; line-height: 1;
   }
   .pin-row input:focus { border-color: var(--pcg-bright-blue); box-shadow: 0 0 0 2px rgba(1,153,253,0.2); }
   .pin-row button {
-    padding: 11px 22px; border-radius: var(--r-sm); border: 0;
-    background: var(--pcg-bright-blue); color: #001a2a; font-weight: 700; font-size: var(--fs-sm);
-    cursor: pointer; font-family: var(--font-display); letter-spacing:0.06em; text-transform: uppercase;
+    flex: 0 0 auto; height: 46px; box-sizing: border-box;
+    padding: 0 22px; border-radius: var(--r-sm); border: 0;
+    background: var(--pcg-bright-blue); color: #001a2a;
+    font-weight: 700; font-size: var(--fs-sm);
+    cursor: pointer; font-family: var(--font-display);
+    letter-spacing: 0.06em; text-transform: uppercase; line-height: 1;
+    white-space: nowrap; display: inline-flex; align-items: center; justify-content: center;
   }
   .pin-row button:hover { filter: brightness(1.08); }
   .pin-err {

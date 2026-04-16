@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Tours</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .tour-card {
+    background: var(--surface-1); border:1px solid var(--border-accent);
+    border-radius: var(--r-md); padding: 18px 22px; margin-bottom: var(--sp-4);
+    position: relative; overflow:hidden;
+  }
+  .tour-card::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .tour-card-head { display:flex; align-items:flex-start; gap:var(--sp-3); margin-bottom:var(--sp-3); }
+  .tour-card-head h2 { margin:0 0 4px; font-family:var(--font-display); font-size: 22px; }
+  .tour-card-head .eyebrow { font-size:10px; }
+  .tour-stops-strip {
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px; margin-top: var(--sp-3);
+  }
+  .tour-stop {
+    background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 10px 12px; font-size: var(--fs-xs); border-left: 3px solid var(--text-tertiary);
+    position: relative;
+  }
+  .tour-stop.ss-complete { border-left-color: var(--status-green); opacity: 0.75; }
+  .tour-stop.ss-active   { border-left-color: var(--pcg-bright-blue); box-shadow: 0 0 0 2px rgba(1,153,253,0.2); }
+  .tour-stop.ss-prepping { border-left-color: var(--status-amber); }
+  .tour-stop.ss-upcoming { border-left-color: var(--text-tertiary); }
+  .tour-stop.ss-intransit{ border-left-color: var(--pcg-spotlight-purple); }
+  .tour-stop.ss-cancelled{ border-left-color: var(--status-red); opacity: 0.5; text-decoration: line-through; }
+  .tour-stop .city { font-weight:600; color: var(--text-primary); font-size: var(--fs-sm); margin-bottom: 2px; }
+  .tour-stop .dates { font-family: var(--font-mono); font-size:10px; color: var(--text-tertiary); }
+  .tour-stop .st { font-family: var(--font-display); text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; margin-top:4px; color: var(--text-secondary); }
+  .tour-stop.ss-active .st { color: var(--pcg-bright-blue); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Portfolio · Tours</div>
+          <h1>Tours</h1>
+          <div class="muted">Sequenced operational execution — same gear, same core crew, same master ROS moving city-to-city. Distinct from Programs (spec §II).</div>
+        </div>
+        <div style="margin-left:auto;">
+          <button class="btn sm" id="newTourBtn">＋ New Tour</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div id="toursList" style="margin-top:var(--sp-4);"></div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'tours', crumbs:[{label:'Portfolio'},{label:'Tours'}]});
+
+  const tours = PCG.api.getTours();
+  const canSeeMargin = PCG.canSeeTier('T2_MARGINS');
+
+  // KPIs
+  const activeStops = tours.reduce((s, t) => s + PCG.api.getTourStops(t.id).filter(x=>x.stopStatus==='Active').length, 0);
+  const upcomingStops = tours.reduce((s, t) => s + PCG.api.getTourStops(t.id).filter(x=>['Upcoming','Prepping'].includes(x.stopStatus)).length, 0);
+  const inTransit = tours.reduce((s,t) => {
+    const route = PCG.api.getTourRoute(t.id);
+    return s + (route ? route.legs.filter(l => new Date(l.departureDate) <= new Date() && new Date(l.estimatedArrivalDate) >= new Date()).length : 0);
+  }, 0);
+  const totalRevenue = tours.reduce((s,t) => s + ((t.budgetSummary && t.budgetSummary.totalQuotedRevenue) || 0), 0);
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi blue"><div class="label">Active Tours</div><div class="value">${tours.filter(t=>t.status==='Executing').length}</div><div class="sub">of ${tours.length} total</div></div>
+    <div class="kpi"><div class="label">Stops Active</div><div class="value">${activeStops}</div><div class="sub">on show today</div></div>
+    <div class="kpi amber"><div class="label">Stops Prepping/Upcoming</div><div class="value">${upcomingStops}</div><div class="sub">next 60 days</div></div>
+    <div class="kpi purple"><div class="label">Legs In Transit</div><div class="value">${inTransit}</div><div class="sub">trucks on road</div></div>
+    <div class="kpi ${canSeeMargin?'green':'gray'}"><div class="label">Tour Revenue</div><div class="value">${canSeeMargin?PCG.money(totalRevenue):'🔒'}</div><div class="sub">all-tour quoted</div></div>`;
+
+  // Tour cards
+  document.getElementById('toursList').innerHTML = tours.length ? tours.map(t => {
+    const stops = PCG.api.getTourStops(t.id);
+    const route = PCG.api.getTourRoute(t.id);
+    const fin = PCG.api.getTourFinancialSummary(t.id);
+    const client = PCG.api.getClient(t.clientId);
+    const pm = PCG.findPerson(t.primaryPMId);
+    const ae = PCG.findPerson(t.accountAEId);
+    const completed = stops.filter(s=>s.stopStatus==='Complete').length;
+    const pct = stops.length ? Math.round(completed/stops.length*100) : 0;
+    return `
+      <div class="tour-card">
+        <div class="tour-card-head">
+          <div style="flex:1;">
+            <div class="eyebrow">${PCG.escapeHtml(t.tourType||'').toUpperCase()} TOUR · ${t.status.toUpperCase()}</div>
+            <h2>${PCG.escapeHtml(t.name)}</h2>
+            <div class="muted" style="font-size:var(--fs-sm);">
+              ${client ? PCG.escapeHtml(client.name) : '—'} · Tour PM ${pm?PCG.escapeHtml(pm.name):'—'} · AE ${ae?PCG.escapeHtml(ae.name):'—'}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mono" style="font-size:var(--fs-xs); color: var(--text-tertiary);">${PCG.fmtShort(t.startDate)} → ${PCG.fmtShort(t.endDate)}</div>
+            <div style="margin-top:6px;"><a class="btn sm primary" href="tour-view.html?id=${encodeURIComponent(t.id)}">Open Tour →</a></div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:var(--sp-3);">
+          <div><div class="eyebrow" style="font-size:9px;">Stops</div><div class="mono" style="font-size:20px; color:var(--text-primary);">${stops.length}</div><div class="muted" style="font-size:10px;">${completed} complete · ${pct}%</div></div>
+          <div><div class="eyebrow" style="font-size:9px;">Route</div><div class="mono" style="font-size:20px; color:var(--text-primary);">${route ? route.legs.length : 0}</div><div class="muted" style="font-size:10px;">legs</div></div>
+          <div><div class="eyebrow" style="font-size:9px;">Quoted Revenue</div><div class="mono" style="font-size:20px; color:var(--text-primary);">${canSeeMargin?PCG.money(t.budgetSummary && t.budgetSummary.totalQuotedRevenue):'🔒'}</div><div class="muted" style="font-size:10px;">across all stops</div></div>
+          ${canSeeMargin && t.budgetSummary ? `<div><div class="eyebrow" style="font-size:9px;">Est. Margin</div><div class="mono" style="font-size:20px; color: ${t.budgetSummary.estimatedMargin>=0.40?'var(--status-green)':'var(--status-amber)'};">${PCG.pct(t.budgetSummary.estimatedMargin)}</div><div class="muted" style="font-size:10px;">travel ${PCG.money(t.budgetSummary.travelBudget)} · freight ${PCG.money(t.budgetSummary.freightBudget)}</div></div>` : ''}
+        </div>
+
+        <div class="tour-stops-strip">
+          ${stops.map(s => `
+            <div class="tour-stop ss-${(s.stopStatus||'').toLowerCase().replace(' ','')}" title="${PCG.escapeHtml(s.notes||'')}">
+              <div class="city">#${s.stopNumber} · ${PCG.escapeHtml(s.city)}${s.state?', '+PCG.escapeHtml(s.state):''}</div>
+              <div class="dates">${PCG.fmtShort(s.loadInDate)} → ${PCG.fmtShort(s.loadOutDate)}</div>
+              <div class="st">${PCG.escapeHtml(s.stopStatus||'')}</div>
+              ${(s.issues||[]).length?`<div style="position:absolute; top:8px; right:8px; color:var(--status-amber); font-size:11px;" title="${(s.issues||[]).length} open issue(s)">⚠</div>`:''}
+            </div>`).join('')}
+        </div>
+
+        ${t.notes ? `<div class="muted" style="margin-top:var(--sp-3); font-size:var(--fs-xs); padding-top:var(--sp-2); border-top:1px solid var(--border);">${PCG.escapeHtml(t.notes)}</div>` : ''}
+      </div>`;
+  }).join('') : PCG.states.empty('No tours yet — click + New Tour to start one.');
+
+  document.getElementById('newTourBtn').addEventListener('click', () => {
+    alert('Tour creation wizard — a multi-step flow (tour info → stops → inventory package → crew package → logistics → master ROS) that exceeds single-modal scope. In the MVP, tours are set up by Directors in the admin module and populated stop-by-stop. For demos, open the Lincoln Navigator 2027 tour above.');
+  });
+</script>
+</body>
+</html>

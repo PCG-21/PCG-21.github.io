@@ -1634,6 +1634,236 @@
   PCG.substitutionProposals = PCG.substitutionProposals || [];
 
   /* -----------------------------------------------------------------
+     FINAL SPEC §II — Touring / Multi-City Operational System
+     A tour = sequential execution with continuity of inventory + crew.
+     Lincoln Navigator 2027 National Launch — 5-stop automotive tour.
+  ----------------------------------------------------------------- */
+
+  // Lincoln Navigator brand tour — extend client list
+  if(!(PCG.clients||[]).find(c=>c.id==='c.lincoln')){
+    PCG.clients.push({
+      id:'c.lincoln', name:'Lincoln Motor Company', industry:'Automotive',
+      billingAddress:'1 American Rd, Dearborn, MI', primaryContactId:null,
+      aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:0, status:'Active',
+      preferences:['Executive-grade catering','Quiet load-in 6am','Dedicated tour PM']
+    });
+  }
+
+  // Client contacts for Lincoln (portal)
+  PCG.clientContacts.push(
+    { id:'cc.lin.hsolis',  clientId:'c.lincoln', name:'Helena Solís', role:'Global Brand Events Director', email:'hsolis@lincoln.com',  phone:'+1 313 555 0501', portalAccess:'Full' },
+    { id:'cc.lin.mmcneil', clientId:'c.lincoln', name:'Marcus McNeil',role:'Tour Field Marketing Lead',   email:'mmcneil@lincoln.com', phone:'+1 313 555 0502', portalAccess:'ReadOnly' }
+  );
+
+  /* ----- Linked Projects per Tour Stop (5 cities) ----- */
+  const tourProjects = [
+    { code:'LIN-NYC-26',  name:'Lincoln Navigator Launch — NYC',       venueId:'venue.jacob-javits', city:'New York, NY',     loadIn:'2026-05-04', showStart:'2026-05-06', showEnd:'2026-05-08', loadOut:'2026-05-08', lifecycle:'Awarded' },
+    { code:'LIN-CHI-26',  name:'Lincoln Navigator Launch — Chicago',   venueId:'venue.mccormick',    city:'Chicago, IL',      loadIn:'2026-05-13', showStart:'2026-05-15', showEnd:'2026-05-17', loadOut:'2026-05-17', lifecycle:'Awarded' },
+    { code:'LIN-ATL-26',  name:'Lincoln Navigator Launch — Atlanta',   venueId:'venue.gwcc',         city:'Atlanta, GA',      loadIn:'2026-05-22', showStart:'2026-05-24', showEnd:'2026-05-26', loadOut:'2026-05-26', lifecycle:'Awarded' },
+    { code:'LIN-DFW-26',  name:'Lincoln Navigator Launch — Dallas',    venueId:'venue.kay-bailey',   city:'Dallas, TX',       loadIn:'2026-05-31', showStart:'2026-06-02', showEnd:'2026-06-04', loadOut:'2026-06-04', lifecycle:'InPrep' },
+    { code:'LIN-LAX-26',  name:'Lincoln Navigator Launch — Los Angeles',venueId:'venue.la-conv',     city:'Los Angeles, CA',  loadIn:'2026-06-09', showStart:'2026-06-11', showEnd:'2026-06-13', loadOut:'2026-06-13', lifecycle:'Opportunity' }
+  ];
+
+  // Seed minimal venue records for tour stops if missing
+  (PCG.venues = PCG.venues || []);
+  [
+    { id:'venue.jacob-javits', name:'Javits Center',                       address:'655 W 34th St, New York, NY 10001',        city:'New York, NY',    loadInNotes:'Dock on 40th St · union venue IATSE Local 1' },
+    { id:'venue.mccormick',    name:'McCormick Place · Lakeside',          address:'2301 S Lake Shore Dr, Chicago, IL 60616', city:'Chicago, IL',     loadInNotes:'Marshaling yard off Martin Luther King · IATSE 2' },
+    { id:'venue.gwcc',         name:'Georgia World Congress Center · B',  address:'285 Andrew Young Blvd, Atlanta, GA 30313', city:'Atlanta, GA',     loadInNotes:'Building B dock — tight clearance for 53ft trailers' },
+    { id:'venue.kay-bailey',   name:'Kay Bailey Hutchison Convention Ctr', address:'650 S Griffin St, Dallas, TX 75202',       city:'Dallas, TX',      loadInNotes:'Dock on Young St · IATSE 127' },
+    { id:'venue.la-conv',      name:'LA Convention Center · West Hall',   address:'1201 S Figueroa St, Los Angeles, CA 90015',city:'Los Angeles, CA', loadInNotes:'Dock on Chick Hearn Ct · IATSE 33 required' }
+  ].forEach(v => { if(!PCG.venues.find(x=>x.id===v.id)) PCG.venues.push(v); });
+
+  // Seed Projects for each tour stop
+  tourProjects.forEach(t => {
+    if(PCG.findProject(t.code)) return;
+    PCG.projects.push({
+      code: t.code, name: t.name, client:'Lincoln Motor Company', clientId:'c.lincoln',
+      aeId:'p.jspringer', pmId: 'p.jsharp', td:'p.ctaylor',
+      venueId: t.venueId, venueName: t.venueId.replace('venue.',''),
+      showType:'corporate-launch',
+      dates:{ loadIn: t.loadIn+'T06:00', showStart: t.showStart+'T09:00', showEnd: t.showEnd+'T17:00', loadOut: t.loadOut+'T22:00', ret: t.loadOut+'T22:00' },
+      status:'open', health: t.lifecycle==='Awarded'?'green':t.lifecycle==='InPrep'?'amber':'gray',
+      show:{ id:t.code, lifecycleState: t.lifecycle },
+      quoteNo:'Q-LIN-'+t.code.split('-')[1], manifestNo:null, pullSheetNo:null, customerPO:'PO-LIN-2026-0001',
+      tourId:'tour.lincoln-navigator-26', tourStopNumber: tourProjects.indexOf(t)+1
+    });
+  });
+
+  /* ----- The Tour itself ----- */
+  PCG.tours = [{
+    id:'tour.lincoln-navigator-26',
+    name:'Lincoln Navigator 2027 National Launch Tour',
+    clientId:'c.lincoln',
+    accountAEId:'p.jspringer',
+    primaryPMId:'p.jsharp',
+    tourType:'Automotive',
+    status:'Executing',
+    startDate:'2026-05-04',
+    endDate:'2026-06-13',
+    primaryInventoryPackageId:'tpk.lincoln.inv.core',
+    primaryCrewPackageId:'tpk.lincoln.crew.core',
+    logisticsPlanId:'tlp.lincoln',
+    masterROSTemplateId:'ros.tpl.lincoln-master',
+    budgetSummary:{
+      totalQuotedRevenue: 3850000,
+      totalQuotedCost:   2130000,
+      estimatedMargin:   0.447,
+      travelBudget:       285000,
+      freightBudget:      185000
+    },
+    notes:'Client traveling with tour: Marcus McNeil (Field Marketing). Brand ambassador on-site each city. Custom dealer kit activation in each regional hub — local hire expected at 6-8 crew per stop.',
+    clientContactId:'cc.lin.hsolis'
+  }];
+
+  /* ----- Tour Stops ----- */
+  PCG.tourStops = tourProjects.map((t, i) => ({
+    id:'tstop.lincoln-'+t.code.split('-')[1].toLowerCase(),
+    tourId:'tour.lincoln-navigator-26',
+    stopNumber: i+1,
+    city: t.city.split(',')[0],
+    state: t.city.split(',')[1]?t.city.split(',')[1].trim():'',
+    venueId: t.venueId,
+    linkedProjectId: t.code,
+    travelDaysBefore: i===0 ? 0 : 2,
+    maintenanceDaysBefore: i===0 ? 5 : 1,
+    dayOffsBefore: i===0 ? 0 : 1,
+    loadInDate: t.loadIn,
+    showDates: [t.showStart, t.showEnd],
+    loadOutDate: t.loadOut,
+    departureDate: i<tourProjects.length-1 ? (new Date(new Date(t.loadOut).getTime()+86400000).toISOString().slice(0,10)) : t.loadOut,
+    stopStatus: i<2 ? 'Complete' : i===2 ? 'Active' : i===3 ? 'Prepping' : 'Upcoming',
+    localCrewRequired: true,
+    localCrewCount: 6 + i,
+    localCrewBriefingNotes: 'IATSE rules per local. Start with AV Tech orientation + venue walkthrough 1h before call.',
+    specialRequirements: i===0 ? 'NYC: union venue, 4h pre-call safety briefing required.'
+                       : i===1 ? 'Chicago: marshaling yard 7 miles from venue, allow 45 min transit.'
+                       : i===2 ? 'Atlanta: dock clearance 13\'6" — rooftop packages must route off-truck.'
+                       : i===3 ? 'Dallas: heat advisory May-June — crew hydration protocol active.'
+                       : 'LA: noise ordinance load-in before 7am.',
+    stopBudgetOverride: null,
+    issues: i===2 ? [{ id:'is.atl.1', at:'2026-05-24T11:20', summary:'Confidence monitor SDI drop on LED processor — swapped to spare.', severity:'minor' }] : [],
+    notes: i===2 ? 'Live now — monitoring.' : ''
+  }));
+
+  /* ----- Tour Route (legs between stops) ----- */
+  PCG.tourRoutes = [{
+    id:'tr.lincoln',
+    tourId:'tour.lincoln-navigator-26',
+    orderedStops: PCG.tourStops.map(s=>s.id),
+    legs: [
+      { id:'trl.nyc-chi',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-nyc', toStopId:'tstop.lincoln-chi', departureDate:'2026-05-09', estimatedArrivalDate:'2026-05-11', distanceMiles:790,  estimatedDriveHours:13, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes','drv.mhahn'], trackingNumber:null, notes:'Straight shot on I-80. One overnight.' },
+      { id:'trl.chi-atl',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-chi', toStopId:'tstop.lincoln-atl', departureDate:'2026-05-18', estimatedArrivalDate:'2026-05-20', distanceMiles:715,  estimatedDriveHours:11, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes','drv.mhahn'], trackingNumber:null, notes:'I-65 S via Indianapolis, Louisville.' },
+      { id:'trl.atl-dfw',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-atl', toStopId:'tstop.lincoln-dfw', departureDate:'2026-05-27', estimatedArrivalDate:'2026-05-30', distanceMiles:780,  estimatedDriveHours:12, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes'],            trackingNumber:null, notes:'Two overnight layovers. Montgomery, then Little Rock.' },
+      { id:'trl.dfw-lax',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-dfw', toStopId:'tstop.lincoln-lax', departureDate:'2026-06-05', estimatedArrivalDate:'2026-06-08', distanceMiles:1435, estimatedDriveHours:22, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes','drv.mhahn'], trackingNumber:null, notes:'Longest leg. 3-day buffer. Phoenix overnight recommended.' }
+    ]
+  }];
+
+  /* ----- Tour Inventory Package (gear that travels the whole tour) ----- */
+  PCG.tourInventoryPackages = [{
+    id:'tpk.lincoln.inv.core',
+    tourId:'tour.lincoln-navigator-26',
+    name:'Lincoln Tour Core Package',
+    description:'LED + audio + lighting + video switching package that travels all 5 cities.',
+    totalWeightLbs: 18400,
+    totalReplacementValue: 892000,
+    packageStatus: 'AtStop',
+    currentLocationId: 'venue.gwcc',
+    currentStopId: 'tstop.lincoln-atl',
+    items: [
+      { id:'tii.j8',     packageId:'tpk.lincoln.inv.core', modelId:'inv.db-j8',      qty:24, serialIds:['J8-001','J8-002','J8-003','J8-004','J8-005','J8-006','J8-007','J8-008'], role:'MainSystem', damageNotes:[], replacedAtStopIds:[], currentCondition:'Good' },
+      { id:'tii.jsub',   packageId:'tpk.lincoln.inv.core', modelId:'inv.db-jsub',    qty:6,  serialIds:[], role:'MainSystem', damageNotes:[], replacedAtStopIds:[], currentCondition:'Good' },
+      { id:'tii.e2',     packageId:'tpk.lincoln.inv.core', modelId:'inv.barco-e2',   qty:1,  serialIds:['E2-001'], role:'MainSystem', damageNotes:[], replacedAtStopIds:[], currentCondition:'Excellent' },
+      { id:'tii.ql5',    packageId:'tpk.lincoln.inv.core', modelId:'inv.yam-ql5',    qty:1,  serialIds:['QL5-002'], role:'MainSystem', damageNotes:[], replacedAtStopIds:[], currentCondition:'Good' },
+      { id:'tii.ledf',   packageId:'tpk.lincoln.inv.core', modelId:'inv.ledf-3p9',   qty:180,serialIds:[], role:'MainSystem', damageNotes:[{ stopId:'tstop.lincoln-atl', note:'2 tiles cracked during load-in — swapped to spares', reportedAt:'2026-05-23T08:40', serviceTicketId:null }], replacedAtStopIds:['tstop.lincoln-atl'], currentCondition:'Fair' },
+      { id:'tii.axd',    packageId:'tpk.lincoln.inv.core', modelId:'inv.shure-axd',  qty:4,  serialIds:['AXD-001','AXD-002','AXD-003','AXD-004'], role:'MainSystem', damageNotes:[], replacedAtStopIds:[], currentCondition:'Excellent' },
+      { id:'tii.mon50',  packageId:'tpk.lincoln.inv.core', modelId:'inv.mon-50dual', qty:8,  serialIds:[], role:'Support', damageNotes:[], replacedAtStopIds:[], currentCondition:'Good' }
+    ]
+  }];
+
+  /* ----- Tour Crew Package ----- */
+  PCG.tourCrewPackages = [{
+    id:'tpk.lincoln.crew.core',
+    tourId:'tour.lincoln-navigator-26',
+    name:'Lincoln Tour Core Crew',
+    notes:'Core traveling crew for all 5 stops. Local hires (~6-8 per stop) added per city via Labor Coord.',
+    travelingCrew: [
+      { id:'tcm.1', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.ctaylor', positionId:'pos.td',     role:'Core', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-lax', travelArrangement:'WithTour', confirmationStatus:'Confirmed' },
+      { id:'tcm.2', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.pshah',   positionId:'pos.a1',     role:'Core', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-lax', travelArrangement:'WithTour', confirmationStatus:'Confirmed' },
+      { id:'tcm.3', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.dkim',    positionId:'pos.dir.v',  role:'Core', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-lax', travelArrangement:'WithTour', confirmationStatus:'Confirmed' },
+      { id:'tcm.4', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.eliott',  positionId:'pos.ld',     role:'Core', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-lax', travelArrangement:'WithTour', confirmationStatus:'Confirmed' },
+      { id:'tcm.5', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.coliver', positionId:'pos.caller', role:'Core', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-lax', travelArrangement:'WithTour', confirmationStatus:'Confirmed' },
+      { id:'tcm.6', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.arachilla',positionId:'pos.v1',    role:'PartialTour', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-atl', travelArrangement:'WithTour', confirmationStatus:'Confirmed', replacedByCrewMemberId:'p.rbenoit', replacedAtStopId:'tstop.lincoln-dfw' },
+      { id:'tcm.7', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.rbenoit', positionId:'pos.v1',     role:'PartialTour', startStopId:'tstop.lincoln-dfw', endStopId:'tstop.lincoln-lax', travelArrangement:'FlyIn',    confirmationStatus:'Confirmed' }
+    ]
+  }];
+
+  /* ----- Tour Logistics Plan ----- */
+  PCG.tourLogisticsPlans = [{
+    id:'tlp.lincoln',
+    tourId:'tour.lincoln-navigator-26',
+    primaryWarehouseId:'wh.troy',
+    vehicles:['veh.t1','veh.t2','veh.t3'],
+    driverRotation:[
+      { driverId:'drv.jreyes', legs:['trl.nyc-chi','trl.chi-atl','trl.atl-dfw','trl.dfw-lax'] },
+      { driverId:'drv.mhahn',  legs:['trl.nyc-chi','trl.chi-atl','trl.dfw-lax'] }
+    ],
+    standardLoadOrder:'Audio rigging first-on/last-off · LED bundles deck-side · Video switching in climate crate · Lighting last-on',
+    caseManifestTemplate:'std.tour.lincoln',
+    freightInsuranceValue: 892000,
+    freightInsurancePolicyRef:'TRV-2026-LINC-892K',
+    notes:'Refuel in Toledo + Nashville on long legs. Climate crate monitors log every 4h — Tour PM gets alert on >85F interior.'
+  }];
+
+  /* ----- Tour Day Types (per day, across full tour window) ----- */
+  PCG.tourDayTypes = [
+    // Calculated on-the-fly by tour.html, not pre-seeded here — the page derives from stops + legs
+  ];
+
+  /* -----------------------------------------------------------------
+     FINAL SPEC §J.3 — Cycle Count records
+  ----------------------------------------------------------------- */
+  PCG.cycleCounts = [
+    { id:'cc.2026.0040', countNumber:'CC-2026-0040', warehouseId:'wh.premier-main',
+      countType:'Partial', scope:{ type:'Category', categoryIds:['cat.audio'] },
+      status:'Approved', assignedToId:'p.svance',
+      scheduledDate:'2026-03-15', startedAt:'2026-03-15T08:00', completedAt:'2026-03-15T12:30',
+      approvedById:'p.svance', approvedAt:'2026-03-15T14:05', adjustmentsApplied:true,
+      varianceSummary:{ totalLines:14, linesWithVariance:1, maxVariancePct:0.017 },
+      notes:'Quarterly audio dept count. Clean. Low variance.',
+      expectedLines:[], actualLines:[], varianceLines:[
+        { id:'ccl.40.1', modelId:'inv.shure-axd', locationId:'wh.A.2.C', expectedQty:8, countedQty:8, variance:0, variancePct:0, countedById:'p.svance', countedAt:'2026-03-15T09:12' },
+        { id:'ccl.40.2', modelId:'inv.db-j8',     locationId:'wh.A.12.B',expectedQty:24,countedQty:24,variance:0, variancePct:0, countedById:'p.svance', countedAt:'2026-03-15T09:40' }
+      ]},
+    { id:'cc.2026.0041', countNumber:'CC-2026-0041', warehouseId:'wh.premier-main',
+      countType:'Spot', scope:{ type:'Model', modelIds:['inv.brk-wlshh','inv.brk-podmic'] },
+      status:'PendingReview', assignedToId:'p.bwhit',
+      scheduledDate:'2026-04-14', startedAt:'2026-04-14T13:30', completedAt:'2026-04-14T15:10',
+      approvedById:null, approvedAt:null, adjustmentsApplied:false,
+      varianceSummary:{ totalLines:2, linesWithVariance:2, maxVariancePct:0.085 },
+      notes:'Discrepancy detected on wireless handhelds — pending WH Lead review.',
+      expectedLines:[], actualLines:[], varianceLines:[
+        { id:'ccl.41.1', modelId:'inv.brk-wlshh',  locationId:'wh.B.4.A', expectedQty:36, countedQty:33, variance:-3, variancePct:-0.083, countedById:'p.bwhit', countedAt:'2026-04-14T14:15', note:'3 units not in bin — possibly at SAE still.' },
+        { id:'ccl.41.2', modelId:'inv.brk-podmic', locationId:'wh.B.4.B', expectedQty:48, countedQty:46, variance:-2, variancePct:-0.042, countedById:'p.bwhit', countedAt:'2026-04-14T14:45', note:'2 short. Check IC return queue.' }
+      ]},
+    { id:'cc.2026.0042', countNumber:'CC-2026-0042', warehouseId:'wh.troy',
+      countType:'Full', scope:{ type:'All' },
+      status:'Planned', assignedToId:'p.bwhit',
+      scheduledDate:'2026-04-22', startedAt:null, completedAt:null,
+      approvedById:null, approvedAt:null, adjustmentsApplied:false,
+      varianceSummary:null,
+      notes:'Quarterly Troy full count. Budget day allocated.',
+      expectedLines:[], actualLines:[], varianceLines:[]}
+  ];
+
+  PCG.inventoryAdjustments = [
+    { id:'adj.001', modelId:'inv.shure-axd', warehouseId:'wh.premier-main', locationId:'wh.A.2.C',
+      adjustmentType:'CycleCount', quantityBefore:8, quantityAfter:8, quantityDelta:0,
+      reason:'Confirmed — no variance', adjustedById:'p.svance', adjustedAt:'2026-03-15T14:05',
+      cycleCountId:'cc.2026.0040', approvedById:'p.svance', approvedAt:'2026-03-15T14:05' }
+  ];
+
+  /* -----------------------------------------------------------------
      Augment existing actionQueue with explicit roles
   ----------------------------------------------------------------- */
   (PCG.actionQueue||[]).forEach(q=>{

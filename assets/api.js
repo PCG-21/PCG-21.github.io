@@ -1722,6 +1722,382 @@
   };
 
   // ==================================================================
+  // FINAL SPEC §II — Touring / Multi-City Operational System
+  // ==================================================================
+  PCG.api.getTours = () => (PCG.tours||[]).slice().map(t => {
+    // Redact cost/margin for non-T2 viewers
+    const copy = JSON.parse(JSON.stringify(t));
+    if(!PCG.canSeeTier('T2_MARGINS') && copy.budgetSummary){
+      delete copy.budgetSummary.totalQuotedCost;
+      delete copy.budgetSummary.estimatedMargin;
+    }
+    return copy;
+  });
+
+  PCG.api.getTour = (id) => {
+    const t = (PCG.tours||[]).find(x=>x.id===id);
+    if(!t) return null;
+    const copy = JSON.parse(JSON.stringify(t));
+    if(!PCG.canSeeTier('T2_MARGINS') && copy.budgetSummary){
+      delete copy.budgetSummary.totalQuotedCost;
+      delete copy.budgetSummary.estimatedMargin;
+    }
+    return copy;
+  };
+
+  PCG.api.getTourStops = (tourId) =>
+    (PCG.tourStops||[]).filter(s => !tourId || s.tourId === tourId)
+      .slice().sort((a,b) => a.stopNumber - b.stopNumber);
+
+  PCG.api.getTourStop = (id) => (PCG.tourStops||[]).find(s => s.id === id);
+
+  PCG.api.getTourRoute = (tourId) => (PCG.tourRoutes||[]).find(r => r.tourId === tourId) || null;
+
+  PCG.api.getTourInventoryPackage = (tourId) =>
+    (PCG.tourInventoryPackages||[]).find(p => p.tourId === tourId) || null;
+
+  PCG.api.getTourCrewPackage = (tourId) =>
+    (PCG.tourCrewPackages||[]).find(p => p.tourId === tourId) || null;
+
+  PCG.api.getTourLogisticsPlan = (tourId) =>
+    (PCG.tourLogisticsPlans||[]).find(p => p.tourId === tourId) || null;
+
+  // Tour financial summary — computed from stop projects
+  PCG.api.getTourFinancialSummary = (tourId) => {
+    const tour = PCG.api.getTour(tourId);
+    if(!tour) return null;
+    const stops = PCG.api.getTourStops(tourId);
+    const stopFins = stops.map(s => {
+      const proj = (PCG.projects||[]).find(p => p.code === s.linkedProjectId);
+      const quote = (PCG.quotes||[]).find(q => q.projectCode === s.linkedProjectId);
+      return {
+        stopId: s.id, city: s.city,
+        quotedRevenue: (quote && quote.totalRevenue) || 0,
+        actualRevenue: s.stopStatus === 'Complete' ? ((quote && quote.totalRevenue) || 0) : 0,
+        margin: (quote && PCG.canSeeTier('T2_MARGINS')) ? quote.margin : null,
+        status: s.stopStatus
+      };
+    });
+    const totalQuotedRevenue = stopFins.reduce((s,x)=>s+(x.quotedRevenue||0),0);
+    const totalActualRevenue = stopFins.reduce((s,x)=>s+(x.actualRevenue||0),0);
+    return {
+      tourId, stops: stopFins,
+      totalQuotedRevenue,
+      totalActualRevenue,
+      totalTravelCost: (tour.budgetSummary && tour.budgetSummary.travelBudget) || 0,
+      totalFreightCost: (tour.budgetSummary && tour.budgetSummary.freightBudget) || 0,
+      overallMargin: PCG.canSeeTier('T2_MARGINS') && tour.budgetSummary ? tour.budgetSummary.estimatedMargin : null
+    };
+  };
+
+  // Create Tour Stop ROS — clones the master template into a new RunOfShow
+  PCG.api.createStopROS = (stopId) => {
+    PCG.requireAny(G.ADMIN, G.DIRECTORS, G.TSMS);
+    const stop = PCG.api.getTourStop(stopId); if(!stop) return { ok:false, reason:'Stop not found' };
+    const tour = PCG.api.getTour(stop.tourId);
+    PCG.runOfShows = PCG.runOfShows || [];
+    const existing = PCG.runOfShows.find(r => r.showId === stop.linkedProjectId);
+    if(existing) return { ok:true, ros: existing, alreadyExisted:true };
+    // Clone master template — for demo we use a simple scaffold
+    const ros = {
+      id:'ros.'+Math.random().toString(36).slice(2,8),
+      showId: stop.linkedProjectId,
+      clonedFromTemplateId: tour ? tour.masterROSTemplateId : null,
+      createdAt: new Date().toISOString(),
+      cues: [
+        { cueNumber: 1, name:'Pre-Show Hold', durationMin: 30, department:['production'], notes:'House open. Walkin music playing.' },
+        { cueNumber: 2, name:'Welcome & Opening Video', durationMin: 4,  department:['video','audio'], notes:'Video package rolls. Lights out on audience.' },
+        { cueNumber: 3, name:'Keynote — Brand Vision', durationMin: 25, department:['audio','video','lighting'], notes:'Clip at 8:30 mark. Q&A skip-ready.' },
+        { cueNumber: 4, name:'Reveal Moment', durationMin: 6, department:['video','audio','lighting','scenic'], notes:'LED reveal sequence. Full audio build.' },
+        { cueNumber: 5, name:'Dealer Dialogue Panel', durationMin: 40, department:['audio','video'], notes:'4 wireless HH + 1 podium.' },
+        { cueNumber: 6, name:'Close & Cocktail Reception Cue', durationMin: 8, department:['audio','lighting'], notes:'Music transition. House lights up full.' }
+      ],
+      status:'Draft'
+    };
+    PCG.runOfShows.push(ros);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at: ros.createdAt, actor: PCG.user.id, action:'tour.stop.ros.create',
+      entityId: ros.id, detail:`Cloned master template for stop ${stop.city}` });
+    return { ok:true, ros };
+  };
+
+  PCG.api.getRunOfShow = (showId) => (PCG.runOfShows||[]).find(r => r.showId === showId);
+
+  PCG.api.advanceStopStatus = (stopId, toStatus) => {
+    PCG.requireAny(G.ADMIN, G.DIRECTORS, G.TSMS);
+    const s = (PCG.tourStops||[]).find(x=>x.id===stopId);
+    if(!s) return { ok:false };
+    const prev = s.stopStatus;
+    s.stopStatus = toStatus;
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at: new Date().toISOString(), actor: PCG.user.id,
+      action:'tour.stop.status', entityId: stopId, detail: `${prev} → ${toStatus}` });
+    return { ok:true, stop:s };
+  };
+
+  PCG.api.addStopIssue = (stopId, summary, severity) => {
+    PCG.requireAny(G.ADMIN, G.DIRECTORS, G.TSMS, G.AE);
+    const s = (PCG.tourStops||[]).find(x=>x.id===stopId);
+    if(!s) return { ok:false };
+    s.issues = s.issues || [];
+    const issue = {
+      id:'is.'+Math.random().toString(36).slice(2,8),
+      at: new Date().toISOString(), summary,
+      severity: severity || 'minor',
+      reportedById: PCG.user.id
+    };
+    s.issues.push(issue);
+    return { ok:true, issue };
+  };
+
+  // Day types — compute calendar of tour days from stops + route legs
+  PCG.api.getTourDayCalendar = (tourId) => {
+    const tour = PCG.api.getTour(tourId);
+    const stops = PCG.api.getTourStops(tourId);
+    const route = PCG.api.getTourRoute(tourId);
+    if(!tour || !stops.length) return [];
+    const days = {};
+    const addDay = (date, type, context) => {
+      const key = date.slice(0,10);
+      days[key] = days[key] || { date: key, types: [], context: [] };
+      if(!days[key].types.includes(type)) days[key].types.push(type);
+      if(context) days[key].context.push(context);
+    };
+    stops.forEach(s => {
+      addDay(s.loadInDate, 'Load-In', s.city);
+      (s.showDates || []).forEach(d => addDay(d, 'Show', s.city));
+      addDay(s.loadOutDate, 'Load-Out', s.city);
+    });
+    (route ? route.legs : []).forEach(leg => {
+      const start = new Date(leg.departureDate).getTime();
+      const end = new Date(leg.estimatedArrivalDate).getTime();
+      for(let t = start; t <= end; t += 86400000){
+        addDay(new Date(t).toISOString().slice(0,10), 'Travel',
+          (stops.find(s=>s.id===leg.fromStopId)||{}).city + ' → ' + (stops.find(s=>s.id===leg.toStopId)||{}).city);
+      }
+    });
+    return Object.values(days).sort((a,b)=>a.date.localeCompare(b.date));
+  };
+
+  // Availability override: TourInventoryItem models are blocked for tour date range
+  const __originalCheckAvail = PCG.api.checkAvailability;
+  PCG.api.checkAvailability = (req) => {
+    const result = __originalCheckAvail(req);
+    // Flag if any tour inventory package has this model committed through the window
+    (PCG.tourInventoryPackages||[]).forEach(pkg => {
+      const tour = (PCG.tours||[]).find(t => t.id === pkg.tourId);
+      if(!tour) return;
+      const overlaps = req.fromDate && req.toDate &&
+        new Date(req.fromDate) <= new Date(tour.endDate) &&
+        new Date(req.toDate)   >= new Date(tour.startDate);
+      if(!overlaps) return;
+      const item = (pkg.items||[]).find(i => i.modelId === req.itemId);
+      if(!item) return;
+      const projectCode = req.excludeShowId || req.projectCode;
+      // Only flag if the requesting show is NOT a stop on this tour
+      const isTourStopRequest = (PCG.tourStops||[]).some(s => s.tourId === tour.id && s.linkedProjectId === projectCode);
+      if(isTourStopRequest) return;
+      result.tourCommitment = {
+        tourId: tour.id,
+        tourName: tour.name,
+        blockedThrough: tour.endDate
+      };
+      if(result.status === 'available' || result.status === 'partial'){
+        result.status = 'partial';
+        result.tourBlocked = item.qty;
+      }
+    });
+    return result;
+  };
+
+  // ==================================================================
+  // FINAL SPEC §J — Cycle Counts + Inventory Confidence
+  // ==================================================================
+  PCG.api.getCycleCounts = (filter) => {
+    let list = (PCG.cycleCounts||[]).slice().sort((a,b) =>
+      new Date(b.scheduledDate||0) - new Date(a.scheduledDate||0));
+    if(filter && filter.status) list = list.filter(c => c.status === filter.status);
+    if(filter && filter.warehouseId) list = list.filter(c => c.warehouseId === filter.warehouseId);
+    return list;
+  };
+
+  PCG.api.getCycleCount = (id) => (PCG.cycleCounts||[]).find(c => c.id === id) || null;
+
+  PCG.api.createCycleCount = (payload) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.TSMS, G.DIRECTORS);
+    PCG.cycleCounts = PCG.cycleCounts || [];
+    const countNo = 'CC-' + new Date().getFullYear() + '-' +
+      String(PCG.cycleCounts.length + 40).padStart(4,'0');
+    const c = {
+      id:'cc.'+Math.random().toString(36).slice(2,8),
+      countNumber: countNo,
+      warehouseId: payload.warehouseId || 'wh.premier-main',
+      countType: payload.countType || 'Spot',
+      scope: payload.scope || { type:'All' },
+      status:'Planned',
+      assignedToId: payload.assignedToId || PCG.user.id,
+      scheduledDate: payload.scheduledDate || new Date().toISOString().slice(0,10),
+      startedAt: null, completedAt: null,
+      approvedById: null, approvedAt: null,
+      adjustmentsApplied: false,
+      varianceSummary: null,
+      notes: payload.notes || '',
+      expectedLines: [], actualLines: [], varianceLines: []
+    };
+    // Seed expectedLines from scope + current balance
+    const models = _resolveScope(payload.scope, payload.warehouseId);
+    models.forEach(modelId => {
+      const b = PCG.api.getInventoryBalance(modelId, payload.warehouseId);
+      c.expectedLines.push({
+        modelId, locationId: (b && b.warehouseId) || payload.warehouseId,
+        expectedQty: (b && b.owned) || 0
+      });
+    });
+    PCG.cycleCounts.push(c);
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id,
+      action:'cycle.count.create', entityId:c.id, detail:`${c.countNumber} · ${c.countType}` });
+    return { ok:true, cycleCount:c };
+  };
+
+  function _resolveScope(scope, warehouseId) {
+    scope = scope || { type:'All' };
+    const all = (PCG.inventory||[]).map(i => i.id);
+    if(scope.type === 'All') return all;
+    if(scope.type === 'Location') {
+      // Map via serialized currentLocationId
+      const modelsAtLoc = new Set();
+      (PCG.inventorySerials||[]).forEach(s => {
+        if((scope.locationIds||[]).includes(s.currentLocationId)) modelsAtLoc.add(s.itemId);
+      });
+      return Array.from(modelsAtLoc);
+    }
+    if(scope.type === 'Category') {
+      return (PCG.inventory||[]).filter(i => (scope.categoryIds||[]).includes(i.categoryId)).map(i => i.id);
+    }
+    if(scope.type === 'Model') return scope.modelIds || [];
+    return all;
+  }
+
+  PCG.api.submitCycleCountLine = (ccId, line) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.WH_TECHS, G.TSMS);
+    const c = (PCG.cycleCounts||[]).find(x=>x.id===ccId);
+    if(!c) return { ok:false };
+    if(c.status==='Approved') return { ok:false, reason:'Count already approved' };
+    c.status = 'InProgress';
+    c.startedAt = c.startedAt || new Date().toISOString();
+    const expected = c.expectedLines.find(e => e.modelId === line.modelId);
+    const existing = c.actualLines.find(a => a.modelId === line.modelId);
+    if(existing) {
+      existing.countedQty = line.countedQty;
+      existing.note = line.note || existing.note;
+      existing.countedAt = new Date().toISOString();
+    } else {
+      c.actualLines.push({
+        id:'ccl.'+Math.random().toString(36).slice(2,8),
+        modelId: line.modelId,
+        locationId: line.locationId || (expected && expected.locationId),
+        expectedQty: (expected && expected.expectedQty) || 0,
+        countedQty: line.countedQty,
+        variance: line.countedQty - ((expected && expected.expectedQty) || 0),
+        variancePct: ((expected && expected.expectedQty) > 0)
+          ? (line.countedQty - expected.expectedQty) / expected.expectedQty
+          : 0,
+        countedById: PCG.user.id,
+        countedAt: new Date().toISOString(),
+        note: line.note || ''
+      });
+    }
+    return { ok:true, cycleCount:c };
+  };
+
+  PCG.api.submitCycleCount = (ccId) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.WH_TECHS, G.TSMS);
+    const c = (PCG.cycleCounts||[]).find(x=>x.id===ccId);
+    if(!c) return { ok:false };
+    c.status = 'PendingReview';
+    c.completedAt = new Date().toISOString();
+    c.varianceLines = (c.actualLines || []).filter(a => Math.abs(a.variance || 0) > 0);
+    c.varianceSummary = {
+      totalLines: c.actualLines.length,
+      linesWithVariance: c.varianceLines.length,
+      maxVariancePct: c.varianceLines.reduce((m,l)=>Math.max(m, Math.abs(l.variancePct||0)), 0)
+    };
+    return { ok:true, cycleCount:c };
+  };
+
+  PCG.api.approveCycleCountLine = (ccId, lineId, action, note) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.DIRECTORS);
+    const c = (PCG.cycleCounts||[]).find(x=>x.id===ccId);
+    if(!c) return { ok:false };
+    const line = (c.varianceLines || c.actualLines).find(l => l.id===lineId);
+    if(!line) return { ok:false, reason:'Line not found' };
+    line.approvalAction = action;
+    line.approvalNote = note || '';
+    line.approvedAt = new Date().toISOString();
+    line.approvedById = PCG.user.id;
+    if(action === 'Accept') {
+      // Write InventoryAdjustment
+      PCG.inventoryAdjustments = PCG.inventoryAdjustments || [];
+      PCG.inventoryAdjustments.push({
+        id:'adj.'+Math.random().toString(36).slice(2,8),
+        modelId: line.modelId, warehouseId: c.warehouseId, locationId: line.locationId,
+        adjustmentType:'CycleCount',
+        quantityBefore: line.expectedQty, quantityAfter: line.countedQty,
+        quantityDelta: line.variance,
+        reason: note || `Cycle count variance accepted (${c.countNumber})`,
+        adjustedById: PCG.user.id, adjustedAt: line.approvedAt,
+        cycleCountId: ccId,
+        approvedById: PCG.user.id, approvedAt: line.approvedAt
+      });
+      // Adjust model qty
+      const inv = (PCG.inventory||[]).find(i => i.id === line.modelId);
+      if(inv) inv.qty = line.countedQty;
+    }
+    return { ok:true, line };
+  };
+
+  PCG.api.approveCycleCount = (ccId) => {
+    PCG.requireAny(G.ADMIN, G.WH_SUPERVISORS, G.DIRECTORS);
+    const c = (PCG.cycleCounts||[]).find(x=>x.id===ccId);
+    if(!c) return { ok:false };
+    const pending = (c.varianceLines||[]).filter(l => !l.approvalAction);
+    if(pending.length) return { ok:false, reason:`${pending.length} variance line(s) still need review.` };
+    c.status = 'Approved';
+    c.approvedById = PCG.user.id;
+    c.approvedAt = new Date().toISOString();
+    c.adjustmentsApplied = true;
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at: c.approvedAt, actor: PCG.user.id, action:'cycle.count.approve',
+      entityId: ccId, detail:`${c.countNumber} approved · ${c.varianceSummary?c.varianceSummary.linesWithVariance:0} variance(s)` });
+    return { ok:true, cycleCount:c };
+  };
+
+  PCG.api.getInventoryAdjustments = (filter) => {
+    let list = (PCG.inventoryAdjustments||[]).slice().reverse();
+    if(filter && filter.modelId) list = list.filter(a => a.modelId === filter.modelId);
+    if(filter && filter.type)    list = list.filter(a => a.adjustmentType === filter.type);
+    return list;
+  };
+
+  // Inventory confidence — Trusted / Stale / Unverified based on last cycle count
+  PCG.api.getInventoryConfidence = (modelId) => {
+    const latestCount = (PCG.cycleCounts||[])
+      .filter(c => c.status === 'Approved' &&
+        (c.varianceLines||[]).some(l => l.modelId === modelId) ||
+        (c.expectedLines||[]).some(e => e.modelId === modelId))
+      .sort((a,b) => new Date(b.approvedAt||0) - new Date(a.approvedAt||0))[0];
+    if(!latestCount) return { level:'Unverified', daysSinceCount:null };
+    const days = Math.floor((Date.now() - new Date(latestCount.approvedAt).getTime()) / 86400000);
+    const vLine = (latestCount.varianceLines||[]).find(l => l.modelId === modelId);
+    const varPct = Math.abs((vLine && vLine.variancePct) || 0);
+    if(varPct >= 0.05) return { level:'Discrepant', daysSinceCount: days, lastCountId: latestCount.id };
+    if(days <= 30) return { level:'Trusted', daysSinceCount: days, lastCountId: latestCount.id };
+    if(days <= 90) return { level:'Stale',   daysSinceCount: days, lastCountId: latestCount.id };
+    return { level:'Unverified', daysSinceCount: days, lastCountId: latestCount.id };
+  };
+
+  // ==================================================================
   // v2.X — Real "create shift assignment" (replaces fake notImpl)
   // Spec §12.1 — Placeholder ShiftAssignment
   // ==================================================================

@@ -76,6 +76,7 @@
     { label:'Projects', items:[
       { id:'portfolio',    label:'Portfolio',     href:'index.html',                        icon:'▦', groups:'*' },
       { id:'projects',     label:'All Projects',  href:'projects.html',                     icon:'▤', groups:'*' },
+      { id:'tours',        label:'Tours',         href:'tours.html',                        icon:'🚌', groups:'*' },
       { id:'playbook',     label:'Playbook',      href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },
       { id:'field-notes',  label:'Field Notes',   href:'field-notes.html?project=LCE-2026', icon:'✎', groups:'*' },
       { id:'checklist',    label:'Checklists',    href:'checklist.html?project=LCE-2026',   icon:'☑', groups:'*' },
@@ -110,6 +111,7 @@
       { id:'inventory',    label:'Inventory',         href:'inventory.html', icon:'▣', groups:'*' },
       { id:'pull-sheet',   label:'Pull Sheets',       href:'pull-sheet.html?id=ps.sae.breakout', icon:'☱', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS] },
       { id:'kits',         label:'System Builder',    href:'kits.html',      icon:'◆', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS] },
+      { id:'cycle-count',  label:'Cycle Counts',      href:'cycle-count.html', icon:'◷', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS] },
       { id:'service',      label:'Service / R&M',     href:'service.html',   icon:'⚒', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS] },
       { id:'logistics',    label:'Logistics',         href:'logistics.html', icon:'🚚', groups:'*' }
     ]},

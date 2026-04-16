@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Tour</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .tour-hero {
+    background: linear-gradient(135deg, var(--pcg-confident-blue) 0%, #0B2842 100%);
+    border-radius: var(--r-md); padding: 28px 32px; margin-bottom: var(--sp-5);
+    position:relative; overflow:hidden;
+  }
+  .tour-hero::after {
+    content:""; position:absolute; left:0; right:0; bottom:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .tour-hero h1 { margin: 6px 0 4px; font-size: 28px; font-family: var(--font-display); color: #FFF; }
+  .tour-hero .eyebrow { color: rgba(255,255,255,0.7); }
+  .tour-hero .meta { color: rgba(255,255,255,0.85); margin-top:6px; font-size: var(--fs-sm); }
+  .tour-hero .nums {
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap:var(--sp-3); margin-top:var(--sp-4);
+  }
+  .tour-hero .num { background: rgba(255,255,255,0.08); border-radius: var(--r-sm); padding: 12px 14px; }
+  .tour-hero .num .label { font-family: var(--font-display); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color: rgba(255,255,255,0.65); }
+  .tour-hero .num .value { font-family: var(--font-mono); font-size: 22px; color: #FFF; font-weight:600; margin-top: 2px; }
+  .tour-hero .num .sub   { color: rgba(255,255,255,0.6); font-size: 10px; margin-top: 2px; }
+
+  .tour-tabs {
+    display:flex; gap:2px; background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 4px; margin-bottom: var(--sp-4); flex-wrap:wrap;
+  }
+  .tour-tabs button {
+    padding: 8px 16px; background: transparent; border:0; color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; cursor:pointer; border-radius: calc(var(--r-sm) - 2px);
+  }
+  .tour-tabs button.on { background: var(--surface-1); color: var(--pcg-bright-blue); }
+  .tour-tabs button:hover { color: var(--text-primary); }
+
+  .stop-timeline { position:relative; padding-left: 28px; }
+  .stop-timeline::before {
+    content:""; position:absolute; left:9px; top:16px; bottom:16px; width:2px;
+    background: var(--border);
+  }
+  .stop-node {
+    position:relative; padding: 16px 20px; margin-bottom: var(--sp-3);
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+  }
+  .stop-node::before {
+    content:""; position:absolute; left:-24px; top:22px; width:16px; height:16px; border-radius:50%;
+    background: var(--text-tertiary); border: 3px solid var(--surface-0);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .stop-node.ss-active::before   { background: var(--pcg-bright-blue); box-shadow: 0 0 0 1px var(--pcg-bright-blue), 0 0 0 4px rgba(1,153,253,0.2); }
+  .stop-node.ss-complete::before { background: var(--status-green); }
+  .stop-node.ss-prepping::before { background: var(--status-amber); }
+  .stop-node.ss-upcoming::before { background: var(--text-tertiary); }
+  .stop-node h4 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+
+  .leg-row {
+    position: relative; display:flex; align-items: center; gap: var(--sp-3);
+    padding: 12px 20px; margin: -8px 0 var(--sp-3) 0;
+    background: var(--surface-2); border-radius: var(--r-sm);
+    color: var(--text-secondary); font-size: var(--fs-sm);
+    border: 1px dashed var(--border);
+  }
+  .leg-row .arrow { color: var(--pcg-spotlight-purple); font-family: var(--font-mono); }
+
+  .day-row {
+    display: grid; grid-template-columns: 100px 1fr; gap: var(--sp-3);
+    padding: 6px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  }
+  .day-row .date { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+  .day-type {
+    display: inline-block; padding: 1px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-right: 4px;
+  }
+  .dt-show    { background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue); }
+  .dt-loadin  { background: rgba(212,163,47,0.18); color: var(--status-amber); }
+  .dt-loadout { background: rgba(212,163,47,0.18); color: var(--status-amber); }
+  .dt-travel  { background: rgba(122,65,229,0.18); color: var(--pcg-spotlight-purple); }
+  .dt-dayoff  { background: var(--surface-3); color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div id="tour-body"></div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const tourId = PCG.qs('id', 'tour.lincoln-navigator-26');
+  const tour = PCG.api.getTour(tourId);
+
+  if(!tour){
+    document.getElementById('tour-body').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-6);">${PCG.states.empty('Tour not found.')}</div>`;
+    PCG.mountShell({active:'tours', crumbs:[{label:'Tours', href:'tours.html'},{label:'Not Found'}]});
+  } else {
+    const stops  = PCG.api.getTourStops(tourId);
+    const route  = PCG.api.getTourRoute(tourId);
+    const invPkg = PCG.api.getTourInventoryPackage(tourId);
+    const crewPkg= PCG.api.getTourCrewPackage(tourId);
+    const logi   = PCG.api.getTourLogisticsPlan(tourId);
+    const fin    = PCG.api.getTourFinancialSummary(tourId);
+    const cal    = PCG.api.getTourDayCalendar(tourId);
+    const client = PCG.api.getClient(tour.clientId);
+    const pm     = PCG.findPerson(tour.primaryPMId);
+    const ae     = PCG.findPerson(tour.accountAEId);
+    const canSeeMargin = PCG.canSeeTier('T2_MARGINS');
+
+    PCG.mountShell({
+      active:'tours',
+      crumbs:[{label:'Portfolio',href:'index.html'},{label:'Tours',href:'tours.html'},{label:tour.name}]
+    });
+
+    document.getElementById('tour-body').innerHTML = `
+      <div class="tour-hero">
+        <div class="eyebrow">${PCG.escapeHtml(tour.tourType||'')} TOUR · ${tour.status.toUpperCase()}</div>
+        <h1>${PCG.escapeHtml(tour.name)}</h1>
+        <div class="meta">
+          ${client ? PCG.escapeHtml(client.name) : '—'} · Tour PM ${pm?PCG.escapeHtml(pm.name):'—'} · AE ${ae?PCG.escapeHtml(ae.name):'—'}
+          · ${PCG.fmtShort(tour.startDate)} → ${PCG.fmtShort(tour.endDate)}
+        </div>
+        <div class="nums">
+          <div class="num"><div class="label">Stops</div><div class="value">${stops.length}</div><div class="sub">${stops.filter(s=>s.stopStatus==='Complete').length} complete</div></div>
+          <div class="num"><div class="label">Legs</div><div class="value">${route?route.legs.length:0}</div><div class="sub">trucking segments</div></div>
+          <div class="num"><div class="label">Traveling Crew</div><div class="value">${(crewPkg && crewPkg.travelingCrew||[]).filter(c=>c.role==='Core').length}</div><div class="sub">+ ${(crewPkg && crewPkg.travelingCrew||[]).filter(c=>c.role!=='Core').length} partial/fly-in</div></div>
+          <div class="num"><div class="label">Pkg Items</div><div class="value">${invPkg?invPkg.items.length:0}</div><div class="sub">${invPkg?invPkg.totalWeightLbs.toLocaleString():0} lbs</div></div>
+          ${canSeeMargin && tour.budgetSummary ? `
+            <div class="num"><div class="label">Quoted Rev</div><div class="value">${PCG.money(tour.budgetSummary.totalQuotedRevenue)}</div><div class="sub">est. ${PCG.pct(tour.budgetSummary.estimatedMargin)} margin</div></div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="tour-tabs" id="tabs">
+        <button class="on" data-t="stops">Stops</button>
+        <button data-t="inventory">Inventory Package</button>
+        <button data-t="crew">Crew Package</button>
+        <button data-t="logistics">Logistics</button>
+        <button data-t="ros">Master ROS</button>
+        <button data-t="calendar">Day Types</button>
+        <button data-t="financials">Financials</button>
+      </div>
+
+      <div id="tab-body"></div>`;
+
+    const V = {};
+
+    V.stops = () => {
+      const stopHtml = stops.map(s => {
+        const proj = PCG.api.getProject(s.linkedProjectId);
+        const issueCount = (s.issues||[]).length;
+        const legBefore = route && route.legs.find(l => l.toStopId === s.id);
+        return `
+          ${legBefore ? `
+            <div class="leg-row">
+              <span class="arrow">↓</span>
+              <div style="flex:1;">
+                <strong>${PCG.escapeHtml(legBefore.freightType)}</strong>
+                — ${legBefore.distanceMiles.toLocaleString()}mi, ~${legBefore.estimatedDriveHours}h drive
+                <span class="muted"> · depart ${PCG.fmtShort(legBefore.departureDate)} → arrive ${PCG.fmtShort(legBefore.estimatedArrivalDate)}</span>
+              </div>
+              <span class="muted" style="font-size:11px;">${(legBefore.driverIds||[]).length} drv · ${(legBefore.vehicleIds||[]).length} veh</span>
+            </div>` : ''}
+          <div class="stop-node ss-${(s.stopStatus||'').toLowerCase().replace(' ','')}">
+            <div style="display:flex; align-items:flex-start; gap: var(--sp-3);">
+              <div style="flex:1;">
+                <div class="eyebrow">STOP #${s.stopNumber} · ${s.stopStatus.toUpperCase()}</div>
+                <h4>${PCG.escapeHtml(s.city)}${s.state?', '+PCG.escapeHtml(s.state):''}</h4>
+                <div class="muted" style="font-size:var(--fs-sm); margin-top:4px;">
+                  ${proj ? PCG.escapeHtml(proj.name) : '—'} · <span class="mono">${PCG.escapeHtml(s.linkedProjectId||'')}</span>
+                </div>
+                <div class="muted" style="font-size:var(--fs-xs); margin-top:6px;">
+                  Load-in ${PCG.fmtShort(s.loadInDate)} · Show ${(s.showDates||[]).map(PCG.fmtShort).join(' → ')} · Out ${PCG.fmtShort(s.loadOutDate)}
+                </div>
+                ${s.specialRequirements ? `<div class="muted" style="font-size:var(--fs-xs); margin-top:6px; padding:6px 10px; background:var(--surface-2); border-radius:var(--r-sm);"><strong>Special:</strong> ${PCG.escapeHtml(s.specialRequirements)}</div>` : ''}
+                ${issueCount ? `<div class="attn-item amber" style="margin-top:8px;">
+                  <div style="font-size:16px;">⚠</div>
+                  <div><div class="ttl">${issueCount} issue${issueCount>1?'s':''} logged at this stop</div>
+                  ${(s.issues||[]).slice(0,2).map(i=>`<div class="meta">${PCG.fmtShort(i.at)}: ${PCG.escapeHtml(i.summary)}</div>`).join('')}</div>
+                </div>` : ''}
+              </div>
+              <div style="text-align:right; display:flex; flex-direction:column; gap:6px;">
+                ${proj ? `<a class="btn sm" href="project.html?project=${s.linkedProjectId}">Project →</a>` : ''}
+                ${proj ? `<a class="btn sm ghost" href="showbook.html?project=${s.linkedProjectId}">Show Book</a>` : ''}
+                <button class="btn sm ghost" onclick="createStopRos('${s.id}')">Create Stop ROS</button>
+                ${s.localCrewRequired ? `<span class="pill amber plain" style="font-size:9px;">LOCAL × ${s.localCrewCount}</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+      return `<div class="stop-timeline">${stopHtml}</div>`;
+    };
+
+    V.inventory = () => {
+      if(!invPkg) return PCG.states.empty('No tour inventory package.');
+      const currentStop = stops.find(s=>s.id===invPkg.currentStopId);
+      return `
+        <div class="card card-pad" style="margin-bottom:var(--sp-4);">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:var(--sp-3);">
+            <div><div class="eyebrow">Package</div><div style="font-size:16px; font-weight:600; margin-top:2px;">${PCG.escapeHtml(invPkg.name)}</div></div>
+            <div><div class="eyebrow">Status</div><div style="margin-top:2px;"><span class="pill blue plain">${invPkg.packageStatus.toUpperCase()}</span></div></div>
+            <div><div class="eyebrow">Currently At</div><div style="margin-top:2px;">${currentStop ? PCG.escapeHtml(currentStop.city) : '—'}</div></div>
+            <div><div class="eyebrow">Weight</div><div class="mono" style="margin-top:2px;">${invPkg.totalWeightLbs.toLocaleString()} lbs</div></div>
+            <div><div class="eyebrow">Replacement $</div><div class="mono" style="margin-top:2px;">${PCG.money(invPkg.totalReplacementValue)}</div></div>
+          </div>
+          <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3); padding-top:var(--sp-3); border-top:1px solid var(--border);">
+            ⚠ <strong>Tour commit rule:</strong> these items are blocked from general availability for the full tour window (${PCG.fmtShort(tour.startDate)} → ${PCG.fmtShort(tour.endDate)}).
+            Other shows requesting them will see the tour commitment flag on EQLPC.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="title">Items traveling the tour</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${invPkg.items.length} items · ${invPkg.items.reduce((s,i)=>s+(i.qty||0),0)} units</span>
+          </div>
+          <table class="pcg-table">
+            <thead><tr><th>Item</th><th style="width:60px;">Qty</th><th>Role</th><th>Condition</th><th>Damage / History</th></tr></thead>
+            <tbody>${invPkg.items.map(it => {
+              const inv = PCG.api.getInventoryItem(it.modelId);
+              const condColor = it.currentCondition==='Excellent'?'green':it.currentCondition==='Good'?'blue':it.currentCondition==='Fair'?'amber':'red';
+              return `<tr>
+                <td><strong>${inv ? PCG.escapeHtml(inv.name) : PCG.escapeHtml(it.modelId)}</strong>
+                  ${(it.serialIds||[]).length?`<div class="muted" style="font-size:10px; font-family:var(--font-mono);">${(it.serialIds||[]).slice(0,5).join(', ')}${(it.serialIds||[]).length>5?'…':''}</div>`:''}
+                </td>
+                <td class="mono">${it.qty}</td>
+                <td><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(it.role||'—')}</span></td>
+                <td><span class="pill ${condColor} plain" style="font-size:10px;">${(it.currentCondition||'').toUpperCase()}</span></td>
+                <td>${(it.damageNotes||[]).length ?
+                  (it.damageNotes||[]).map(d=>`<div class="muted" style="font-size:11px;">${PCG.fmtShort(d.reportedAt)}: ${PCG.escapeHtml(d.note)}</div>`).join('')
+                  : '<span class="muted" style="font-size:11px;">—</span>'}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    };
+
+    V.crew = () => {
+      if(!crewPkg) return PCG.states.empty('No tour crew package.');
+      return `
+        <div class="card card-pad" style="margin-bottom:var(--sp-4);">
+          <div class="eyebrow">${PCG.escapeHtml(crewPkg.name)}</div>
+          <div class="muted" style="font-size:var(--fs-sm); margin-top:4px;">${PCG.escapeHtml(crewPkg.notes||'')}</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="title">Traveling Crew</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${crewPkg.travelingCrew.length} roster slots</span>
+          </div>
+          <table class="pcg-table">
+            <thead><tr><th>Crew</th><th>Position</th><th>Role</th><th>Start Stop</th><th>End Stop</th><th>Travel</th><th>Status</th></tr></thead>
+            <tbody>${crewPkg.travelingCrew.map(c => {
+              const person = PCG.findPerson(c.crewMemberId);
+              const pos = (PCG.crewPositions||[]).find(p=>p.id===c.positionId);
+              const startStop = stops.find(s=>s.id===c.startStopId);
+              const endStop   = stops.find(s=>s.id===c.endStopId);
+              const sub = c.replacedByCrewMemberId ? PCG.findPerson(c.replacedByCrewMemberId) : null;
+              return `<tr>
+                <td><strong>${person?PCG.escapeHtml(person.name):PCG.escapeHtml(c.crewMemberId)}</strong></td>
+                <td>${pos?PCG.escapeHtml(pos.displayName||pos.name):PCG.escapeHtml(c.positionId)}</td>
+                <td><span class="pill ${c.role==='Core'?'blue':c.role==='PartialTour'?'amber':'gray'} plain" style="font-size:10px;">${PCG.escapeHtml(c.role||'—')}</span></td>
+                <td>${startStop?PCG.escapeHtml(startStop.city):'—'}</td>
+                <td>${endStop?PCG.escapeHtml(endStop.city):'—'}${sub?`<div class="muted" style="font-size:10px;">→ replaced by ${PCG.escapeHtml(sub.name)}</div>`:''}</td>
+                <td><span class="mono" style="font-size:11px;">${PCG.escapeHtml(c.travelArrangement||'—')}</span></td>
+                <td><span class="pill ${c.confirmationStatus==='Confirmed'?'green':c.confirmationStatus==='Withdrawn'?'red':'amber'} plain" style="font-size:10px;">${(c.confirmationStatus||'').toUpperCase()}</span></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    };
+
+    V.logistics = () => {
+      if(!logi) return PCG.states.empty('No logistics plan.');
+      const warehouse = (PCG.warehouses||[]).find(w=>w.id===logi.primaryWarehouseId);
+      return `
+        <div class="card card-pad" style="margin-bottom:var(--sp-4);">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:var(--sp-3);">
+            <div><div class="eyebrow">Home Base</div><div>${warehouse?PCG.escapeHtml(warehouse.name):PCG.escapeHtml(logi.primaryWarehouseId)}</div></div>
+            <div><div class="eyebrow">Vehicles</div><div class="mono">${logi.vehicles.length}</div></div>
+            <div><div class="eyebrow">Freight Insurance</div><div class="mono">${PCG.money(logi.freightInsuranceValue)}</div><div class="muted" style="font-size:10px;">${PCG.escapeHtml(logi.freightInsurancePolicyRef||'')}</div></div>
+          </div>
+          <div class="muted" style="font-size:var(--fs-sm); margin-top:var(--sp-3); padding-top:var(--sp-3); border-top:1px solid var(--border);">
+            <strong>Load order:</strong> ${PCG.escapeHtml(logi.standardLoadOrder||'—')}
+          </div>
+          ${logi.notes?`<div class="muted" style="font-size:var(--fs-xs); margin-top:8px;">${PCG.escapeHtml(logi.notes)}</div>`:''}
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="title">Route Legs</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${route?route.legs.length:0} legs · ${route?route.legs.reduce((s,l)=>s+(l.distanceMiles||0),0).toLocaleString():0} total miles</span>
+          </div>
+          <table class="pcg-table">
+            <thead><tr><th>Leg</th><th>From</th><th>To</th><th>Depart</th><th>Arrive</th><th>Distance</th><th>Drive</th><th>Freight</th><th>Drivers</th></tr></thead>
+            <tbody>${(route?route.legs:[]).map(l => {
+              const fr = stops.find(s=>s.id===l.fromStopId);
+              const to = stops.find(s=>s.id===l.toStopId);
+              return `<tr>
+                <td class="mono" style="font-size:11px;">${l.id}</td>
+                <td>${fr?PCG.escapeHtml(fr.city):PCG.escapeHtml(l.fromStopId)}</td>
+                <td>${to?PCG.escapeHtml(to.city):PCG.escapeHtml(l.toStopId)}</td>
+                <td class="mono">${PCG.fmtShort(l.departureDate)}</td>
+                <td class="mono">${PCG.fmtShort(l.estimatedArrivalDate)}</td>
+                <td class="mono">${l.distanceMiles.toLocaleString()}mi</td>
+                <td class="mono">~${l.estimatedDriveHours}h</td>
+                <td><span class="pill blue plain" style="font-size:10px;">${PCG.escapeHtml(l.freightType)}</span></td>
+                <td>${(l.driverIds||[]).map(id=>{
+                  const d = (PCG.drivers||[]).find(x=>x.id===id);
+                  return d?PCG.escapeHtml(d.name):id;
+                }).join(', ')}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    };
+
+    V.ros = () => {
+      return `
+        <div class="card card-pad" style="margin-bottom:var(--sp-4);">
+          <div class="eyebrow" style="margin-bottom:6px;">MASTER ROS TEMPLATE</div>
+          <h3 style="margin:0 0 6px;">${PCG.escapeHtml(tour.masterROSTemplateId || '—')}</h3>
+          <div class="muted" style="font-size:var(--fs-sm);">
+            The master template travels with the tour. Each stop clones it on ROS creation, then customizes for venue-specific cues and local sponsor reads.
+            Tour TD reviews actuals after each stop to tune the template (spec §II.6).
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="title">Per-Stop ROS Status</div></div>
+          <table class="pcg-table">
+            <thead><tr><th>Stop</th><th>Status</th><th>Stop ROS</th><th></th></tr></thead>
+            <tbody>${stops.map(s => {
+              const ros = PCG.api.getRunOfShow(s.linkedProjectId);
+              return `<tr>
+                <td><strong>#${s.stopNumber} · ${PCG.escapeHtml(s.city)}</strong></td>
+                <td><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(s.stopStatus)}</span></td>
+                <td>${ros?`<span class="mono" style="font-size:11px;">${ros.cues.length} cues · ${ros.status}</span>`:'<span class="muted" style="font-size:11px;">Not yet created</span>'}</td>
+                <td>${ros ? `<a class="btn sm" href="ros.html?project=${s.linkedProjectId}">Open ROS →</a>` : `<button class="btn sm" onclick="createStopRos('${s.id}')">Clone from Master</button>`}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    };
+
+    V.calendar = () => {
+      return `
+        <div class="card">
+          <div class="card-header"><div class="title">Tour Day Calendar</div>
+            <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">${cal.length} days · 5 day types per spec §II.9</span>
+          </div>
+          <div style="padding: var(--sp-3) var(--sp-4);">
+            ${cal.map(d => `
+              <div class="day-row">
+                <div class="date">${PCG.fmtShort(d.date)}</div>
+                <div>
+                  ${d.types.map(t => {
+                    const cls = t==='Show'?'dt-show':t==='Load-In'?'dt-loadin':t==='Load-Out'?'dt-loadout':t==='Travel'?'dt-travel':'dt-dayoff';
+                    return `<span class="day-type ${cls}">${PCG.escapeHtml(t)}</span>`;
+                  }).join('')}
+                  <span class="muted" style="font-size: var(--fs-xs);">${(d.context||[]).join(' · ')}</span>
+                </div>
+              </div>`).join('')}
+          </div>
+          <div class="muted" style="padding: var(--sp-3) var(--sp-4); border-top:1px solid var(--border); font-size:var(--fs-xs);">
+            <strong>Day-type billing:</strong> Show days = show-call rates. Load-in/out = load-in rates. Travel = per diem only (traveling crew). Day off/maintenance = per diem + R&M labor.
+          </div>
+        </div>`;
+    };
+
+    V.financials = () => {
+      if(!canSeeMargin){
+        return `<div class="card card-pad">${PCG.states.forbidden()}<div class="muted" style="font-size:var(--fs-xs); margin-top:8px;">Tour financial summary requires T2 (Margin) tier. Switch to Director / AE / Admin / Accounting persona.</div></div>`;
+      }
+      if(!fin) return PCG.states.empty('No financial summary.');
+      return `
+        <div class="kpi-strip">
+          <div class="kpi blue"><div class="label">Total Quoted Rev</div><div class="value">${PCG.money(fin.totalQuotedRevenue)}</div><div class="sub">all stops</div></div>
+          <div class="kpi"><div class="label">Actual Rev (to date)</div><div class="value">${PCG.money(fin.totalActualRevenue)}</div><div class="sub">completed stops</div></div>
+          <div class="kpi amber"><div class="label">Travel Budget</div><div class="value">${PCG.money(fin.totalTravelCost)}</div><div class="sub">core crew</div></div>
+          <div class="kpi purple"><div class="label">Freight Budget</div><div class="value">${PCG.money(fin.totalFreightCost)}</div><div class="sub">all legs</div></div>
+          ${fin.overallMargin!=null?`<div class="kpi green"><div class="label">Estimated Margin</div><div class="value">${PCG.pct(fin.overallMargin)}</div><div class="sub">tour-level</div></div>`:''}
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header"><div class="title">Per-Stop Financial Rollup</div></div>
+          <table class="pcg-table">
+            <thead><tr><th>Stop</th><th>City</th><th>Status</th><th>Quoted Rev</th><th>Actual Rev</th><th>Margin</th></tr></thead>
+            <tbody>${fin.stops.map(x=>`<tr>
+              <td class="mono">${PCG.escapeHtml(x.stopId)}</td>
+              <td>${PCG.escapeHtml(x.city)}</td>
+              <td><span class="pill gray plain" style="font-size:10px;">${PCG.escapeHtml(x.status)}</span></td>
+              <td class="mono">${PCG.money(x.quotedRevenue)}</td>
+              <td class="mono">${PCG.money(x.actualRevenue)}</td>
+              <td class="mono">${x.margin!=null?PCG.pct(x.margin):'—'}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+
+        <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3);">
+          Per-stop PMs see only their stop's financials. Only AE + Tour PM + Director see this tour-level rollup (spec §II.7).
+        </div>`;
+    };
+
+    const render = (tab) => {
+      document.getElementById('tab-body').innerHTML = V[tab]();
+    };
+    document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', e => {
+      document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x===e.target));
+      render(e.target.dataset.t);
+    }));
+    render('stops');
+
+    window.createStopRos = (stopId) => {
+      const res = PCG.api.createStopROS(stopId);
+      if(!res.ok){ alert('Blocked: '+res.reason); return; }
+      const stop = stops.find(s=>s.id===stopId);
+      if(res.alreadyExisted){
+        alert('Stop ROS already exists — opening it.');
+        location.href = 'ros.html?project=' + stop.linkedProjectId;
+        return;
+      }
+      alert(`✓ Cloned master template (${res.ros.cues.length} cues) into stop-level ROS. Opening...`);
+      location.href = 'ros.html?project=' + stop.linkedProjectId;
+    };
+  }
+</script>
+</body>
+</html>
