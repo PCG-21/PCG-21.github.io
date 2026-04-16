@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Project</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div id="pheader"></div>
+      <div id="tabs"></div>
+      <div class="split">
+        <div id="tab-body"></div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Activity</div></div>
+            <div class="card-body activity" id="act"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Quick Links</div></div>
+            <div class="card-body" id="ql"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const code = PCG.qs("project","LCE-2026");
+  const tab = PCG.qs("tab","overview");
+  const p = PCG.findProject(code) || PCG.projects[0];
+  const pm = PCG.findPerson(p.primaryPM);
+
+  PCG.mountShell({
+    active: "portfolio",
+    crumbs: [
+      {label:"Portfolio", href:"index.html"},
+      {label:p.code}
+    ],
+    pageActions: `
+      <a class="btn spectrum" href="playbook.html?project=${p.code}">⚡ Open Playbook</a>
+      <a class="btn" href="showbook.html?project=${p.code}">Generate Show Book</a>
+    `
+  });
+
+  document.getElementById("pheader").innerHTML = PCG.projectHeader(p);
+  document.getElementById("tabs").innerHTML = PCG.projectTabs(p, tab);
+
+  // Tab bodies
+  const tabBody = document.getElementById("tab-body");
+
+  const amountsTotal = Object.values(p.amountsApprox||{}).reduce((a,b)=>a+(b||0),0);
+
+  const renderOverview = () => `
+    <div class="grid-2" style="margin-bottom:var(--sp-5);">
+      <div class="card card-pad">
+        <div class="eyebrow">Scope Summary</div>
+        <h3 style="margin-top:4px;">${PCG.escapeHtml(p.oneLiner||"")}</h3>
+        <div style="margin-top:var(--sp-3);" class="muted">Current scope (${(p.scopeCurrent||[]).length} line items)</div>
+        <ul style="margin-top:6px; padding-left:18px;">
+          ${(p.scopeCurrent||[]).slice(0,6).map(s=>`<li style="font-size:var(--fs-sm); margin-bottom:4px;">${PCG.escapeHtml(s)}</li>`).join("")}
+        </ul>
+      </div>
+      <div class="card card-pad">
+        <div class="eyebrow">Next Milestones</div>
+        <ul style="padding-left:0; list-style:none; margin-top:8px;">
+          <li style="border-left:3px solid var(--pcg-bright-blue); padding:8px 12px; background:rgba(1,153,253,0.06); border-radius:4px; margin-bottom:8px;">
+            <div style="font-weight:600;">Load-In Begin</div>
+            <div class="mono muted" style="font-size:var(--fs-xs);">${PCG.fmtDate(p.dates.loadIn,{time:true})}</div>
+          </li>
+          <li style="border-left:3px solid var(--status-green); padding:8px 12px; background:rgba(47,191,113,0.06); border-radius:4px; margin-bottom:8px;">
+            <div style="font-weight:600;">Show Start</div>
+            <div class="mono muted" style="font-size:var(--fs-xs);">${PCG.fmtDate(p.dates.showStart,{time:true})}</div>
+          </li>
+          <li style="border-left:3px solid var(--status-amber); padding:8px 12px; background:rgba(245,183,60,0.06); border-radius:4px; margin-bottom:8px;">
+            <div style="font-weight:600;">Load-Out</div>
+            <div class="mono muted" style="font-size:var(--fs-xs);">${PCG.fmtDate(p.dates.loadOut,{time:true})}</div>
+          </li>
+          <li style="border-left:3px solid var(--status-gray); padding:8px 12px; background:rgba(110,125,148,0.06); border-radius:4px;">
+            <div style="font-weight:600;">Return to Warehouse</div>
+            <div class="mono muted" style="font-size:var(--fs-xs);">${PCG.fmtDate(p.dates.ret,{time:true})}</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="title">Top Risks (${(p.risks||[]).filter(r=>r.status==="open").length})</div><a href="project.html?project=${p.code}&tab=risks" class="btn sm ghost" style="margin-left:auto;">All</a></div>
+        <div class="card-body">
+          ${(p.risks||[]).slice(0,3).map(r=>`
+            <div class="attn-item ${r.sev==='high'?'red':''}">
+              <div><div class="ttl">${PCG.escapeHtml(r.title)}</div><div class="meta">${PCG.escapeHtml(r.mitigation||"")}</div></div>
+            </div>`).join("") || '<div class="empty">No risks.</div>'}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="title">Open Approvals (${(p.approvals||[]).length})</div><a href="project.html?project=${p.code}&tab=approvals" class="btn sm ghost" style="margin-left:auto;">All</a></div>
+        <div class="card-body">
+          ${(p.approvals||[]).map(a=>`
+            <div class="attn-item">
+              <div><div class="ttl">${PCG.escapeHtml(a.title)}</div><div class="meta">Requester ${PCG.escapeHtml((PCG.findPerson(a.requester)||{}).name||"—")} · since ${PCG.fmtShort(a.since)}</div></div>
+              <div class="act"><button class="btn sm primary">Approve</button></div>
+            </div>`).join("") || '<div class="empty">No open approvals.</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+
+  const renderSchedule = () => `
+    <div class="card">
+      <div class="card-header"><div class="title">5-Date Schedule</div></div>
+      <div class="card-body">
+        <table class="pcg-table">
+          <thead><tr><th>Phase</th><th>Date / Time</th><th>Owner</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Prep</td><td class="mono">${PCG.fmtDate(p.dates.prep)}</td><td>Warehouse</td><td class="muted">Pull + prep begins</td></tr>
+            <tr><td>Load-In</td><td class="mono">${PCG.fmtDate(p.dates.loadIn,{time:true})}</td><td>${pm?pm.name:"—"}</td><td class="muted">Crew call, dock window, rig start</td></tr>
+            <tr><td>Show Start</td><td class="mono">${PCG.fmtDate(p.dates.showStart,{time:true})}</td><td>Show Caller</td><td class="muted">First program go</td></tr>
+            <tr><td>Show End</td><td class="mono">${PCG.fmtDate(p.dates.showEnd,{time:true})}</td><td>Show Caller</td><td class="muted">Last program out</td></tr>
+            <tr><td>Load-Out</td><td class="mono">${PCG.fmtDate(p.dates.loadOut,{time:true})}</td><td>TD</td><td class="muted">Strike + truck pack</td></tr>
+            <tr><td>Return</td><td class="mono">${PCG.fmtDate(p.dates.ret,{time:true})}</td><td>Warehouse</td><td class="muted">Inventory check-in complete</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const renderGear = () => {
+    const totalAudio = (p.gearSummary.audio||[]).length;
+    return `
+    <div class="card">
+      <div class="card-header">
+        <div class="title">Gear · Flex Pull Sheet ${p.pullSheetNo||"—"}</div>
+        <a class="btn sm ghost" style="margin-left:auto;" href="#">Open in Flex ↗</a>
+      </div>
+      <div class="card-body tree">
+        ${Object.entries(p.gearSummary||{}).filter(([,a])=>a&&a.length).map(([cat,arr])=>`
+          <div class="cat">${cat.toUpperCase()}</div>
+          ${arr.map(g=>`
+            <div class="group">• <span class="ttl">${PCG.escapeHtml(g.group)}</span></div>
+            <div class="items">${PCG.escapeHtml(g.items)}</div>
+          `).join("")}
+        `).join("") || '<div class="empty">No gear summary. Run Flex sync.</div>'}
+      </div>
+    </div>
+    <div class="card" style="margin-top:var(--sp-4);">
+      <div class="card-header"><div class="title">Department Totals (Quote)</div></div>
+      <div class="card-body">
+        ${Object.keys(p.amountsApprox||{}).length?`
+          <table class="pcg-table">
+            <thead><tr><th>Department</th><th style="text-align:right;">Approx</th><th>Share</th></tr></thead>
+            <tbody>
+              ${Object.entries(p.amountsApprox).map(([k,v])=>`
+                <tr>
+                  <td style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:12px;">${k}</td>
+                  <td class="mono" style="text-align:right;">${PCG.money(v)}</td>
+                  <td style="width:200px;">
+                    <div style="height:6px; background:var(--surface-3); border-radius:3px; overflow:hidden;">
+                      <div style="width:${Math.round(v/amountsTotal*100)}%; height:100%; background:var(--grad-show-light-spectrum);"></div>
+                    </div>
+                  </td>
+                </tr>`).join("")}
+              <tr><td><strong>Total</strong></td><td class="mono" style="text-align:right;"><strong>${PCG.money(amountsTotal)}</strong></td><td></td></tr>
+            </tbody>
+          </table>
+        `:'<div class="empty">No financial data yet.</div>'}
+      </div>
+    </div>`;
+  };
+
+  const renderLabor = () => `
+    <div class="card">
+      <div class="card-header">
+        <div class="title">Crew Assignments · Lasso</div>
+        <a class="btn sm ghost" style="margin-left:auto;" href="#">Open in Lasso ↗</a>
+      </div>
+      <div class="card-body">
+        <div class="muted" style="font-size:var(--fs-sm); margin-bottom:10px;">Synced from Lasso · <span class="mono">${p.code}</span> · last sync 2h ago</div>
+        <table class="pcg-table">
+          <thead><tr><th>Role</th><th>Person</th><th>Call</th><th>Through</th><th>Status</th></tr></thead>
+          <tbody>
+            ${p.code==="LCE-2026"?`
+              <tr><td>PM / AM</td><td>Jeff Springer</td><td class="mono">Apr 10 06:00</td><td class="mono">Apr 15 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>TD</td><td>Chris Taylor</td><td class="mono">Apr 10 06:00</td><td class="mono">Apr 15 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>Show Caller</td><td>Jason Gerber</td><td class="mono">Apr 12 08:00</td><td class="mono">Apr 15 20:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>A1</td><td>Priya Shah <span class="pill amber plain" style="font-size:9px;">REASSIGNED</span></td><td class="mono">Apr 10 06:00</td><td class="mono">Apr 15 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>A2</td><td>— TBD</td><td class="mono">—</td><td class="mono">—</td><td><span class="pill amber">TBD</span></td></tr>
+              <tr><td>V1</td><td>Dana Kim</td><td class="mono">Apr 10 06:00</td><td class="mono">Apr 15 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>LD</td><td>Elliot Reyes</td><td class="mono">Apr 10 06:00</td><td class="mono">Apr 15 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>LED Lead / Cam 1</td><td>Renée Benoit</td><td class="mono">Apr 11 08:00</td><td class="mono">Apr 15 22:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+            `:p.code==="SAE-WCX-2026"?`
+              <tr><td>Lead PM</td><td>Tyler Scheff</td><td class="mono">Apr 10 07:00</td><td class="mono">Apr 16 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>TD</td><td>Chris Taylor</td><td class="mono">Apr 14 07:00</td><td class="mono">Apr 16 23:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>Floor Lead — 140s</td><td>Dana Kim</td><td class="mono">Apr 13 08:00</td><td class="mono">Apr 16 22:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>Floor Lead — 250s</td><td>C. Ramos</td><td class="mono">Apr 13 08:00</td><td class="mono">Apr 16 22:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>A1 — Keynote Ballroom</td><td>Mike Chen</td><td class="mono">Apr 14 07:00</td><td class="mono">Apr 16 22:00</td><td><span class="pill green">CONFIRMED</span></td></tr>
+              <tr><td>Sweep Crew (6)</td><td>Pool</td><td class="mono">Apr 14 07:00</td><td class="mono">Apr 16 17:30</td><td><span class="pill amber">2 TBD</span></td></tr>
+            `:`<tr><td colspan="5" class="empty">No crew data synced.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const renderRooms = () => `
+    ${p.code==="SAE-WCX-2026"?`
+      <div class="card card-pad" style="margin-bottom:var(--sp-4); background:linear-gradient(135deg, rgba(1,153,253,0.08), rgba(122,65,229,0.06)); border-color:var(--border-accent);">
+        <div style="display:flex; align-items:center; gap:var(--sp-3);">
+          <div><div class="eyebrow">Breakout-Heavy Show</div>
+          <h3>30+ active rooms across Huntington Place</h3>
+          <div class="muted">See the full daily matrix (rooms × 5 days) in the Breakouts view.</div></div>
+          <a class="btn primary" style="margin-left:auto;" href="breakouts.html?project=${p.code}">Open Breakout Grid →</a>
+        </div>
+      </div>
+    `:""}
+    <div class="card">
+      <div class="card-header"><div class="title">Rooms & Spaces</div></div>
+      <div class="card-body">
+        ${p.code==="LCE-2026"?`
+          <table class="pcg-table">
+            <thead><tr><th>Room</th><th>Use</th><th>Owner</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Forum Ballroom</td><td>General Session + Awards</td><td>Chris Taylor (TD)</td><td><span class="pill green">LOCKED</span></td></tr>
+              <tr><td>Forum Ballroom South Foyer</td><td>Welcome Reception (Tue)</td><td>Jeff Springer</td><td><span class="pill green">LOCKED</span></td></tr>
+              <tr><td>Theater 330B</td><td>Battery Tech Theater</td><td>Tyler Scheff</td><td><span class="pill green">LOCKED</span></td></tr>
+              <tr><td>Awards Ready Room</td><td>Recovery / talent holding</td><td>— (pending)</td><td><span class="pill amber">ADDED 4/14</span></td></tr>
+            </tbody>
+          </table>
+        `:p.code==="SAE-WCX-2026"?`
+          <div class="grid-3">
+            <div>
+              <div class="eyebrow">140 Wing</div>
+              <div class="muted">11 active rooms</div>
+              <div style="margin-top:6px; font-size:var(--fs-sm);">140A–140G, 141, 142A–C</div>
+            </div>
+            <div>
+              <div class="eyebrow">250 Wing</div>
+              <div class="muted">8 active + 3 house</div>
+              <div style="margin-top:6px; font-size:var(--fs-sm);">250A–C, 251A–C, 252A/B, 258–260</div>
+            </div>
+            <div>
+              <div class="eyebrow">300 Level</div>
+              <div class="muted">Large tech + special</div>
+              <div style="margin-top:6px; font-size:var(--fs-sm);">330A/B (large), 320/321 (intimate), 312A (show office)</div>
+            </div>
+          </div>
+        `:'<div class="empty">Single-venue project.</div>'}
+      </div>
+    </div>
+  `;
+
+  const renderRisks = () => `
+    <div class="card">
+      <div class="card-header"><div class="title">All Risks</div></div>
+      <table class="pcg-table">
+        <thead><tr><th>Severity</th><th>Title</th><th>Owner</th><th>Mitigation</th><th>Status</th></tr></thead>
+        <tbody>
+          ${(p.risks||[]).map(r=>{
+            const own=PCG.findPerson(r.owner);
+            return `<tr>
+              <td>${r.sev==="high"?'<span class="pill red">HIGH</span>':r.sev==="medium"?'<span class="pill amber">MED</span>':'<span class="pill gray">LOW</span>'}</td>
+              <td><strong>${PCG.escapeHtml(r.title)}</strong></td>
+              <td>${own?PCG.escapeHtml(own.name):"—"}</td>
+              <td class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(r.mitigation||"")}</td>
+              <td>${r.status==="open"?'<span class="pill amber">OPEN</span>':'<span class="pill green">RESOLVED</span>'}</td>
+            </tr>`;
+          }).join("") || '<tr><td colspan="5" class="empty">No risks.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  const renderApprovals = () => `
+    <div class="card">
+      <div class="card-header"><div class="title">Approvals & Change Orders</div></div>
+      <div class="card-body">
+        ${(p.approvals||[]).map(a=>`
+          <div class="attn-item">
+            <div><div class="ttl">${PCG.escapeHtml(a.title)}</div><div class="meta">Requester ${PCG.escapeHtml((PCG.findPerson(a.requester)||{}).name)} → Approver ${PCG.escapeHtml((PCG.findPerson(a.approver)||{}).name)} · since ${PCG.fmtShort(a.since)}</div></div>
+            <div class="act"><button class="btn sm primary">Approve</button><button class="btn sm ghost">Reject</button></div>
+          </div>`).join("") || '<div class="empty">No open approvals.</div>'}
+      </div>
+    </div>
+  `;
+
+  const renderChanges = () => `
+    <div class="card">
+      <div class="card-header"><div class="title">Change Log</div></div>
+      <div class="card-body">
+        ${(p.changes||[]).map(c=>`
+          <div class="change-ribbon">
+            <div class="when">${PCG.fmtShort(c.date)}</div>
+            <div><strong>${PCG.escapeHtml(c.title)}</strong> <span class="muted">— by ${PCG.escapeHtml(c.by)}</span>
+              <div class="meta" style="color:var(--text-secondary); font-size:var(--fs-xs);">${PCG.escapeHtml(c.impact)}</div></div>
+          </div>`).join("") || '<div class="empty">No changes on record.</div>'}
+      </div>
+    </div>
+  `;
+
+  const renderDocs = () => `
+    <div class="card">
+      <div class="card-header">
+        <div class="title">Project Documents</div>
+        <button class="btn sm ghost" style="margin-left:auto;">Open SharePoint Folder ↗</button>
+      </div>
+      <div class="card-body">
+        ${(p.docs||[]).map(d=>`
+          <div class="pinned">
+            <span class="icon">${d.pinned?"★":"◫"}</span>
+            <div><div><strong>${PCG.escapeHtml(d.title)}</strong></div><div class="muted" style="font-size:var(--fs-xs);">${PCG.escapeHtml(d.cat)} · ${PCG.escapeHtml(d.sz)}</div></div>
+            <span class="sz">Open ↗</span>
+          </div>`).join("") || '<div class="empty">No documents linked.</div>'}
+      </div>
+    </div>
+  `;
+
+  const renderFinancials = () => `
+    <div class="card card-pad">
+      <div class="eyebrow">Financial Rollup — from QuickBooks</div>
+      <h3>${PCG.money(amountsTotal)}</h3>
+      <div class="muted" style="font-size:var(--fs-sm);">Quote total before tax · rate applied: ${p.rateDays||"—"} days · ${PCG.escapeHtml(p.terms||"")}</div>
+      <div class="divider"></div>
+      <table class="pcg-table">
+        <thead><tr><th>Department</th><th style="text-align:right;">Approx</th><th style="text-align:right;">Committed</th><th style="text-align:right;">Billed</th></tr></thead>
+        <tbody>
+          ${Object.entries(p.amountsApprox||{}).map(([k,v])=>`
+            <tr><td style="text-transform:uppercase; font-family:var(--font-display); letter-spacing:0.06em; font-size:12px;">${k}</td>
+              <td class="mono" style="text-align:right;">${PCG.money(v)}</td>
+              <td class="mono" style="text-align:right;">${PCG.money(Math.round(v*0.72))}</td>
+              <td class="mono" style="text-align:right;">${PCG.money(Math.round(v*0.5))}</td></tr>
+          `).join("") || '<tr><td colspan="4" class="empty">No financial data.</td></tr>'}
+        </tbody>
+      </table>
+      <div class="muted" style="margin-top:10px; font-size:var(--fs-xs);">Line-items live in QuickBooks · <a href="#">Open PO ${p.customerPO||"—"} ↗</a></div>
+    </div>
+  `;
+
+  const renderLog = () => `
+    <div class="card">
+      <div class="card-header"><div class="title">Full Activity Log</div></div>
+      <div class="card-body activity">
+        ${(p.activity||[]).map(a=>`
+          <div class="item">
+            <div class="ts">${PCG.fmtDate(a.ts,{time:true})}</div>
+            <div><span class="actor">${PCG.escapeHtml(a.actor)}</span> — ${PCG.escapeHtml(a.text)}</div>
+          </div>`).join("") || '<div class="empty">No activity.</div>'}
+      </div>
+    </div>
+  `;
+
+  const renderProc = () => `
+    <div class="card">
+      <div class="card-header">
+        <div class="title">Procurement</div>
+        <a class="btn sm ghost" style="margin-left:auto;" href="#">Open Power App ↗</a>
+      </div>
+      <div class="card-body">
+        <div class="muted" style="font-size:var(--fs-sm);">Managed in the existing PCG Procurement Power App. Status surfaced here.</div>
+        <div class="divider"></div>
+        <table class="pcg-table">
+          <thead><tr><th>Request</th><th>Status</th><th>ETA</th><th>Blocker</th></tr></thead>
+          <tbody>
+            ${p.code==="LCE-2026"?`
+              <tr><td>6× CyberPower UPS</td><td><span class="pill green">APPROVED</span></td><td class="mono">Apr 12</td><td class="muted">None</td></tr>
+              <tr><td>Sub-rental 2× d&b JSub</td><td><span class="pill amber">PENDING</span></td><td class="mono">Apr 15</td><td class="muted">Awaiting CO#3 approval</td></tr>
+            `:'<tr><td colspan="4" class="empty">No active requests.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const map = {
+    overview: renderOverview, schedule: renderSchedule, rooms: renderRooms,
+    gear: renderGear, labor: renderLabor, procurement: renderProc,
+    docs: renderDocs, risks: renderRisks, approvals: renderApprovals,
+    changes: renderChanges, financials: renderFinancials, log: renderLog
+  };
+
+  tabBody.innerHTML = (map[tab]||renderOverview)();
+
+  document.getElementById("act").innerHTML = (p.activity||[]).slice(0,6).map(a=>`
+    <div class="item"><div class="ts">${PCG.ago(a.ts)}</div>
+    <div><span class="actor">${PCG.escapeHtml(a.actor)}</span> — ${PCG.escapeHtml(a.text)}</div></div>`).join("") || '<div class="empty">No activity.</div>';
+
+  document.getElementById("ql").innerHTML = `
+    <div style="display:grid; gap:6px;">
+      <a class="btn sm" href="#">Flex · ${p.manifestNo||"—"} ↗</a>
+      <a class="btn sm" href="#">Lasso · ${p.code} ↗</a>
+      <a class="btn sm" href="#">QuickBooks · ${p.customerPO||"—"} ↗</a>
+      <a class="btn sm" href="#">ShoFlo ↗</a>
+      <a class="btn sm ghost" href="#">SharePoint Folder ↗</a>
+      <a class="btn sm ghost" href="#">Teams Channel ↗</a>
+    </div>
+  `;
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · EQLPC Command Center</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Inventory · EQLPC</div>
+          <h1>Command Center</h1>
+          <div class="muted">Global inventory conflict dashboard across Awarded / In-Prep / On-Show. Data source: Conflict Detection Engine (§3.2).</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="all">All</button>
+          <button class="chip" data-f="high">High Severity</button>
+          <button class="chip" data-f="open">Open</button>
+          <button class="chip" data-f="inprogress">In Progress</button>
+          <button class="btn sm" id="rescan">Re-Scan Portfolio</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="title">Conflicts</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="count"></span>
+            </div>
+            <div>
+              <div class="conflict-row" style="background:var(--surface-2); color:var(--text-tertiary); font-family:var(--font-display); text-transform:uppercase; font-size:10px; letter-spacing:0.08em;">
+                <div>Item · Category</div>
+                <div style="text-align:right;">Owned</div>
+                <div style="text-align:right;">RPO</div>
+                <div style="text-align:right;">Alloc</div>
+                <div>Dates</div>
+                <div>Actions</div>
+              </div>
+              <div id="rows"></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Sub-Rental Pipeline (Open RPOs)</div></div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>RPO</th><th>Project</th><th>Vendor</th><th>Item</th><th>Qty</th><th>Window</th><th>Hold Expiry</th><th>Status</th><th>Cost</th></tr></thead>
+                <tbody id="rpo-rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Resolution Playbook</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm); line-height:1.7;">
+              <div class="eyebrow" style="margin-bottom:4px;">Standard flow (§7.3)</div>
+              <ol style="margin:0; padding-left:18px;">
+                <li>EQLPC detects conflict</li>
+                <li>Propose substitution from suggestion list</li>
+                <li>PM approves operational swap</li>
+                <li>Cost delta:<br>• $0 → transparent<br>• &gt;$0 → AE absorb or CO<br>• &lt;$0 → PM sufficient, credit tracked</li>
+                <li>PM rejects → Create RPO or Escalate</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Recent Substitutions</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="change-ribbon"><div class="when">Apr 13</div><div><strong>Shure AD4Q → AD4Q-8pk</strong><div class="meta">LCE-2026 · cost delta $0 · transparent</div></div></div>
+              <div class="change-ribbon"><div class="when">Apr 10</div><div><strong>J8 → Q1 (outfill)</strong><div class="meta">GLBX-GSK26 · -$400 credit · internal</div></div></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Substitution modal -->
+<div class="modal-backdrop" id="bd"></div>
+<div class="modal-box" id="mbox">
+  <button class="close" onclick="closeModal()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+  <h3>Propose Substitution</h3>
+  <div id="mbody" style="margin-top:var(--sp-3);"></div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'eqlpc', crumbs:[{label:'EQLPC Command Center'}]});
+
+  // Permission gate — spec §6.2: EQLPC dashboard is for WH + TSM + Director + Admin
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    let currentFilter = 'all';
+    const conflicts = PCG.api.getInventoryConflicts();
+    const rpos = PCG.api.getSubRentals();
+
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi red"><div class="label">Conflicts</div><div class="value">${conflicts.length}</div><div class="sub">detected by engine</div></div>
+      <div class="kpi amber"><div class="label">High Severity</div><div class="value">${conflicts.filter(c=>c.severity==='high').length}</div><div class="sub">Large deficit</div></div>
+      <div class="kpi blue"><div class="label">Open RPOs</div><div class="value">${rpos.filter(r=>r.status!=='Returned'&&r.status!=='Closed').length}</div><div class="sub">Sub-rental pipeline</div></div>
+      <div class="kpi amber"><div class="label">Pending Approval</div><div class="value">${rpos.filter(r=>r.status==='PendingApproval').length}</div><div class="sub">CO / RPO</div></div>
+      <div class="kpi"><div class="label">Active Shows Scanned</div><div class="value">${PCG.api.getProjects().filter(p=>p.show && ['Awarded','InPrep','OnShow'].includes(p.show.lifecycleState)).length}</div><div class="sub">Lifecycle filter</div></div>
+      <div class="kpi"><div class="label">Last Scan</div><div class="value" style="font-size:18px;">Just now</div><div class="sub">Synchronous demo</div></div>
+    `;
+
+    const render = ()=>{
+      const list = conflicts.filter(c=>{
+        if(currentFilter==='all') return true;
+        if(currentFilter==='high') return c.severity==='high';
+        if(currentFilter==='open') return c.resolutionStatus==='Open';
+        if(currentFilter==='inprogress') return c.resolutionStatus==='InProgress';
+        return true;
+      });
+      document.getElementById('count').textContent = `${list.length} of ${conflicts.length}`;
+
+      document.getElementById('rows').innerHTML = list.length ? list.map((c,i)=>`
+        <div class="conflict-row sev-${c.severity}">
+          <div>
+            <div style="font-weight:600;">${PCG.escapeHtml(c.itemName)}</div>
+            <div class="muted" style="font-size:11px;">${PCG.escapeHtml(c.category)} · Conflicts on ${(c.conflictingShows||[]).map(s=>s.showId).join(', ')}</div>
+          </div>
+          <div class="mono-n">${c.owned}</div>
+          <div class="mono-n">${c.confirmedRPOs}</div>
+          <div class="mono-n" style="color:${c.deficit>0?'var(--status-red)':'inherit'};">${c.totalAllocated}</div>
+          <div class="mono" style="font-size:11px;">${PCG.fmtShort(c.overlappingDates.from)}→${PCG.fmtShort(c.overlappingDates.to)}</div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap;">
+            <button class="btn sm" onclick="openSub(${i})">Substitute</button>
+            <button class="btn sm ghost" onclick="createRPO(${i})">Create RPO</button>
+          </div>
+        </div>
+      `).join('') : PCG.states.empty('No conflicts. 🎉');
+
+      // Expose array for modal reference
+      window.__conf_list = list;
+    };
+
+    render();
+
+    // Filters
+    document.querySelectorAll('.chip[data-f]').forEach(b=>b.addEventListener('click', e=>{
+      document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+      currentFilter = e.target.dataset.f;
+      render();
+    }));
+
+    // Re-scan
+    document.getElementById('rescan').addEventListener('click', ()=>{
+      PCG.engines.notify.emit('ConflictScanRequested', { by: PCG.user.id });
+      render();
+    });
+
+    // RPOs
+    document.getElementById('rpo-rows').innerHTML = rpos.map(r=>{
+      const pillColor = r.status==='PendingApproval'?'amber':r.status==='Approved'?'green':r.status==='Returned'?'gray':'blue';
+      return `<tr>
+        <td class="mono">${r.id}</td>
+        <td class="mono">${r.projectCode}</td>
+        <td>${PCG.escapeHtml(r.vendorName)}</td>
+        <td>${PCG.escapeHtml(r.itemDescription)}</td>
+        <td class="mono">${r.qty}</td>
+        <td class="mono">${PCG.fmtShort(r.fromDate)}→${PCG.fmtShort(r.toDate)}</td>
+        <td class="mono">${PCG.fmtDate(r.holdExpiry,{time:true})}</td>
+        <td><span class="pill ${pillColor}">${r.status.toUpperCase()}</span></td>
+        <td class="mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(r.quotedCost):'—'}</td>
+      </tr>`;
+    }).join('');
+
+    // Substitution modal
+    window.openSub = (idx)=>{
+      const c = window.__conf_list[idx];
+      const inv = PCG.api.getInventory().find(i=>i.id===c.itemId);
+      const subs = (PCG.inventory||[])
+        .filter(i => i.id!==c.itemId && i.categoryId===inv.categoryId)
+        .slice(0,4);
+      document.getElementById('mbody').innerHTML = `
+        <div class="eyebrow" style="margin-bottom:6px;">Original Item</div>
+        <div style="margin-bottom:var(--sp-3);"><strong>${PCG.escapeHtml(c.itemName)}</strong> <span class="muted">× ${c.totalAllocated} · deficit ${c.deficit}</span></div>
+        <div class="eyebrow" style="margin-bottom:6px;">Suggested Substitutions (category match)</div>
+        ${subs.length?subs.map(s=>`
+          <div class="pinned" style="margin-bottom:6px;">
+            <span class="icon">→</span>
+            <div style="flex:1;"><strong>${PCG.escapeHtml(s.name)}</strong><div class="muted" style="font-size:var(--fs-xs);">Available: ${s.qty} · ${PCG.escapeHtml(s.manufacturer||'')}</div></div>
+            <button class="btn sm primary" onclick="proposeSub('${s.id}')">Propose</button>
+          </div>`).join('') : PCG.states.empty('No category substitutions. Create RPO.')}
+        <div class="divider"></div>
+        <div class="muted" style="font-size:var(--fs-xs);">Once proposed, PM approves operational swap. Cost delta &gt; $0 escalates to AE for absorb-vs-CO decision (§7.3).</div>
+      `;
+      document.getElementById('bd').classList.add('show');
+      document.getElementById('mbox').classList.add('show');
+    };
+    window.proposeSub = (subId)=>{
+      PCG.engines.notify.emit('SubstitutionProposed', { subId });
+      alert('Substitution proposed. PM approval request queued. (Phase 2 wires the full SubstitutionProposal entity + PM action queue item.)');
+      closeModal();
+    };
+    window.createRPO = (idx)=>{
+      const c = window.__conf_list[idx];
+      alert(`RPO draft would be created for ${c.itemName} (deficit ${c.deficit}). Phase 2 wires the full RPO draft → vendor selection → approval workflow.`);
+    };
+    window.closeModal = ()=>{
+      document.getElementById('bd').classList.remove('show');
+      document.getElementById('mbox').classList.remove('show');
+    };
+    document.getElementById('bd').addEventListener('click', closeModal);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Finance</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="eyebrow">Finance · Operational Layer</div>
+      <h1>Portfolio Rollup · Invoice Milestones · QB Handoff</h1>
+      <div class="muted" style="margin-bottom:var(--sp-4);">QuickBooks rollup only. Line items stay in QB — handoff packet generated per show at Closing.</div>
+
+      <div class="kpi-strip" id="kpi"></div>
+
+      <div class="split">
+        <div>
+
+          <div class="card">
+            <div class="card-header"><div class="title">Portfolio Financials</div>
+              <a class="btn sm ghost" style="margin-left:auto;" href="#">Export Roll-Up ↗</a>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table" id="portfolio-tbl">
+                <thead>
+                  <tr><th>Code</th><th>Show</th><th>Client</th><th>Lifecycle</th><th style="text-align:right;">Quote</th><th style="text-align:right;">Committed</th><th style="text-align:right;">Billed</th><th>PO</th></tr>
+                </thead>
+                <tbody id="portfolio-rows"></tbody>
+                <tfoot id="portfolio-foot"></tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Invoice Milestones</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Project</th><th>Type</th><th style="text-align:right;">Amount</th><th>Due</th><th>Received</th><th>QB Ref</th><th>Status</th></tr></thead>
+              <tbody id="im-rows"></tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Change Order Billing Queue</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Project</th><th>Type</th><th>Description</th><th style="text-align:right;">Impact</th><th>Status</th><th>Queued At</th></tr></thead>
+              <tbody id="co-rows"></tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header">
+              <div class="title">QuickBooks Handoff Packet</div>
+              <select id="qb-show" style="margin-left:auto; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+              <button class="btn sm primary" id="gen-qb">Generate</button>
+            </div>
+            <div class="card-body" id="qb-packet"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">AR Aging</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="pinned" style="margin-bottom:6px;"><span class="icon mono">0–30</span><div><strong>$142,800</strong><div class="muted" style="font-size:var(--fs-xs);">Current</div></div></div>
+              <div class="pinned" style="margin-bottom:6px;"><span class="icon mono">31–60</span><div><strong>$38,200</strong><div class="muted" style="font-size:var(--fs-xs);">1 invoice</div></div></div>
+              <div class="pinned"><span class="icon mono">60+</span><div><strong>$0</strong><div class="muted" style="font-size:var(--fs-xs);">Clean</div></div></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Margin Leakage Watch</div></div>
+            <div class="card-body" id="leakage"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Quick Links</div></div>
+            <div class="card-body" style="display:grid; gap:6px;">
+              <a class="btn sm" href="#">QuickBooks Customer List ↗</a>
+              <a class="btn sm" href="#">QB · Jobs Dashboard ↗</a>
+              <a class="btn sm ghost" href="#">AR Aging Report ↗</a>
+              <a class="btn sm ghost" href="procurement.html">Procurement</a>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'finance', crumbs:[{label:'Finance'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    const projects = PCG.api.getProjects();
+    let tQ=0, tC=0, tB=0;
+    const rows = projects.map(p=>{
+      const quote = PCG.api.getQuotes(p.code)[0];
+      const rev   = quote ? PCG.api.getQuoteRevision(quote.activeRevisionId) : null;
+      const sum   = (rev && rev.totalRevenue) || 0;
+      const c = Math.round(sum*0.72), b = Math.round(sum*0.5);
+      tQ+=sum; tC+=c; tB+=b;
+      return `<tr onclick="location.href='project.html?project=${p.code}&tab=financials'">
+        <td class="mono">${p.code}</td>
+        <td>${PCG.escapeHtml(p.name)}</td>
+        <td>${PCG.escapeHtml(p.client||'—')}</td>
+        <td>${PCG.lifecyclePill(p.show&&p.show.lifecycleState)}</td>
+        <td class="mono" style="text-align:right;">${sum?PCG.money(sum):'—'}</td>
+        <td class="mono" style="text-align:right;">${c?PCG.money(c):'—'}</td>
+        <td class="mono" style="text-align:right;">${b?PCG.money(b):'—'}</td>
+        <td class="mono">${p.customerPO||'—'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('portfolio-rows').innerHTML = rows;
+    document.getElementById('portfolio-foot').innerHTML = `
+      <tr><td colspan="4"><strong>Portfolio Total</strong></td>
+        <td class="mono" style="text-align:right;"><strong>${PCG.money(tQ)}</strong></td>
+        <td class="mono" style="text-align:right;"><strong>${PCG.money(tC)}</strong></td>
+        <td class="mono" style="text-align:right;"><strong>${PCG.money(tB)}</strong></td><td></td></tr>`;
+
+    // KPIs
+    const openApprovals = PCG.api.getChangeOrders().filter(c=>c.status==='Pending');
+    const openMilestones = (PCG.invoiceMilestones||[]).filter(m=>m.status!=='paid');
+    document.getElementById('kpi').innerHTML = `
+      <div class="kpi"><div class="label">Portfolio Quote</div><div class="value">${PCG.money(tQ)}</div><div class="sub">${projects.length} projects</div></div>
+      <div class="kpi blue"><div class="label">Committed</div><div class="value">${PCG.money(tC)}</div><div class="sub">${Math.round(tC/tQ*100)}%</div></div>
+      <div class="kpi"><div class="label">Billed</div><div class="value">${PCG.money(tB)}</div><div class="sub">${Math.round(tB/tQ*100)}%</div></div>
+      <div class="kpi amber"><div class="label">Open Approvals</div><div class="value">${openApprovals.length}</div><div class="sub">CO / AddOrder / Damage</div></div>
+      <div class="kpi red"><div class="label">Unpaid Milestones</div><div class="value">${openMilestones.length}</div><div class="sub">across portfolio</div></div>
+      <div class="kpi"><div class="label">Shows in Closing</div><div class="value">${projects.filter(p=>p.show&&p.show.lifecycleState==='Closing').length}</div><div class="sub">QB handoff due</div></div>
+    `;
+
+    // Milestones
+    document.getElementById('im-rows').innerHTML = (PCG.invoiceMilestones||[]).map(m=>{
+      const st = {paid:'green', invoiced:'blue', pending:'amber'}[m.status]||'gray';
+      return `<tr>
+        <td class="mono">${m.projectCode}</td>
+        <td>${m.type.toUpperCase()}</td>
+        <td class="mono" style="text-align:right;">${PCG.money(m.amount)}</td>
+        <td class="mono">${PCG.fmtShort(m.dueDate)}</td>
+        <td class="mono">${m.receivedDate?PCG.fmtShort(m.receivedDate):'—'}</td>
+        <td class="mono">${m.qbInvoiceRef||'—'}</td>
+        <td><span class="pill ${st}">${m.status.toUpperCase()}</span></td>
+      </tr>`;
+    }).join('');
+
+    // Change orders
+    document.getElementById('co-rows').innerHTML = PCG.api.getChangeOrders().map(c=>{
+      const typePill = {CO:'blue',AddOrder:'purple',DamageCharge:'red'}[c.type]||'gray';
+      const st = {Approved:'green', Pending:'amber', Issued:'blue', Billed:'gray'}[c.status]||'gray';
+      return `<tr>
+        <td class="mono">${c.projectCode}</td>
+        <td><span class="pill ${typePill}">${c.type.toUpperCase()}</span></td>
+        <td>${PCG.escapeHtml(c.description)}</td>
+        <td class="mono" style="text-align:right;">${c.financialImpact!=null?PCG.money(c.financialImpact):'—'}</td>
+        <td><span class="pill ${st}">${c.status.toUpperCase()}</span></td>
+        <td class="mono">${c.billingQueueAt?PCG.fmtShort(c.billingQueueAt):'—'}</td>
+      </tr>`;
+    }).join('');
+
+    // QB handoff
+    const qbSel = document.getElementById('qb-show');
+    qbSel.innerHTML = projects.map(p=>`<option value="${p.code}">${p.code} — ${p.name}</option>`).join('');
+    document.getElementById('gen-qb').addEventListener('click', ()=>{
+      try {
+        const packet = PCG.api.generateQBHandoff(qbSel.value);
+        if(!packet){ document.getElementById('qb-packet').innerHTML = PCG.states.empty('No data.'); return; }
+        document.getElementById('qb-packet').innerHTML = `
+          <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3);">
+            <span class="pill amber">PENDING POST</span>
+            <span class="muted" style="font-size:var(--fs-xs);">Generated ${PCG.fmtDate(packet.closedAt,{time:true})}</span>
+            <button class="btn sm" style="margin-left:auto;" onclick="navigator.clipboard.writeText(JSON.stringify(${JSON.stringify(packet).replace(/`/g,'\\x60')},null,2))">Copy JSON</button>
+          </div>
+          <div class="card card-pad">
+            <table class="pcg-table">
+              <thead><tr><th>Key</th><th style="text-align:right;">Value</th></tr></thead>
+              <tbody>
+                <tr><td>Quote Revenue</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.quoteRevenue)}</td></tr>
+                <tr><td>CO Adders</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.coAdders)}</td></tr>
+                <tr><td>Add-Order Adders</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.addOrderAdders)}</td></tr>
+                <tr><td>Damage Charges</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.damageCharges)}</td></tr>
+                <tr><td><strong>Total Revenue</strong></td><td class="mono" style="text-align:right;"><strong>${PCG.money(packet.financials.totalRevenue)}</strong></td></tr>
+                <tr><td>Deposit Received</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.depositReceived)}</td></tr>
+                <tr><td>Balance Due</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.balanceDue)}</td></tr>
+                <tr><td>Labor Cost Actual</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.laborCostActual)}</td></tr>
+                <tr><td>Sub-Rental Cost Actual</td><td class="mono" style="text-align:right;">${PCG.money(packet.financials.subRentalCostActual)}</td></tr>
+                <tr><td>Estimated Margin</td><td class="mono" style="text-align:right;">${PCG.pct(packet.financials.estimatedMargin)}</td></tr>
+              </tbody>
+            </table>
+            <div class="divider"></div>
+            <div class="eyebrow">Line Items (for QB chart of accounts)</div>
+            <table class="pcg-table" style="margin-top:8px;">
+              <thead><tr><th>Category</th><th>Description</th><th style="text-align:right;">Amount</th><th>QB Account</th></tr></thead>
+              <tbody>
+                ${packet.lineItems.map(l=>`<tr><td>${l.category.toUpperCase()}</td><td>${PCG.escapeHtml(l.description)}</td><td class="mono" style="text-align:right;">${PCG.money(l.amount)}</td><td class="mono">${l.qbAccount}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3);">⚠ qbAccount fields remain "TBD" until CFO supplies chart-of-accounts mapping (OPEN DECISION #3).</div>
+          </div>
+        `;
+      } catch(e){
+        document.getElementById('qb-packet').innerHTML = `<div class="empty" style="color:var(--status-red);">${e.message || e}</div>`;
+      }
+    });
+    // Auto-render for LCE
+    document.getElementById('gen-qb').click();
+
+    // Leakage watch
+    document.getElementById('leakage').innerHTML = `
+      <div class="attn-item amber"><div><div class="ttl">LCE-2026 — 82% committed</div><div class="meta">Pending CO#3 will lift to 93%. Within guardrail.</div></div></div>
+      <div class="attn-item blue"><div><div class="ttl">SAE-WCX-2026 — 68% committed</div><div class="meta">310B billing path ambiguous (on-own vs master).</div></div></div>
+    `;
+  }
+</script>
+</body>
+</html>

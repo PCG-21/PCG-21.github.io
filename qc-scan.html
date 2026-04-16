@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · QC Scan</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body class="scan-shell">
+  <div class="scan-card" id="card">
+
+    <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3);">
+      <div>
+        <div class="eyebrow" id="eyebrow">QC SCAN</div>
+        <h2 id="heading">Loading…</h2>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+        <span id="online-pill" class="pill green">● ONLINE</span>
+        <span class="pill gray mono" id="queue-pill">Q: 0</span>
+        <a class="btn sm ghost" href="warehouse.html">Exit</a>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:var(--sp-4); align-items:center; margin-bottom:var(--sp-4);">
+      <div class="scan-mode" id="mode-seg">
+        <button data-m="scanner" class="on">Scanner (Code 128)</button>
+        <button data-m="camera">Camera</button>
+        <button data-m="manual">Manual</button>
+      </div>
+      <div style="margin-left:auto; font-size:var(--fs-sm);" class="muted">Pull sheet <span class="mono" id="ps-code">—</span></div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-bottom:var(--sp-3);">
+      <div style="display:flex; justify-content:space-between; font-size:var(--fs-xs); color:var(--text-tertiary); margin-bottom:4px;">
+        <span id="progress-label">0 of 0 scanned</span>
+        <span id="progress-pct" class="mono">0%</span>
+      </div>
+      <div style="height:6px; background:var(--surface-3); border-radius:3px; overflow:hidden;">
+        <div id="progress-bar" style="width:0%; height:100%; background:var(--grad-show-light-blue); transition: width 0.3s;"></div>
+      </div>
+    </div>
+
+    <!-- Active scan input -->
+    <div id="scan-zone">
+      <input class="scan-input" id="scan-in" autofocus placeholder="Scan or type barcode… (Code 128)"  autocomplete="off" />
+      <div style="margin-top:6px; font-size:var(--fs-xs); color:var(--text-tertiary);">
+        Scanner mode: keyboard input · press Enter. Camera mode: getUserMedia. Manual: type + Enter.
+      </div>
+
+      <!-- Result feedback -->
+      <div id="result-host"></div>
+    </div>
+
+    <!-- Pull sheet lines -->
+    <div style="margin-top:var(--sp-5);">
+      <div class="eyebrow" style="margin-bottom:var(--sp-2);">Remaining Lines</div>
+      <div id="lines"></div>
+    </div>
+
+    <!-- Scan log -->
+    <div class="scan-log" id="scan-log" style="margin-top:var(--sp-4);"></div>
+
+    <div style="margin-top:var(--sp-4); display:flex; gap:var(--sp-2);">
+      <button class="btn ghost" id="btn-sync">Force Sync</button>
+      <button class="btn ghost" id="btn-walk" style="margin-left:auto;">Walk-the-Pile Authorize</button>
+    </div>
+  </div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const psId = PCG.qs('pullSheet','ps.sae.breakout');
+  const ps = PCG.api.getPullSheet(psId);
+
+  if(!ps){
+    document.getElementById('card').innerHTML = `<h2>Pull Sheet not found.</h2><a href="warehouse.html" class="btn">Back</a>`;
+  } else {
+    // Permission gate — spec §8.1
+    if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS)){
+      document.getElementById('card').innerHTML = PCG.states.forbidden();
+    } else {
+      const show = PCG.api.getShow(ps.showId);
+      const canScan = PCG.engines.lifecycle.canRunScans(show);
+      document.getElementById('eyebrow').textContent = `QC SCAN · ${ps.department.toUpperCase()} · ${ps.showId}`;
+      document.getElementById('heading').textContent = `${ps.id}`;
+      document.getElementById('ps-code').textContent = ps.id;
+
+      if(!canScan){
+        document.getElementById('scan-zone').innerHTML = `<div class="attn-item red"><div><div class="ttl">🔒 Scan disabled</div><div class="meta">Show is in ${show.lifecycleState} state. Scans allowed only in InPrep / OnShow / Striking / Returning.</div></div></div>`;
+      }
+
+      // Build lookup: serial → line
+      const linesById = Object.fromEntries((ps.lines||[]).map(l=>[l.id,l]));
+      const serialIndex = {}; // barcode → {line, serial}
+      (ps.lines||[]).forEach(line=>{
+        const item = PCG.api.getInventoryItem(line.inventoryItemId);
+        const allSerials = (PCG.inventorySerials||[]).filter(s=>s.itemId===line.inventoryItemId);
+        (line.serialsAssigned && line.serialsAssigned.length ? line.serialsAssigned : allSerials.map(s=>s.id))
+          .slice(0, line.qty)
+          .forEach(sid=>{
+            const sr = (PCG.inventorySerials||[]).find(s=>s.id===sid) || (allSerials.find(s=>s.id===sid));
+            if(sr) serialIndex[sr.barcode] = { line, serial:sr, itemName:item?item.name:'—' };
+          });
+      });
+
+      // State
+      const scanned = {};    // scanId → record (client-side working set)
+      const byLine  = {};    // lineId → count scanned locally this session
+      let queueCount = 0;
+
+      const updateOnline = () => {
+        const online = navigator.onLine;
+        const el = document.getElementById('online-pill');
+        el.className = online ? 'pill green' : 'pill red';
+        el.textContent = online ? '● ONLINE' : '● OFFLINE';
+      };
+      window.addEventListener('online',  updateOnline);
+      window.addEventListener('offline', updateOnline);
+      updateOnline();
+
+      const refreshQueueCount = () => {
+        PCG.engines.sync.pending().then(list => {
+          queueCount = (list||[]).length;
+          document.getElementById('queue-pill').textContent = `Q: ${queueCount}`;
+        }).catch(()=>{});
+      };
+      refreshQueueCount();
+
+      const log = (cls, text) => {
+        const el = document.getElementById('scan-log');
+        const ts = new Date().toLocaleTimeString();
+        el.innerHTML = `<div class="e ${cls||''}">[${ts}] ${PCG.escapeHtml(text)}</div>` + el.innerHTML;
+      };
+
+      const showResult = (kind, ttl, sub) => {
+        const host = document.getElementById('result-host');
+        host.innerHTML = `<div class="scan-result ${kind}">
+          <span class="icon">${ {ok:'✓', fail:'✕', dup:'⟳', unknown:'?'}[kind] }</span>
+          <div class="ttl">${PCG.escapeHtml(ttl)}</div>
+          <div style="margin-top:6px; font-size:var(--fs-sm);">${PCG.escapeHtml(sub||'')}</div>
+        </div>`;
+        setTimeout(()=>host.innerHTML='', 3500);
+      };
+
+      const renderLines = ()=>{
+        const el = document.getElementById('lines');
+        const remaining = (ps.lines||[]).filter(l=>l.scanStatus!=='verified');
+        el.innerHTML = remaining.length ? remaining.map(l=>{
+          const item = PCG.api.getInventoryItem(l.inventoryItemId);
+          const cnt = byLine[l.id] || 0;
+          return `<div class="pinned" style="margin-bottom:6px;">
+            <span class="icon mono">${cnt}/${l.qty}</span>
+            <div><strong>${PCG.escapeHtml(item?item.name:l.inventoryItemId)}</strong>
+              <div class="muted" style="font-size:var(--fs-xs);">Line ${l.id} · ${l.scanStatus.toUpperCase()}</div>
+            </div>
+            <span class="sz">${l.qty-cnt} remaining</span>
+          </div>`;
+        }).join('') : PCG.states.empty('All lines verified. Ready for Walk-the-Pile.');
+        // Progress
+        const verifiedLines = (ps.lines||[]).filter(l=>l.scanStatus==='verified').length;
+        const total = (ps.lines||[]).length;
+        const pct = total ? Math.round(verifiedLines/total*100) : 0;
+        document.getElementById('progress-label').textContent = `${verifiedLines} of ${total} lines verified`;
+        document.getElementById('progress-pct').textContent = `${pct}%`;
+        document.getElementById('progress-bar').style.width = `${pct}%`;
+      };
+      renderLines();
+
+      // Scan input handler
+      const input = document.getElementById('scan-in');
+      const handleScan = async (raw)=>{
+        const code = (raw||'').trim().toUpperCase();
+        if(!code) return;
+
+        // Check Code 128 pattern loosely (alphanumeric only)
+        if(!/^[A-Z0-9\-]{3,}$/.test(code)){
+          showResult('unknown','INVALID FORMAT','Code 128 only (A-Z, 0-9, -)');
+          log('fail', `INVALID "${code}"`);
+          input.value=''; return;
+        }
+
+        const hit = serialIndex[code];
+        if(!hit){
+          showResult('unknown','UNKNOWN BARCODE', `Not on this pull sheet.`);
+          log('fail', `UNKNOWN ${code}`);
+          input.value=''; return;
+        }
+
+        // Duplicate check (within session)
+        const already = Object.values(scanned).find(s=>s.barcode===code);
+        if(already){
+          const ageSec = (Date.now() - already.at)/1000;
+          if(ageSec < 30){
+            showResult('dup','DUPLICATE', `Same tech, within 30s — discarded (§3.8).`);
+            log('dup', `DUPLICATE ${code} (${Math.round(ageSec)}s)`);
+            input.value=''; return;
+          }
+        }
+
+        const rec = {
+          barcode: code, at: Date.now(),
+          scanId: crypto.randomUUID ? crypto.randomUUID() : 's'+Math.random(),
+          result: 'Pass',
+          showId: ps.showId, pullSheetLineId: hit.line.id,
+          itemSerial: hit.serial.id,
+          direction: 'outbound'
+        };
+        scanned[rec.scanId] = rec;
+        byLine[hit.line.id] = (byLine[hit.line.id]||0) + 1;
+
+        // Mark line verified if count reached
+        if(byLine[hit.line.id] >= hit.line.qty){
+          hit.line.scanStatus = 'verified';
+        }
+
+        // Route through the offline queue (IndexedDB)
+        const result = await PCG.api.recordScan(rec);
+        refreshQueueCount();
+
+        showResult('ok', 'PASS', `${hit.itemName} · ${hit.serial.id}`);
+        log('ok', `PASS ${code} → ${hit.itemName} (${hit.serial.id}) · ${result.syncStatus||'queued'}`);
+        renderLines();
+        input.value='';
+      };
+
+      input.addEventListener('keydown', e=>{
+        if(e.key === 'Enter'){
+          handleScan(input.value);
+          e.preventDefault();
+        }
+      });
+
+      // Mode switcher
+      document.querySelectorAll('#mode-seg button').forEach(b => b.addEventListener('click', e=>{
+        document.querySelectorAll('#mode-seg button').forEach(x=>x.classList.toggle('on', x===e.target));
+        const m = e.target.dataset.m;
+        if(m==='camera'){
+          input.placeholder='Point camera at Code 128 barcode…';
+          log('', 'Camera mode: would request getUserMedia. (Phase 4 wires BarcodeDetector API.)');
+        } else if(m==='manual'){
+          input.placeholder='Type barcode, press Enter';
+        } else {
+          input.placeholder='Scan with keyboard-wedge scanner… (Code 128)';
+        }
+        input.focus();
+      }));
+
+      // Force sync
+      document.getElementById('btn-sync').addEventListener('click', async ()=>{
+        const n = await PCG.engines.sync.resolvePending();
+        log('', `Sync complete — ${n} record(s) flushed.`);
+        refreshQueueCount();
+      });
+
+      // Walk-the-Pile authorize (spec §5.1 — hard rule, Walk-the-Pile required)
+      document.getElementById('btn-walk').addEventListener('click', ()=>{
+        if(!PCG.hasAnyPermission(PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.ADMIN)){
+          alert('Only Warehouse Supervisor or Admin can authorize Walk-the-Pile.');
+          return;
+        }
+        const allVerified = (ps.lines||[]).every(l=>l.scanStatus==='verified');
+        if(!allVerified){
+          alert('Not all lines are verified. Authorize anyway?') &&
+            (ps.authorizedById = PCG.user.id, ps.authorizedAt = new Date().toISOString(), ps.status = 'Finalized');
+        } else {
+          ps.authorizedById = PCG.user.id; ps.authorizedAt = new Date().toISOString(); ps.status = 'Finalized';
+        }
+        PCG.engines.notify.emit('WalkThePileAuthorized', { pullSheetId: ps.id, by: PCG.user.id });
+        log('ok', `Walk-the-Pile authorized by ${PCG.user.name}.`);
+        renderLines();
+      });
+    }
+  }
+</script>
+</body>
+</html>

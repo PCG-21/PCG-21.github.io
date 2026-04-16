@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Warehouse</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Warehouse · Operations</div>
+          <h1>Warehouse Home</h1>
+          <div class="muted">Pulls in progress, QC queue, manifest status, aggregate pulls.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <a class="btn" href="warehouse-tv.html" target="_blank">📺 Open TV Mode</a>
+          <a class="btn" href="eqlpc.html">EQLPC</a>
+          <a class="btn primary" href="qc-scan.html?pullSheet=ps.sae.breakout">Start QC Scan</a>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Active Pull Sheets</div></div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>Pull Sheet</th><th>Show</th><th>Dept</th><th>Lines</th><th>Scan Progress</th><th>Walk-the-Pile</th><th>Status</th><th></th></tr></thead>
+                <tbody id="pulls"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Manifests (Outbound / Returning)</div></div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>Manifest</th><th>Show</th><th>Vehicle</th><th>Driver</th><th>Departure</th><th>Arrival</th><th>Dock</th><th>Status</th></tr></thead>
+                <tbody id="manifests"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header">
+              <div class="title">Aggregate Pull — SAE WCX 2026</div>
+              <a class="btn sm ghost" style="margin-left:auto;" href="breakouts.html?project=SAE-WCX-2026">Open Breakout Grid →</a>
+            </div>
+            <div class="card-body">
+              <div class="muted" style="font-size:var(--fs-sm);">Per-room × AV-spec aggregation. Drives the warehouse pull.</div>
+              <div class="divider"></div>
+              <div class="grid-3" id="sae-totals"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title" style="color:var(--status-red);">Open Service Tickets</div></div>
+            <div class="card-body" id="svc"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Inventory Snapshot</div></div>
+            <div class="card-body" id="inv-kpis" style="display:grid; gap:8px; font-size:var(--fs-sm);"></div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Marshalling Yards</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div><strong>Huntington Place · Detroit</strong><br><span class="muted">SAE WCX · DAS Booth — stagger required</span></div>
+              <div class="divider"></div>
+              <div><strong>Silver State Industrial · LV</strong><br><span class="muted">LCE / GLBX overnight staging</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'warehouse', crumbs:[{label:'Warehouse'}]});
+
+  const state = PCG.api.getWarehouseState();
+  const svcTix = PCG.api.getServiceTickets({status:'Open'});
+  const conflicts = PCG.api.getInventoryConflicts();
+  const pulls = (PCG.pullSheets||[]);
+  const activePulls = pulls.filter(p=>['InProgress','Prepped','Finalized'].includes(p.status));
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi blue"><div class="label">Active Pulls</div><div class="value">${activePulls.length}</div><div class="sub">all departments</div></div>
+    <div class="kpi"><div class="label">QC Queue</div><div class="value">${pulls.reduce((s,p)=>s+(p.lines||[]).filter(l=>l.scanStatus==='pending').length,0)}</div><div class="sub">lines awaiting scan</div></div>
+    <div class="kpi amber"><div class="label">Walk-the-Pile Pending</div><div class="value">${pulls.filter(p=>p.status==='Prepped' && !p.authorizedById).length}</div><div class="sub">Sup. sign-off needed</div></div>
+    <div class="kpi red"><div class="label">Open Svc Tickets</div><div class="value">${svcTix.length}</div><div class="sub">OOC / damage</div></div>
+    <div class="kpi red"><div class="label">Inventory Conflicts</div><div class="value">${conflicts.length}</div><div class="sub">EQLPC open</div></div>
+    <div class="kpi"><div class="label">Manifests Out/In</div><div class="value">${state.stats.outgoingManifests}/${state.stats.incomingManifests}</div><div class="sub">today</div></div>
+  `;
+
+  // Pulls
+  document.getElementById('pulls').innerHTML = pulls.map(p=>{
+    const scanned = (p.lines||[]).filter(l=>l.scanStatus==='verified').length;
+    const total   = (p.lines||[]).length;
+    const pct = total ? Math.round(scanned/total*100) : 0;
+    const walk = p.authorizedById ? `<span class="pill green">✓ AUTHORIZED</span>` :
+                 p.status==='Prepped' ? `<span class="pill amber">PENDING</span>` :
+                 `<span class="pill gray">—</span>`;
+    const stCls = {'NotStarted':'gray','InProgress':'amber','Prepped':'blue','Finalized':'green','Shipped':'purple'}[p.status]||'gray';
+    return `<tr>
+      <td class="mono">${p.id}</td>
+      <td class="mono">${p.showId}</td>
+      <td><strong>${p.department}</strong></td>
+      <td class="mono">${total}</td>
+      <td><div style="display:flex; align-items:center; gap:8px;"><div style="flex:1; height:6px; background:var(--surface-3); border-radius:3px; overflow:hidden;"><div style="width:${pct}%; height:100%; background:var(--grad-show-light-blue);"></div></div><span class="mono" style="font-size:11px;">${pct}%</span></div></td>
+      <td>${walk}</td>
+      <td><span class="pill ${stCls}">${p.status.toUpperCase()}</span></td>
+      <td><a href="qc-scan.html?pullSheet=${p.id}" class="btn sm">Scan</a></td>
+    </tr>`;
+  }).join('');
+
+  // Manifests
+  document.getElementById('manifests').innerHTML = (PCG.manifests||[]).map(m=>{
+    const stCls = {'Staged':'gray','Departed':'blue','Delivered':'green','Returning':'amber','Received':'purple'}[m.status]||'gray';
+    return `<tr>
+      <td class="mono">${m.id}</td>
+      <td class="mono">${m.showId}</td>
+      <td>${PCG.escapeHtml(m.vehicle||'—')}</td>
+      <td>${PCG.escapeHtml(m.driverName||'—')}</td>
+      <td class="mono">${PCG.fmtDate(m.departureDate,{time:true})}</td>
+      <td class="mono">${PCG.fmtDate(m.arrivalDate,{time:true})}</td>
+      <td style="font-size:11px;">${PCG.escapeHtml(m.dockInfo||'—')}</td>
+      <td><span class="pill ${stCls}">${m.status.toUpperCase()}</span></td>
+    </tr>`;
+  }).join('');
+
+  // SAE aggregate
+  const totals = (window.PCG.saeBreakouts||{}).totals || {};
+  document.getElementById('sae-totals').innerHTML = Object.entries(totals).map(([k,v])=>`
+    <div class="card card-pad" style="padding:12px 14px;">
+      <div class="eyebrow" style="font-size:10px;">${PCG.escapeHtml(k)}</div>
+      <div style="font-family:var(--font-display); font-size:26px; font-weight:600; margin-top:2px;">${v}</div>
+    </div>
+  `).join('');
+
+  // Service tickets
+  document.getElementById('svc').innerHTML = svcTix.length ? svcTix.map(t=>`
+    <div class="attn-item ${t.clientCaused?'red':''}" style="margin-bottom:6px;">
+      <div>
+        <div class="ttl">${PCG.escapeHtml(t.description)}</div>
+        <div class="meta">Serial ${t.serialId} · ${t.showId} · ${t.clientCaused?'Client-caused':'PCG'} · ${PCG.canSeeTier('T2_MARGINS')?('Est. '+(PCG.money(t.estimatedCost)||'—')):''}</div>
+      </div>
+    </div>`).join('') : PCG.states.empty('No open tickets.');
+
+  // Inventory snapshot KPIs
+  const inv = PCG.api.getInventory();
+  const serials = (PCG.inventorySerials||[]);
+  document.getElementById('inv-kpis').innerHTML = `
+    <div><strong>${inv.length}</strong> unique items tracked</div>
+    <div><strong>${serials.length}</strong> serialized units in system</div>
+    <div><strong>${serials.filter(s=>s.status==='OnShow').length}</strong> currently on show</div>
+    <div><strong>${serials.filter(s=>s.status==='OOC').length}</strong> OOC (out of commission)</div>
+    <div><strong>${serials.filter(s=>s.status==='Missing').length}</strong> missing</div>
+  `;
+</script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Quote Builder</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <!-- Header -->
+      <div id="q-header"></div>
+
+      <!-- 5 view tabs (spec §6.1 — all 5 must be implemented) -->
+      <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom: var(--sp-4); flex-wrap: wrap;">
+        <div class="qb-views" id="qb-views">
+          <button class="on" data-v="working">Working</button>
+          <button data-v="profit">Profit-Margin</button>
+          <button data-v="change">Change</button>
+          <button data-v="warehouse">Warehouse</button>
+          <button data-v="labor">Labor</button>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="btn sm ghost" id="btn-new-line">＋ Add Line</button>
+          <button class="btn sm ghost" id="btn-copy-from">Copy From Prior Quote</button>
+          <button class="btn sm" id="btn-recheck">Re-check Availability</button>
+          <button class="btn sm primary" id="btn-issue">Issue Proposal</button>
+        </div>
+      </div>
+
+      <!-- Permission-aware margin banner -->
+      <div id="margin-banner"></div>
+
+      <!-- View container -->
+      <div class="card" style="overflow:hidden;">
+        <div id="view-body"></div>
+        <div class="qb-totals" id="qb-totals"></div>
+      </div>
+
+      <!-- Availability + approval sidebar -->
+      <div class="split" style="margin-top:var(--sp-5);">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Line Availability Ledger</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">§3.1 contract</span></div>
+            <div class="card-body" id="avail-ledger"></div>
+          </div>
+        </div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Approvals & Guards</div></div>
+            <div class="card-body" id="guards"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Revisions</div></div>
+            <div class="card-body" id="revisions"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Internal Corrections</div></div>
+            <div class="card-body" id="corrections"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const qid = PCG.qs("id","q.LCE-2026.v3");
+  const quote = PCG.api.getQuote(qid) || PCG.api.getQuotes()[0];
+  const rev = PCG.api.getQuoteRevision(quote.activeRevisionId);
+  const project = PCG.api.getProject(quote.projectCode);
+  const show = PCG.api.getShow(quote.projectCode);
+  const canSeeMargin = PCG.canSeeTier('T2_MARGINS');
+
+  PCG.mountShell({
+    active:'quote',
+    crumbs:[
+      {label:'Portfolio', href:'index.html'},
+      {label:project.code, href:`project.html?project=${project.code}`},
+      {label:`Quote ${quote.quoteNo}`}
+    ],
+    pageActions: `<a class="btn" href="playbook.html?project=${project.code}">Playbook</a>`
+  });
+
+  // -------- Header --------
+  const editableByMe = PCG.engines.pricing.canEditRevision(rev);
+  document.getElementById('q-header').innerHTML = `
+    <section class="proj-header">
+      <div class="motif"></div>
+      <div class="eyebrow">${quote.quoteNo} · Rev ${rev.revisionNumber} · ${rev.status.toUpperCase()} · ${PCG.lifecyclePill(show.lifecycleState)}</div>
+      <h1>Quote — ${PCG.escapeHtml(project.name)}</h1>
+      <div class="meta">
+        <div class="i"><span class="k">Client</span><span class="v">${PCG.escapeHtml(project.client)}</span></div>
+        <div class="i"><span class="k">Rate Card</span><span class="v mono">${rev.rateCardVersionId||'—'}</span></div>
+        <div class="i"><span class="k">Revenue</span><span class="v mono">${PCG.money(rev.totalRevenue)}</span></div>
+        ${canSeeMargin ? `
+          <div class="i"><span class="k">Cost</span><span class="v mono">${PCG.money(rev.totalCost)}</span></div>
+          <div class="i"><span class="k">Margin</span><span class="v mono">${PCG.pct(rev.margin)}</span></div>` : ''}
+        <div class="i"><span class="k">Lines</span><span class="v mono">${(rev.lines||[]).length}</span></div>
+        <div class="i"><span class="k">Terms</span><span class="v">${PCG.escapeHtml(quote.termsText||'—')}</span></div>
+        <div class="i"><span class="k">Status</span><span class="v">${rev.status==='Awarded'?'<span class="pill green">AWARDED · IMMUTABLE</span>':rev.status==='Issued'?'<span class="pill blue">ISSUED</span>':'<span class="pill amber">DRAFT</span>'}</span></div>
+        <div class="i"><span class="k">You may edit?</span><span class="v">${editableByMe?'<span class="pill green">YES</span>':'<span class="pill gray">READ-ONLY</span>'}</span></div>
+      </div>
+    </section>`;
+
+  // -------- Margin banner / permission cue --------
+  document.getElementById('margin-banner').innerHTML = canSeeMargin ? '' : `
+    <div class="attn-item blue" style="margin-bottom:var(--sp-4);">
+      <div><div class="ttl">🔒 Cost & margin columns hidden</div>
+      <div class="meta">This view is permission-redacted at the API layer (Tier-2). Switch to Director / AE / Admin / Accounting to see cost.</div></div>
+    </div>`;
+
+  // -------- Views --------
+  const V = {};
+
+  V.working = () => `
+    <div style="overflow-x:auto;">
+      <table class="qb-line-grid">
+        <thead>
+          <tr><th style="width:32px;">#</th><th>Item / Description</th><th style="width:70px;">Qty</th><th style="width:90px;">Rate</th><th style="width:60px;">Days</th><th style="width:110px;">Extended</th><th style="width:140px;">Availability</th></tr>
+        </thead>
+        <tbody id="tb-working"></tbody>
+      </table>
+    </div>`;
+
+  V.profit = () => !canSeeMargin ? PCG.states.forbidden() : `
+    <div style="overflow-x:auto;">
+      <table class="qb-line-grid">
+        <thead>
+          <tr><th>Item</th><th>Qty</th><th>Rate</th><th>Cost</th><th>Ext. Rev</th><th>Ext. Cost</th><th>Margin $</th><th>Margin %</th><th>Floor?</th></tr>
+        </thead>
+        <tbody id="tb-profit"></tbody>
+      </table>
+    </div>`;
+
+  V.change = () => `
+    <div class="card-body">
+      <div class="muted" style="font-size:var(--fs-sm); margin-bottom:var(--sp-3);">Scope change vs frozen <strong>ScopeRecord</strong> (baseline on award). Two tracks: <strong>Internal Correction</strong> (zero financial impact, no client notification) vs <strong>Formal Change Order</strong> (financial impact, client-visible, billing queue).</div>
+      <div class="grid-2">
+        <div><h4 style="margin-bottom:var(--sp-3);">Internal Corrections</h4><div id="corrections-list"></div></div>
+        <div><h4 style="margin-bottom:var(--sp-3);">Change Orders (CO) · Add Orders · Damage</h4><div id="co-list"></div></div>
+      </div>
+    </div>`;
+
+  V.warehouse = () => `
+    <div class="card-body">
+      <div class="muted" style="font-size:var(--fs-sm); margin-bottom:var(--sp-3);">Warehouse view: groups lines by department, surfaces Walk-the-Pile readiness, pull status, and sub-rental backstops.</div>
+      <table class="pcg-table">
+        <thead><tr><th>Department</th><th>Qty on Quote</th><th>Pull Status</th><th>Walk-the-Pile</th><th>Sub-Rental?</th></tr></thead>
+        <tbody id="tb-warehouse"></tbody>
+      </table>
+    </div>`;
+
+  V.labor = () => !PCG.canSeeTier('T3_BILL_RATES') ? PCG.states.forbidden() : `
+    <div class="card-body">
+      <div class="muted" style="font-size:var(--fs-sm); margin-bottom:var(--sp-3);">Labor view — positions quoted, rate tier, pay/bill visibility depends on your role (Tier 1 pay rate: Scheduling + Admin only).</div>
+      <table class="pcg-table">
+        <thead><tr><th>Position</th><th>Qty</th><th>Days</th><th>Bill Rate</th>${PCG.canSeeTier('T1_CREW_PAY_RATES')?'<th>Pay Rate</th>':''}<th>Ext. Rev</th></tr></thead>
+        <tbody id="tb-labor"></tbody>
+      </table>
+    </div>`;
+
+  // -------- Row renderers --------
+  const findItem = id => PCG.api.getInventoryItem(id);
+
+  const renderWorking = () => {
+    const groups = {};
+    (rev.lines||[]).forEach(l => { (groups[l.packageName] = groups[l.packageName] || []).push(l); });
+    const tb = document.getElementById('tb-working');
+    let i = 0;
+    let html = '';
+    Object.entries(groups).forEach(([pkg, lines])=>{
+      html += `<tr class="pkg-header"><td colspan="7">${PCG.escapeHtml(pkg)}</td></tr>`;
+      lines.forEach(l=>{
+        i++;
+        const ext = (l.unitPrice||0) * (l.qty||0) * (l.days||1);
+        html += `
+          <tr>
+            <td class="mono muted">${i}</td>
+            <td>${PCG.escapeHtml(l.description)}</td>
+            <td class="mono">${l.qty}</td>
+            <td class="mono">${PCG.money(l.unitPrice)}</td>
+            <td class="mono">${l.days||1}</td>
+            <td class="mono">${PCG.money(ext)}</td>
+            <td id="avail-${l.id}" class="mono muted">…</td>
+          </tr>`;
+      });
+    });
+    tb.innerHTML = html;
+    runAvailChecks();
+  };
+
+  const renderProfit = () => {
+    const tb = document.getElementById('tb-profit'); if(!tb) return;
+    let html = '';
+    (rev.lines||[]).forEach(l=>{
+      const extRev = (l.unitPrice||0) * (l.qty||0) * (l.days||1);
+      const extCost = PCG.engines.cost.costForLine(l) * (l.qty||0) * (l.days||1);
+      const margin = extRev - extCost;
+      const pct = extRev ? margin/extRev : 0;
+      const floor = pct < 0.30 ? '<span class="pill red">BELOW FLOOR</span>' :
+                    pct < 0.50 ? '<span class="pill amber">WATCH</span>' :
+                    '<span class="pill green">OK</span>';
+      html += `<tr>
+        <td>${PCG.escapeHtml(l.description)}</td>
+        <td class="mono">${l.qty}</td>
+        <td class="mono">${PCG.money(l.unitPrice)}</td>
+        <td class="mono">${PCG.money(PCG.engines.cost.costForLine(l))}</td>
+        <td class="mono">${PCG.money(extRev)}</td>
+        <td class="mono">${PCG.money(extCost)}</td>
+        <td class="mono">${PCG.money(margin)}</td>
+        <td class="mono">${PCG.pct(pct)}</td>
+        <td>${floor}</td>
+      </tr>`;
+    });
+    tb.innerHTML = html;
+  };
+
+  const renderChange = () => {
+    const ic = rev.corrections || [];
+    const cos = PCG.api.getChangeOrders({projectCode: project.code}) || [];
+    document.getElementById('corrections-list').innerHTML = ic.length ? ic.map(c=>`
+      <div class="attn-item" style="margin-bottom:6px;"><div><div class="ttl">${PCG.escapeHtml(c.summary||'Correction')}</div><div class="meta">${PCG.fmtDate(c.at,{time:true})} · by ${PCG.escapeHtml(PCG.findPerson(c.by)?.name || c.by)} · ${c.type||'internal'}</div></div></div>
+    `).join('') : PCG.states.empty('No internal corrections on file.');
+    document.getElementById('co-list').innerHTML = cos.length ? cos.map(c=>{
+      const pill = c.type==='CO'?'<span class="pill blue">CO</span>':c.type==='AddOrder'?'<span class="pill purple">ADD ORDER</span>':'<span class="pill amber">DAMAGE</span>';
+      const fi = canSeeMargin ? PCG.money(c.financialImpact) : '—';
+      return `<div class="attn-item" style="margin-bottom:6px;"><div><div class="ttl">${pill} ${PCG.escapeHtml(c.description)}</div><div class="meta">Impact ${fi} · Status ${c.status}</div></div></div>`;
+    }).join('') : PCG.states.empty('No open change orders.');
+  };
+
+  const renderWarehouse = () => {
+    const tb = document.getElementById('tb-warehouse'); if(!tb) return;
+    const byDept = {};
+    (rev.lines||[]).filter(l=>l.type==='Rental').forEach(l=>{
+      const inv = findItem(l.inventoryItemId);
+      const cat = (PCG.inventoryCategories||[]).find(c=>c.id===(inv&&inv.categoryId));
+      const dept = (cat&&cat.department) || 'Mixed';
+      byDept[dept] = byDept[dept] || { qty:0, lines:[] };
+      byDept[dept].qty += (l.qty||0);
+      byDept[dept].lines.push(l);
+    });
+    const pulls = PCG.api.getPullSheets(show.id);
+    tb.innerHTML = Object.entries(byDept).map(([dept, data])=>{
+      const ps = pulls.find(p=>p.department===dept);
+      const pullStatus = ps?ps.status:'Not Started';
+      const walk = ps && ps.authorizedById ? `<span class="pill green">✓ AUTHORIZED</span>` : `<span class="pill amber">PENDING</span>`;
+      const hasSub = (PCG.api.getSubRentals({showId:show.id})||[]).some(r=>{
+        const inv = findItem(r.itemId); const c = (PCG.inventoryCategories||[]).find(c=>c.id===(inv&&inv.categoryId));
+        return c && c.department === dept;
+      });
+      return `<tr><td><strong>${PCG.escapeHtml(dept)}</strong></td><td class="mono">${data.qty}</td><td>${pullStatus}</td><td>${walk}</td><td>${hasSub?'Yes':'—'}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" class="empty">No rental lines yet.</td></tr>';
+  };
+
+  const renderLabor = () => {
+    const tb = document.getElementById('tb-labor'); if(!tb) return;
+    const labor = (rev.lines||[]).filter(l=>l.type==='Labor');
+    tb.innerHTML = labor.map(l=>{
+      const pos = PCG.api.getCrewPosition(l.crewPositionId);
+      const rate = pos && pos.ratesByVersion && pos.ratesByVersion[0];
+      const billRate = rate?.billRate ?? '—';
+      const payRate  = rate?.payRate  ?? '—';
+      const extRev = (l.unitPrice||0) * (l.qty||0) * (l.days||1);
+      return `<tr>
+        <td><strong>${PCG.escapeHtml(pos?pos.name:l.description)}</strong><br><span class="muted" style="font-size:11px;">${PCG.escapeHtml(l.description)}</span></td>
+        <td class="mono">${l.qty}</td>
+        <td class="mono">${l.days}</td>
+        <td class="mono">${typeof billRate==='number'?PCG.money(billRate):billRate}</td>
+        ${PCG.canSeeTier('T1_CREW_PAY_RATES')?`<td class="mono">${typeof payRate==='number'?PCG.money(payRate):payRate}</td>`:''}
+        <td class="mono">${PCG.money(extRev)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="empty">No labor lines quoted yet.</td></tr>';
+  };
+
+  // -------- Availability checks (uses engine) --------
+  const runAvailChecks = () => {
+    (rev.lines||[]).filter(l=>l.type==='Rental').forEach(l=>{
+      const cell = document.getElementById(`avail-${l.id}`);
+      if(!cell) return;
+      const res = PCG.api.checkAvailability({
+        itemId: l.inventoryItemId, qty: l.qty,
+        fromDate: project.dates.loadIn, toDate: project.dates.ret,
+        excludeShowId: project.code, holdType:'provisional'
+      });
+      if(res.status==='available') cell.innerHTML = `<span class="avail-dot available"></span>AVAIL ${res.available}`;
+      else if(res.status==='partial') cell.innerHTML = `<span class="avail-dot partial"></span>PARTIAL ${res.available}/${res.required}`;
+      else if(res.status==='conflict') cell.innerHTML = `<span class="avail-dot conflict"></span>CONFLICT ·&nbsp;<a href="eqlpc.html">resolve</a>`;
+      else cell.innerHTML = `<span class="avail-dot error"></span>${res.code||'—'}`;
+    });
+    renderAvailLedger();
+  };
+
+  const renderAvailLedger = () => {
+    const el = document.getElementById('avail-ledger');
+    if(!el) return;
+    const rows = (rev.lines||[]).filter(l=>l.type==='Rental').map(l=>{
+      const res = PCG.api.checkAvailability({
+        itemId:l.inventoryItemId, qty:l.qty,
+        fromDate: project.dates.loadIn, toDate: project.dates.ret,
+        excludeShowId: project.code, holdType:'provisional'
+      });
+      let cls = 'ok', txt = `AVAIL ${res.available||0}`;
+      if(res.status==='partial'){ cls='part'; txt = `PARTIAL — deficit ${res.deficit}`; }
+      if(res.status==='conflict'){ cls='conflict'; txt = `CONFLICT · ${(res.conflicts||[]).length} show(s)`; }
+      if(res.status==='error')   { cls='conflict'; txt = res.code; }
+      const inv = findItem(l.inventoryItemId);
+      return `
+        <div class="q-row" style="grid-template-columns: 1fr 200px;">
+          <div>
+            <div class="why">${PCG.escapeHtml(inv?inv.name:l.description)} <span class="mono muted">× ${l.qty}</span></div>
+            <div class="ctx">${PCG.escapeHtml(l.packageName)} · ${PCG.fmtShort(project.dates.loadIn)} → ${PCG.fmtShort(project.dates.ret)}</div>
+          </div>
+          <div><div class="avail-result ${cls}">${txt}</div></div>
+        </div>`;
+    }).join('');
+    el.innerHTML = rows || PCG.states.empty('No rental lines to check.');
+  };
+
+  // -------- Totals --------
+  const renderTotals = () => {
+    const t = PCG.engines.pricing.computeRevisionTotals(rev.lines);
+    const el = document.getElementById('qb-totals');
+    el.innerHTML = `
+      <div class="cell">Revenue<strong>${PCG.money(t.totalRevenue)}</strong></div>
+      ${canSeeMargin ? `<div class="cell">Cost<strong>${PCG.money(t.totalCost)}</strong></div>
+      <div class="cell">Margin<strong>${PCG.pct(t.margin)}</strong></div>` : ''}
+      <div class="cell">Lines<strong>${(rev.lines||[]).length}</strong></div>
+      <div class="cell">Revision<strong>v${rev.revisionNumber}</strong></div>
+    `;
+  };
+
+  // -------- Guards + Revisions + Corrections --------
+  document.getElementById('guards').innerHTML = `
+    <div style="font-size:var(--fs-sm);">
+      <div class="eyebrow" style="margin-bottom:4px;">Approval Guards</div>
+      <ul style="margin:0; padding-left:18px;">
+        <li>Discount > 10% → CSO/Director approval (hardcoded Phase 1-4)</li>
+        <li>CO &gt; $${PCG.engines.pricing.CO_DIRECTOR_THRESHOLD.toLocaleString()} → Director approval</li>
+        <li>Sub-rental RPO &gt; $10,000 → CFO approval</li>
+        <li>Awarded revisions are immutable; only Internal Corrections by Scheduling + Admin</li>
+      </ul>
+    </div>`;
+
+  document.getElementById('revisions').innerHTML = (PCG.quoteRevisions||[])
+    .filter(r=>r.quoteId===quote.id)
+    .sort((a,b)=>b.revisionNumber - a.revisionNumber)
+    .map(r=>`<div class="pinned" style="margin-bottom:6px;">
+      <span class="icon mono">v${r.revisionNumber}</span>
+      <div><strong>${r.status}</strong><div class="muted" style="font-size:var(--fs-xs);">${PCG.fmtDate(r.approvedAt||r.createdAt)}${r.approvedById?' · '+(PCG.findPerson(r.approvedById)?.name||r.approvedById):''}</div></div>
+    </div>`).join('') || PCG.states.empty('No revisions.');
+
+  document.getElementById('corrections').innerHTML = (rev.corrections||[]).length
+    ? (rev.corrections||[]).map(c=>`<div class="change-ribbon"><div class="when">${PCG.fmtShort(c.at)}</div><div>${PCG.escapeHtml(c.summary||'Correction')}<div class="meta">by ${PCG.escapeHtml(PCG.findPerson(c.by)?.name||c.by)}</div></div></div>`).join('')
+    : PCG.states.empty('None.');
+
+  // -------- View switcher --------
+  const render = (view)=>{
+    document.getElementById('view-body').innerHTML = V[view]();
+    if(view==='working') renderWorking();
+    if(view==='profit')  renderProfit();
+    if(view==='change')  renderChange();
+    if(view==='warehouse') renderWarehouse();
+    if(view==='labor')   renderLabor();
+    renderTotals();
+  };
+  render('working');
+
+  document.querySelectorAll('.qb-views button').forEach(b => b.addEventListener('click', e=>{
+    document.querySelectorAll('.qb-views button').forEach(x=>x.classList.toggle('on', x===e.target));
+    render(e.target.dataset.v);
+  }));
+
+  // Wire buttons (no fake workflows per Rule 4 — show spec notes)
+  document.getElementById('btn-recheck').addEventListener('click', ()=>{
+    runAvailChecks();
+    PCG.engines.notify.emit('AvailabilityRecheck', { quoteId: quote.id, lines: (rev.lines||[]).length });
+  });
+  const notImpl = (label) => () => alert(`[Phase 2] "${label}" is not yet implemented. The spec defines this workflow but it is deliberately not wired in this build (Rule 4 — no fake workflows).`);
+  document.getElementById('btn-new-line').addEventListener('click', notImpl('Add Line (inventory picker)'));
+  document.getElementById('btn-copy-from').addEventListener('click', notImpl('Copy From Prior Quote'));
+  document.getElementById('btn-issue').addEventListener('click', ()=>{
+    if(rev.status==='Awarded'){ alert('Awarded revisions are immutable. Use Internal Correction or create a new Change Order.'); return; }
+    try {
+      PCG.engines.pricing.enforceDiscountGuard(0.05); // < 10% threshold ok
+      alert('Proposal would be issued. (Phase 2 wires the PDF + Adaptive Card approval route.)');
+      PCG.engines.notify.emit('QuoteIssued', { quoteId: quote.id });
+    } catch(e){ alert('Blocked: '+e.message); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Technical</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div class="eyebrow">Technical</div>
+      <h1>Crew, Tech Scope, Venue Intelligence</h1>
+      <div class="muted" style="margin-bottom:var(--sp-4);">Cross-show technical coordination — conflicts, gear dependencies, venue quirks.</div>
+
+      <div class="kpi-strip">
+        <div class="kpi red"><div class="label">Crew Conflicts</div><div class="value">1</div><div class="sub">Unresolved</div></div>
+        <div class="kpi amber"><div class="label">Roles TBD</div><div class="value">8</div><div class="sub">across 3 shows</div></div>
+        <div class="kpi"><div class="label">Active Techs</div><div class="value">43</div><div class="sub">on payroll this week</div></div>
+        <div class="kpi blue"><div class="label">Union Calls</div><div class="value">2</div><div class="sub">IATSE 720 · IATSE 38</div></div>
+        <div class="kpi"><div class="label">Shows Live Now</div><div class="value">1</div><div class="sub">TCO-EXPO Chicago</div></div>
+        <div class="kpi"><div class="label">Plots Pending</div><div class="value">2</div><div class="sub">SAE Keynote · WOC Main</div></div>
+      </div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title" style="color:var(--status-red);">Crew Conflict Board</div></div>
+            <div class="card-body">
+              <div class="conflict" style="opacity:0.55;">
+                <div class="icon">✓</div>
+                <div class="body">
+                  <strong>Mike Chen (A1) — LCE ↔ SAE WCX (RESOLVED)</strong>
+                  <div class="meta">Reassigned LCE A1 to Priya Shah on 4/13. Mike covers SAE Keynote Ballroom only.</div>
+                </div>
+              </div>
+              <div class="conflict">
+                <div class="icon">⚠</div>
+                <div class="body">
+                  <strong>Chris Taylor (TD) — LCE strike 4/15 PM ↔ SAE 4/16 escalation coverage thin</strong>
+                  <div class="meta">Backfill plan: Dan Marino rolls from DAS-BOOTH prep if needed.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Tech Scope by Show</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Code</th><th>Show</th><th>A1</th><th>V1</th><th>LD</th><th>TD</th><th>Plot</th></tr></thead>
+              <tbody>
+                <tr class="health-amber"><td class="mono">LCE-2026</td><td>LCE Conference</td><td>Priya Shah</td><td>Dana Kim</td><td>Elliot Reyes</td><td>Chris Taylor</td><td><span class="pill green">V2 APPROVED</span></td></tr>
+                <tr class="health-amber"><td class="mono">SAE-WCX-2026</td><td>SAE WCX</td><td>Mike Chen</td><td>—</td><td>—</td><td>Chris Taylor</td><td><span class="pill amber">V1 REVIEW</span></td></tr>
+                <tr class="health-green"><td class="mono">GLBX-GSK26</td><td>Globex GSK</td><td>J. Morris</td><td>R. Halevi</td><td>E. Reyes</td><td>C. Taylor</td><td><span class="pill green">V3 APPROVED</span></td></tr>
+                <tr class="health-green"><td class="mono">WOC-2026</td><td>Women of Color</td><td>P. Shah</td><td>D. Kim</td><td>E. Reyes</td><td>D. Marino</td><td><span class="pill amber">DRAFT</span></td></tr>
+                <tr class="health-green"><td class="mono">TCO-EXPO</td><td>TechCo Expo · LIVE</td><td>—</td><td>D. Kim</td><td>—</td><td>D. Marino</td><td><span class="pill purple">LIVE</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Venue Intelligence</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Venue</th><th>Union</th><th>Quirk to Remember</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Caesars Forum · LV</strong></td><td><span class="pill red">IATSE 720</span></td><td>Freight elevator #3 rated higher · non-standard truss points in Forum Ballroom</td></tr>
+                <tr><td><strong>Huntington Place · Detroit</strong></td><td><span class="pill red">IATSE 38</span></td><td>Room numbers by floor (110–116, 140s, 250s, 300s, 400s) · cell coverage weak in 140/142 sub-level</td></tr>
+                <tr><td><strong>MGM Grand · LV</strong></td><td><span class="pill gray">NON-UNION</span></td><td>House tech must be on clock during rig</td></tr>
+                <tr><td><strong>Crocker Park · OH</strong></td><td><span class="pill gray">NON-UNION</span></td><td>NO stopping on Vine St · trucks to Promenade lot</td></tr>
+                <tr><td><strong>McCormick Place · Chicago</strong></td><td><span class="pill red">IATSE 2 + T-727</span></td><td>Marshalling yard mandatory for 53'+</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Shared Gear Dependencies</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="pinned"><span class="icon">◫</span><div><strong>6× 50″ LCD monitors</strong><div class="muted" style="font-size:var(--fs-xs);">LCE → SAE (4/15→4/14 collision)</div></div></div>
+              <div class="pinned"><span class="icon">◫</span><div><strong>2× d&b JSub</strong><div class="muted" style="font-size:var(--fs-xs);">LCE sub-rental via Solotech</div></div></div>
+              <div class="pinned"><span class="icon">◫</span><div><strong>Shure Axient G57+ RF</strong><div class="muted" style="font-size:var(--fs-xs);">Coordinate RF scan LCE + SAE (different cities OK)</div></div></div>
+              <div class="pinned"><span class="icon">◫</span><div><strong>Fujinon 42× long lens</strong><div class="muted" style="font-size:var(--fs-xs);">LCE → GLBX rollover (4/15→4/18 OK)</div></div></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Tech Roles · TBD Across Shows</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="attn-item red" style="margin-bottom:6px;"><div><div class="ttl">A2 — LCE-2026</div><div class="meta">Needed by Apr 10</div></div></div>
+              <div class="attn-item red" style="margin-bottom:6px;"><div><div class="ttl">Video Director — LCE-2026</div><div class="meta">Needed by Apr 11</div></div></div>
+              <div class="attn-item"><div><div class="ttl">ME — LCE-2026</div><div class="meta">Needed by Apr 11</div></div></div>
+              <div class="attn-item"><div><div class="ttl">AV Tech 1–4 — LCE-2026</div><div class="meta">Needed by Apr 10</div></div></div>
+              <div class="attn-item blue"><div><div class="ttl">Sweep Crew (2 of 6) — SAE</div><div class="meta">Needed by Apr 13</div></div></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>PCG.mountShell({active:"tech", crumbs:[{label:"Technical"}]});</script>
+</body>
+</html>

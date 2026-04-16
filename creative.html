@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Creative</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+.set-card {
+  background: var(--surface-1); border:1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4);
+  position: relative; overflow: hidden;
+}
+.set-card .motif { position:absolute; right:-30px; top:-30px; width:140px; height:140px; border-radius:50%; background: var(--grad-show-light-purple); opacity:0.25; }
+.set-card h4 { font-family: var(--font-display); text-transform:uppercase; letter-spacing:0.08em; font-size: var(--fs-lg); }
+.set-card .features { font-size: var(--fs-xs); color: var(--text-secondary); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div class="eyebrow">Creative</div>
+      <h1>Deliverables · Approvals · Stage Sets</h1>
+      <div class="muted" style="margin-bottom:var(--sp-4);">Creative pipeline across shows. Treatment, renderings, content handoffs.</div>
+
+      <div class="kpi-strip">
+        <div class="kpi"><div class="label">Active Treatments</div><div class="value">5</div><div class="sub">in design</div></div>
+        <div class="kpi amber"><div class="label">Awaiting Client Approval</div><div class="value">3</div><div class="sub">cross-portfolio</div></div>
+        <div class="kpi red"><div class="label">Blocked on Creative</div><div class="value">1</div><div class="sub">LCE sponsor loop</div></div>
+        <div class="kpi blue"><div class="label">Assets Ingested This Wk</div><div class="value">47</div><div class="sub">logos, loops, videos</div></div>
+        <div class="kpi"><div class="label">Stage Sets in Play</div><div class="value">4</div><div class="sub">Marquee, Nova, Miyra, Lumen</div></div>
+        <div class="kpi"><div class="label">OneSource Shows</div><div class="value">2</div><div class="sub">ELSO program</div></div>
+      </div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">Creative Deliverable Pipeline</div></div>
+            <table class="pcg-table">
+              <thead><tr><th>Project</th><th>Deliverable</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr class="health-red"><td class="mono">LCE-2026</td><td><strong>Sponsor Slideshow Loop (final)</strong></td><td>Keith Oliver</td><td class="mono">Apr 16 17:00</td><td><span class="pill red">BLOCKED · CLIENT CONTENT</span></td></tr>
+                <tr class="health-amber"><td class="mono">LCE-2026</td><td>Awards Program Motion Package</td><td>Keith Oliver</td><td class="mono">Apr 13</td><td><span class="pill amber">CLIENT REVIEW</span></td></tr>
+                <tr class="health-green"><td class="mono">LCE-2026</td><td>Marquee Set Renderings v3</td><td>Dan Marino</td><td class="mono">Apr 10 ✓</td><td><span class="pill green">APPROVED</span></td></tr>
+                <tr class="health-amber"><td class="mono">WOC-2026</td><td>Miyra Treatment — Custom LED Art</td><td>Keith Oliver</td><td class="mono">May 1</td><td><span class="pill amber">CLIENT REVIEW</span></td></tr>
+                <tr class="health-green"><td class="mono">GLBX-GSK26</td><td>Nova Set Renderings</td><td>Dan Marino</td><td class="mono">Mar 28 ✓</td><td><span class="pill green">APPROVED</span></td></tr>
+                <tr class="health-green"><td class="mono">ELSO-SS26</td><td>Lumen Set Concept</td><td>Keith Oliver</td><td class="mono">May 10</td><td><span class="pill blue">IN DESIGN</span></td></tr>
+                <tr class="health-amber"><td class="mono">SAE-WCX-2026</td><td>Keynote Ballroom Motion Kit</td><td>Dan Marino</td><td class="mono">Apr 12</td><td><span class="pill amber">CLIENT REVIEW</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">PCG Stage Sets · In Use</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Named templates — Marquee · Lumen · Miyra · Nova</span></div>
+            <div class="card-body">
+              <div class="grid-4">
+                <div class="set-card">
+                  <div class="motif"></div>
+                  <div class="eyebrow">LCE-2026</div>
+                  <h4>Marquee</h4>
+                  <div class="features">LED × 4 panels · Split fabric traveler · SEG fabric wings</div>
+                </div>
+                <div class="set-card">
+                  <div class="motif" style="background:var(--grad-show-light-blue);"></div>
+                  <div class="eyebrow">GLBX-GSK26</div>
+                  <h4>Nova</h4>
+                  <div class="features">LED × 4 · LED header · Split fabric traveler · high-energy</div>
+                </div>
+                <div class="set-card">
+                  <div class="motif" style="background:var(--grad-show-light-spectrum);"></div>
+                  <div class="eyebrow">WOC-2026</div>
+                  <h4>Miyra</h4>
+                  <div class="features">3.9mm LED main + 2.6m surround · projection traveler · lighting gobo</div>
+                </div>
+                <div class="set-card">
+                  <div class="motif"></div>
+                  <div class="eyebrow">ELSO-SS26</div>
+                  <h4>Lumen</h4>
+                  <div class="features">LED × 4 + LED header · fabric traveler · OneSource-ready brand swap</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Assets · Inbound</div></div>
+            <div class="card-body">
+              <div class="pinned"><span class="icon">⬆</span><div><strong>LCE — Client Logo Pack (final)</strong><div class="muted" style="font-size:var(--fs-xs);">Received Apr 12 · Kevin Adams</div></div></div>
+              <div class="pinned"><span class="icon">⬆</span><div><strong>LCE — Awards Trophy Photos</strong><div class="muted" style="font-size:var(--fs-xs);">Received Apr 13 · Jennifer Beth</div></div></div>
+              <div class="pinned"><span class="icon">⬆</span><div><strong>WOC — Speaker Headshots (23)</strong><div class="muted" style="font-size:var(--fs-xs);">Received Apr 10</div></div></div>
+              <div class="pinned"><span class="icon">⬆</span><div><strong>LCE — Sponsor Slideshow Loop</strong><div class="muted" style="font-size:var(--fs-xs);">⚠ Not received — Wed 17:00 deadline</div></div></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">OneSource Program</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <p>Leverage shared creative spend across ELSO events — Credit Acceptance program. Scalable, Adaptable, Brandable, Shippable, Sustainable, Affordable stage sets.</p>
+              <div class="divider"></div>
+              <div class="muted" style="font-size:var(--fs-xs);">Next OneSource review: May 3</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>PCG.mountShell({active:"creative", crumbs:[{label:"Creative"}]});</script>
+</body>
+</html>

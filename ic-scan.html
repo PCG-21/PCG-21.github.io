@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · IC Return Scan</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body class="scan-shell">
+  <div class="scan-card" id="card">
+
+    <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3);">
+      <div>
+        <div class="eyebrow">IC · INCOMING RETURN SCAN</div>
+        <h2 id="heading">—</h2>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+        <span id="online-pill" class="pill green">● ONLINE</span>
+        <span class="pill gray mono" id="queue-pill">Q: 0</span>
+        <a class="btn sm ghost" href="warehouse.html">Exit</a>
+      </div>
+    </div>
+
+    <div class="muted" style="font-size:var(--fs-sm); margin-bottom: var(--sp-3);">
+      Manifest-based return. Each scan confirms item present, missing-flagged, or damage-flagged.
+      Offline-capable. FAIL wins on conflicts (§3.8).
+    </div>
+
+    <div style="display:flex; gap:var(--sp-4); align-items:center; margin-bottom:var(--sp-4);">
+      <div class="scan-mode" id="result-seg">
+        <button data-r="Pass" class="on">Confirm</button>
+        <button data-r="Damage">Flag Damage</button>
+        <button data-r="Missing">Flag Missing</button>
+      </div>
+      <div style="margin-left:auto; font-size:var(--fs-sm);" class="muted">Manifest <span class="mono" id="mf-code">—</span></div>
+    </div>
+
+    <input class="scan-input" id="scan-in" autofocus placeholder="Scan returning asset…" autocomplete="off" />
+    <div style="margin-top:6px; font-size:var(--fs-xs); color:var(--text-tertiary);">Current result mode will be applied to the next scan.</div>
+    <div id="result-host"></div>
+
+    <div style="margin-top:var(--sp-5); display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-3); font-size:var(--fs-sm);">
+      <div class="card-pad" style="border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-1);">
+        <div class="eyebrow">Return Summary</div>
+        <div style="margin-top:6px;">
+          <div>Expected: <strong id="k-exp">0</strong></div>
+          <div>Confirmed: <strong id="k-ok" style="color:var(--status-green)">0</strong></div>
+          <div>Damage: <strong id="k-dmg" style="color:var(--status-amber)">0</strong></div>
+          <div>Missing: <strong id="k-miss" style="color:var(--status-red)">0</strong></div>
+        </div>
+      </div>
+      <div class="card-pad" style="border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-1);">
+        <div class="eyebrow">Missing Items</div>
+        <div id="missing-list" style="margin-top:6px; font-size:var(--fs-xs);"></div>
+      </div>
+    </div>
+
+    <div class="scan-log" id="scan-log" style="margin-top:var(--sp-4);"></div>
+
+    <div style="margin-top:var(--sp-4); display:flex; gap:var(--sp-2); align-items:center;">
+      <button class="btn ghost" id="btn-sync">Force Sync</button>
+      <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">≥ 90% return scan required to advance lifecycle Returning → Closing</span>
+    </div>
+  </div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS)){
+    document.getElementById('card').innerHTML = PCG.states.forbidden();
+  } else {
+    const mfId = PCG.qs('manifest','man.lce.out1');
+    const mf = PCG.api.getManifest(mfId);
+    if(!mf){
+      document.getElementById('card').innerHTML = '<h2>Manifest not found.</h2>';
+    } else {
+      document.getElementById('heading').textContent = `${mf.id} · ${mf.showId}`;
+      document.getElementById('mf-code').textContent = mf.id;
+
+      // Expected items: all outbound pull sheets for this show, all lines
+      const expectedLines = (PCG.pullSheets||[]).filter(p=>p.showId===mf.showId).flatMap(p=>p.lines||[]);
+      const expectedQty = expectedLines.reduce((s,l)=>s+(l.qty||0), 0);
+      const results = { Pass:0, Damage:0, Missing:0 };
+      const missingSerials = [];
+      let currentMode = 'Pass';
+
+      const updateOnline = () => {
+        const el = document.getElementById('online-pill');
+        el.className = navigator.onLine ? 'pill green' : 'pill red';
+        el.textContent = navigator.onLine ? '● ONLINE' : '● OFFLINE';
+      };
+      window.addEventListener('online',updateOnline); window.addEventListener('offline',updateOnline); updateOnline();
+      const refreshQueue = ()=>PCG.engines.sync.pending().then(l=>document.getElementById('queue-pill').textContent=`Q: ${(l||[]).length}`).catch(()=>{});
+      refreshQueue();
+
+      // Build lookup
+      const serialIdx = {};
+      expectedLines.forEach(line=>{
+        const serials = (PCG.inventorySerials||[]).filter(s=>s.itemId===line.inventoryItemId).slice(0, line.qty);
+        serials.forEach(s=>{ serialIdx[s.barcode] = { line, serial:s, itemName: (PCG.api.getInventoryItem(line.inventoryItemId)||{}).name||'—' }; });
+      });
+
+      const showResult = (kind, ttl, sub)=>{
+        const host = document.getElementById('result-host');
+        host.innerHTML = `<div class="scan-result ${kind}"><span class="icon">${ {ok:'✓',fail:'✕',dup:'⟳',unknown:'?'}[kind] }</span><div class="ttl">${PCG.escapeHtml(ttl)}</div><div style="margin-top:6px; font-size:var(--fs-sm);">${PCG.escapeHtml(sub||'')}</div></div>`;
+        setTimeout(()=>host.innerHTML='', 3000);
+      };
+      const log = (cls, txt)=>{
+        const el = document.getElementById('scan-log');
+        el.innerHTML = `<div class="e ${cls||''}">[${new Date().toLocaleTimeString()}] ${PCG.escapeHtml(txt)}</div>` + el.innerHTML;
+      };
+
+      const updateKPIs = ()=>{
+        document.getElementById('k-exp').textContent = expectedQty;
+        document.getElementById('k-ok').textContent = results.Pass;
+        document.getElementById('k-dmg').textContent = results.Damage;
+        document.getElementById('k-miss').textContent = results.Missing;
+        document.getElementById('missing-list').innerHTML = missingSerials.length ? missingSerials.map(m=>`<div>• ${m.serial.id} <span class="muted">— ${PCG.escapeHtml(m.itemName)}</span></div>`).join('') : '<div class="muted">None flagged yet.</div>';
+      };
+      updateKPIs();
+
+      const input = document.getElementById('scan-in');
+
+      // Result mode switcher
+      document.querySelectorAll('#result-seg button').forEach(b=>b.addEventListener('click', e=>{
+        document.querySelectorAll('#result-seg button').forEach(x=>x.classList.toggle('on', x===e.target));
+        currentMode = e.target.dataset.r;
+        input.focus();
+      }));
+
+      input.addEventListener('keydown', async e=>{
+        if(e.key!=='Enter') return;
+        e.preventDefault();
+        const code = (input.value||'').trim().toUpperCase();
+        if(!code) return;
+        const hit = serialIdx[code];
+        if(!hit){
+          showResult('unknown','NOT ON MANIFEST','Orphaned scan — preserved as evidence (§3.8).');
+          log('fail',`ORPHAN ${code}`);
+          await PCG.api.recordScan({ barcode:code, result:currentMode, showId:mf.showId, direction:'return', orphaned:true });
+          refreshQueue();
+          input.value=''; return;
+        }
+        results[currentMode] = (results[currentMode]||0) + 1;
+        if(currentMode==='Missing') missingSerials.push(hit);
+
+        await PCG.api.recordScan({
+          barcode:code, result:currentMode, showId:mf.showId,
+          pullSheetLineId: hit.line.id, itemSerial: hit.serial.id,
+          direction:'return'
+        });
+        refreshQueue();
+        const kind = currentMode==='Pass'?'ok':(currentMode==='Missing'?'fail':'dup');
+        const ttl  = currentMode==='Pass'?'CONFIRMED':(currentMode==='Missing'?'MISSING':'DAMAGE FLAGGED');
+        showResult(kind, ttl, `${hit.itemName} · ${hit.serial.id}`);
+        log(kind==='ok'?'ok':(kind==='fail'?'fail':'dup'), `${currentMode.toUpperCase()} ${code} → ${hit.itemName}`);
+        updateKPIs();
+        input.value='';
+      });
+
+      document.getElementById('btn-sync').addEventListener('click', async ()=>{
+        const n = await PCG.engines.sync.resolvePending();
+        log('',`Sync complete — ${n} record(s) flushed.`);
+        refreshQueue();
+      });
+    }
+  }
+</script>
+</body>
+</html>

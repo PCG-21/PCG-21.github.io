@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Show Book</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .sb-toolbar {
+    position: sticky; top: var(--topbar-h);
+    background: var(--surface-0);
+    padding: var(--sp-3) 0;
+    z-index: 40;
+    display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--sp-4);
+  }
+  .sb-toolbar .v-chip { background: var(--surface-2); padding: 4px 10px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: var(--fs-xs); border: 1px solid var(--border); }
+  .sb-toc {
+    position: sticky; top: calc(var(--topbar-h) + 60px);
+    font-size: var(--fs-sm);
+  }
+  .sb-toc a {
+    display: block; padding: 6px 10px; color: var(--text-secondary); text-decoration: none;
+    border-left: 2px solid transparent; border-radius: 0 4px 4px 0;
+  }
+  .sb-toc a:hover { background: var(--surface-2); color: var(--text-primary); }
+  .sb-toc a.on { color: var(--pcg-bright-blue); border-left-color: var(--pcg-bright-blue); background: rgba(1,153,253,0.08); }
+
+  .sb-section-ribbon {
+    display: flex; align-items: center; gap: var(--sp-3);
+    margin-bottom: var(--sp-2);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="sb-toolbar no-print">
+        <div>
+          <div class="eyebrow">Show Book</div>
+          <h3 id="sb-title">—</h3>
+        </div>
+        <span class="v-chip" id="sb-ver">v4 · Draft</span>
+        <span class="v-chip" id="sb-gen">Generated Apr 15 · 09:02</span>
+        <span class="muted" style="font-size:var(--fs-xs);" id="sb-template">Template · general-session.docx</span>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <select id="audience-sel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 10px; font-size:var(--fs-sm);">
+            <option value="crew">Crew-Safe (field)</option>
+            <option value="internal">Internal (with financials)</option>
+          </select>
+          <button class="btn">Regenerate</button>
+          <button class="btn primary" onclick="window.print()">⎙ Print / PDF</button>
+          <button class="btn spectrum">Distribute</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <div id="sb-stack"></div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Table of Contents</div></div>
+            <div class="card-body sb-toc" id="sb-toc"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Versions</div></div>
+            <div class="card-body">
+              <div style="display:grid; gap:6px; font-size:var(--fs-sm);">
+                <div class="pinned"><span class="icon">v4</span><div><strong>Current Draft</strong><div class="muted" style="font-size:var(--fs-xs);">Apr 15 09:02 · J. Sharp</div></div></div>
+                <div class="pinned"><span class="icon">v3</span><div>Distributed<div class="muted" style="font-size:var(--fs-xs);">Apr 14 17:40 · J. Springer</div></div></div>
+                <div class="pinned"><span class="icon">v2</span><div>Internal<div class="muted" style="font-size:var(--fs-xs);">Apr 12 21:10 · K. Oliver</div></div></div>
+                <div class="pinned"><span class="icon">v1</span><div>Initial<div class="muted" style="font-size:var(--fs-xs);">Apr 09 14:22 · J. Springer</div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Changelog v3 → v4</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <ul style="margin:0; padding-left:18px;">
+                <li><span class="pill green plain" style="font-size:9px;">ADDED</span> Awards ready room (Sec. 6)</li>
+                <li><span class="pill amber plain" style="font-size:9px;">CHANGED</span> A1 listed: Priya Shah (was Mike Chen)</li>
+                <li><span class="pill amber plain" style="font-size:9px;">CHANGED</span> Wireless mic count: 12 → 16 ch</li>
+                <li><span class="pill green plain" style="font-size:9px;">ADDED</span> Cocktail DJ patch</li>
+              </ul>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const code = PCG.qs("project","LCE-2026");
+  const p = PCG.findProject(code) || PCG.projects[0];
+
+  PCG.mountShell({
+    active: "showbook",
+    crumbs: [{label:"Portfolio",href:"index.html"},{label:p.code,href:`project.html?project=${p.code}`},{label:"Show Book"}],
+    pageActions: `<a class="btn" href="playbook.html?project=${p.code}">Playbook</a>`
+  });
+
+  document.getElementById("sb-title").textContent = `${p.code} · ${p.name}`;
+  document.getElementById("sb-template").textContent = `Template · ${p.showType}.docx`;
+
+  const pm = PCG.findPerson(p.primaryPM);
+  const td = PCG.findPerson(p.td);
+  const venue = PCG.findVenue(p.venueId);
+
+  // Sections for the Show Book — crew-safe by default
+  const sections = [
+    { id:"cover", label:"Cover", render: renderCover },
+    { id:"overview", label:"01 · Show Overview", render: renderOverview },
+    { id:"schedule", label:"02 · Schedule Summary", render: renderSchedule },
+    { id:"contacts", label:"03 · Key Contacts", render: renderContacts },
+    { id:"venue", label:"04 · Venue & Rooms", render: renderVenue },
+    { id:"scope", label:"05 · Scope by Room / Session", render: renderScope },
+    { id:"crew", label:"06 · Crew Assignments", render: renderCrew },
+    { id:"gear", label:"07 · Gear Summary", render: renderGear },
+    { id:"labor", label:"08 · Labor Notes", render: renderLaborNotes },
+    { id:"critical", label:"09 · Critical Instructions", render: renderCritical },
+    { id:"breakouts", label:"10 · Breakout / Room Detail", render: renderBreakouts },
+    { id:"logistics", label:"11 · Logistics", render: renderLogistics },
+    { id:"changes", label:"12 · Recent Changes", render: renderChanges },
+    { id:"calltimes", label:"13 · Call Times (by Day)", render: renderCallTimes },
+    { id:"flow", label:"14 · Load-In / Show / Strike", render: renderFlow },
+    { id:"safety", label:"15 · Safety & Operational Notes", render: renderSafety },
+    { id:"docs", label:"16 · Document References", render: renderDocs }
+  ];
+
+  const toc = document.getElementById("sb-toc");
+  toc.innerHTML = sections.map((s,i)=>`<a href="#sec-${s.id}" class="${i===1?'on':''}">${PCG.escapeHtml(s.label)}</a>`).join("");
+
+  // Render stack
+  const stack = document.getElementById("sb-stack");
+  stack.innerHTML = sections.map(s=>`<div id="sec-${s.id}" class="sb-section-wrap">${s.render()}</div>`).join("");
+
+  // audience switcher
+  document.getElementById("audience-sel").addEventListener("change", e=>{
+    document.querySelectorAll(".internal-only").forEach(el=>el.style.display = e.target.value==="internal" ? "" : "none");
+  });
+  document.querySelectorAll(".internal-only").forEach(el=>el.style.display="none");
+
+  // ---- Renderers ----
+
+  function pageFooter(pg, total){
+    return `<div class="sb-ftr"><span>${p.code} · ${p.name}</span><span>v4 · Generated ${PCG.fmtDate(new Date().toISOString(),{time:true})}</span><span>Page ${pg} / ${total}</span></div>`;
+  }
+
+  function renderCover(){
+    return `
+      <div class="sb-page" style="padding:0;">
+        <div class="sb-cover">
+          <div class="eyebrow">Show Book · ${p.showType.toUpperCase()}</div>
+          <h1>${PCG.escapeHtml(p.name)}</h1>
+          <div class="tag">Lights. Camera. Showtime.</div>
+          <div class="meta">
+            <div>CLIENT · ${PCG.escapeHtml(p.client)}</div>
+            <div>VENUE · ${PCG.escapeHtml(p.venueName)}</div>
+            <div>SHOW · ${PCG.fmtShort(p.dates.showStart)} – ${PCG.fmtShort(p.dates.showEnd)}</div>
+            <div>PROJECT · ${p.code}</div>
+            <div>QUOTE · ${p.quoteNo||"—"} · PULL SHEET · ${p.pullSheetNo||"—"}</div>
+            <div>PM · ${pm?pm.name:"—"} · TD · ${td?td.name:"—"}</div>
+            <div style="margin-top:14px; opacity:0.8;">GENERATED ${PCG.fmtDate(new Date().toISOString(),{time:true})} · v4 DRAFT</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderOverview(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">PCG Stage<small>Show Overview</small></div></div>
+        <h1>${PCG.escapeHtml(p.name)}</h1>
+        <p>${PCG.escapeHtml(p.oneLiner)}</p>
+        <div class="sb-bar">Key Facts</div>
+        <table>
+          <tr><th style="width:140px;">Client</th><td>${PCG.escapeHtml(p.client)}</td></tr>
+          <tr><th>Venue</th><td>${PCG.escapeHtml(p.venueName)}${venue?` — ${PCG.escapeHtml(venue.address)}`:""}</td></tr>
+          <tr><th>Show Dates</th><td>${PCG.fmtDate(p.dates.showStart,{time:true})} → ${PCG.fmtDate(p.dates.showEnd,{time:true})}</td></tr>
+          <tr><th>Load-In</th><td>${PCG.fmtDate(p.dates.loadIn,{time:true})}</td></tr>
+          <tr><th>Load-Out</th><td>${PCG.fmtDate(p.dates.loadOut,{time:true})}</td></tr>
+          <tr><th>Stage Set</th><td>${PCG.escapeHtml(p.stageSet||"—")}</td></tr>
+          <tr><th>PM / TD</th><td>${pm?pm.name:"—"} / ${td?td.name:"—"}</td></tr>
+        </table>
+        <div class="sb-callout">This Show Book is the field-facing handoff document. For internal context (PM notes, margins, vendor commentary), refer to the PCG Stage Playbook.</div>
+        ${pageFooter(1,16)}
+      </div>`;
+  }
+
+  function renderSchedule(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Schedule Summary</small></div></div>
+        <h1>Schedule</h1>
+        <div class="sb-bar">5-Date Plan</div>
+        <table>
+          <thead><tr><th>Phase</th><th>Date / Time</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Prep</strong></td><td>${PCG.fmtDate(p.dates.prep)}</td><td>Warehouse pull begins</td></tr>
+            <tr><td><strong>Load-In</strong></td><td>${PCG.fmtDate(p.dates.loadIn,{time:true})}</td><td>Crew call; dock window; rig</td></tr>
+            <tr><td><strong>Show Start</strong></td><td>${PCG.fmtDate(p.dates.showStart,{time:true})}</td><td>First program go</td></tr>
+            <tr><td><strong>Show End</strong></td><td>${PCG.fmtDate(p.dates.showEnd,{time:true})}</td><td>Last program out</td></tr>
+            <tr><td><strong>Load-Out</strong></td><td>${PCG.fmtDate(p.dates.loadOut,{time:true})}</td><td>Strike + truck pack</td></tr>
+            <tr><td><strong>Return</strong></td><td>${PCG.fmtDate(p.dates.ret,{time:true})}</td><td>Warehouse check-in complete</td></tr>
+          </tbody>
+        </table>
+        <div class="sb-bar">Production Snapshot</div>
+        <table>
+          <thead><tr><th>Day</th><th>Ballroom</th><th>Theater 330B</th><th>Breakouts</th></tr></thead>
+          <tbody>
+            <tr><td>Apr 10 Fri</td><td>Prep</td><td>—</td><td>—</td></tr>
+            <tr><td>Apr 11 Sat</td><td>Set up</td><td>Set up</td><td>—</td></tr>
+            <tr><td>Apr 12 Sun</td><td>Rehearsal</td><td>Rehearsal</td><td>—</td></tr>
+            <tr><td>Apr 13 Mon</td><td><strong>Welcome / Keynote</strong></td><td>Battery Tech</td><td>Welcome Recept.</td></tr>
+            <tr><td>Apr 14 Tue</td><td><strong>Keynote II–III</strong></td><td>Battery Tech</td><td>Track Rooms 1–5</td></tr>
+            <tr><td>Apr 15 Wed</td><td><strong>Keynote IV · Strike</strong></td><td>Strike</td><td>Strike</td></tr>
+          </tbody>
+        </table>
+        ${pageFooter(2,16)}
+      </div>`;
+  }
+
+  function renderContacts(){
+    const proj = (PCG.contacts||[]).filter(c=>c.project===p.code);
+    const client = proj.filter(c=>c.category==="client");
+    const vv = proj.filter(c=>c.category==="venue");
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Key Contacts</small></div></div>
+        <h1>Contacts</h1>
+        <div class="sb-bar">Client</div>
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th></tr></thead>
+          <tbody>
+            ${client.map(c=>`<tr><td><strong>${PCG.escapeHtml(c.name)}</strong></td><td>${PCG.escapeHtml(c.role)}</td><td>${c.phone||""}</td><td>${c.email||""}</td></tr>`).join("")}
+          </tbody>
+        </table>
+        <div class="sb-bar">Venue</div>
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th></tr></thead>
+          <tbody>
+            ${vv.map(c=>`<tr><td><strong>${PCG.escapeHtml(c.name)}</strong></td><td>${PCG.escapeHtml(c.role)}</td><td>${c.phone||""}</td><td>${c.email||""}</td></tr>`).join("")}
+          </tbody>
+        </table>
+        <div class="sb-bar">PCG Team</div>
+        <table>
+          <thead><tr><th>Name</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><strong>${pm?pm.name:""}</strong></td><td>Primary PM · AM</td></tr>
+            <tr><td><strong>${td?td.name:""}</strong></td><td>Technical Director</td></tr>
+            <tr><td><strong>Keith Oliver</strong></td><td>Creative Director</td></tr>
+            <tr><td><strong>Jason Gerber</strong></td><td>Show Caller</td></tr>
+          </tbody>
+        </table>
+        ${pageFooter(3,16)}
+      </div>`;
+  }
+
+  function renderVenue(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Venue & Rooms</small></div></div>
+        <h1>Venue</h1>
+        <h2>${PCG.escapeHtml(venue?venue.name:p.venueName)}</h2>
+        <p><strong>${PCG.escapeHtml(venue?venue.address:"")}</strong></p>
+        <div class="sb-bar">Load-In</div>
+        <p>${PCG.escapeHtml(venue?venue.loadInNotes:"—")}</p>
+        <div class="sb-bar">Dock Hours · Union</div>
+        <p><strong>Dock:</strong> ${PCG.escapeHtml(venue?venue.dockHours:"—")}. <strong>Union:</strong> ${venue && venue.union?"Yes":"No"}.</p>
+        ${venue && venue.knownQuirks && venue.knownQuirks.length?`
+          <div class="sb-callout warn"><strong>Known venue quirks:</strong><ul>${venue.knownQuirks.map(q=>`<li>${PCG.escapeHtml(q)}</li>`).join("")}</ul></div>
+        `:""}
+        ${pageFooter(4,16)}
+      </div>`;
+  }
+
+  function renderScope(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Scope by Session</small></div></div>
+        <h1>Scope</h1>
+        <div class="sb-bar">Current (As-Built)</div>
+        <ul>${(p.scopeCurrent||[]).map(s=>`<li>${PCG.escapeHtml(s)}</li>`).join("")}</ul>
+        <div class="sb-bar internal-only">Sold vs Current — Internal Only</div>
+        <div class="internal-only">
+          <p><strong>Net change from sold scope:</strong> ${(p.scopeCurrent||[]).length - (p.scopeSold||[]).length} line item(s) added.</p>
+          <p>For full diff see Playbook §03.</p>
+        </div>
+        ${pageFooter(5,16)}
+      </div>`;
+  }
+
+  function renderCrew(){
+    const rows = p.code==="LCE-2026" ? [
+      ["PM / AM","Jeff Springer"],["TD","Chris Taylor"],["Show Caller","Jason Gerber"],
+      ["A1","Priya Shah"],["A2","TBD"],
+      ["V1","Dana Kim"],["Video Director","TBD"],
+      ["LD","Elliot Reyes"],["ME","TBD"],
+      ["LED Lead / Cam 1","Renée Benoit"],["Scenic / Cam 2","Dan Marino"],
+      ["ShoFlo","Chelsea Oliver"]
+    ] : [
+      ["PM","Tyler Scheff"],["TD","Chris Taylor"],
+      ["Floor Lead 140s","Dana Kim"],["Floor Lead 250s","C. Ramos"],
+      ["A1 Keynote","Mike Chen"],["Sweep Crew","Pool (6)"]
+    ];
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Crew Assignments</small></div></div>
+        <h1>Crew</h1>
+        <div class="sb-bar">Assignments</div>
+        <table>
+          <thead><tr><th style="width:220px;">Role</th><th>Name</th></tr></thead>
+          <tbody>${rows.map(r=>`<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td></tr>`).join("")}</tbody>
+        </table>
+        <div class="sb-callout">Day-of contact information on the Contacts page. Escalations → PM first.</div>
+        ${pageFooter(6,16)}
+      </div>`;
+  }
+
+  function renderGear(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Gear Summary</small></div></div>
+        <h1>Gear</h1>
+        <p class="sb-callout">Headline gear only. For the full pull sheet, see Flex <strong>${p.pullSheetNo||"—"}</strong>.</p>
+        ${Object.entries(p.gearSummary||{}).filter(([,a])=>a&&a.length).map(([cat,arr])=>`
+          <div class="sb-bar">${cat.toUpperCase()}</div>
+          <table>
+            <thead><tr><th style="width:240px;">Functional Group</th><th>Key Items</th></tr></thead>
+            <tbody>${arr.map(g=>`<tr><td><strong>${PCG.escapeHtml(g.group)}</strong></td><td>${PCG.escapeHtml(g.items)}</td></tr>`).join("")}</tbody>
+          </table>
+        `).join("")}
+        ${pageFooter(7,16)}
+      </div>`;
+  }
+
+  function renderLaborNotes(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Labor Notes</small></div></div>
+        <h1>Labor Notes</h1>
+        <div class="sb-bar">Union</div>
+        <p>${venue && venue.union ? `This is a union house (${p.code==="LCE-2026"?"IATSE 720":"IATSE 38"}). Crew calls, meal breaks, and overtime follow house rules.` : "Non-union house."}</p>
+        <div class="sb-bar">Meal Breaks</div>
+        <p>Standard 5-hour rule applies. Onsite catering windows coordinated with client.</p>
+        <div class="sb-bar">Overtime</div>
+        <p>All overtime pre-approved via PM. No freelance-authorized OT.</p>
+        ${pageFooter(8,16)}
+      </div>`;
+  }
+
+  function renderCritical(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Critical Instructions</small></div></div>
+        <h1>Critical Instructions</h1>
+        ${p.code==="LCE-2026" ? `
+          <div class="sb-callout risk"><strong>Dock timing:</strong> Vincent at Caesars will turn trucks away outside the assigned 15-minute window. Call ahead if delayed.</div>
+          <div class="sb-callout warn"><strong>Content handoff:</strong> Client delivers PPTs via USB day-of. Keep DSM load flexible for Monday content not in hand Sunday night.</div>
+          <div class="sb-callout"><strong>Decision escalation onsite:</strong> Jennifer Beth is the decision-maker, not Kevin. Escalate scope changes to Jennifer directly.</div>
+          <div class="sb-callout"><strong>Sponsor loop:</strong> Must be playing during any non-presentation time. Placeholder loop in V1 show folder if content missing Wed 5pm.</div>
+        ` : p.code==="SAE-WCX-2026" ? `
+          <div class="sb-callout risk"><strong>Sweeps mandatory:</strong> 7am / 12pm / 5pm daily across all active floors.</div>
+          <div class="sb-callout warn"><strong>330A/B (Ryan Hoffman's track):</strong> He texts the floor lead at 6am. Answer.</div>
+          <div class="sb-callout"><strong>Billing "on own":</strong> 310B CRC Classroom and 313A PFL 180 bill separately from master SAE PO. Confirm with Steph Vance.</div>
+          <div class="sb-callout"><strong>Committee rooms:</strong> Confirm kit need before rolling in — many committees want silence, not AV.</div>
+        ` : `<p>No critical instructions on file.</p>`}
+        ${pageFooter(9,16)}
+      </div>`;
+  }
+
+  function renderBreakouts(){
+    if(p.code==="SAE-WCX-2026"){
+      return `
+        <div class="sb-page">
+          <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Breakout Detail</small></div></div>
+          <h1>Breakout Rooms</h1>
+          <p>30+ active rooms across Huntington Place. Refer to Breakout Sheet v7 for live per-day assignments.</p>
+          <div class="sb-bar">Floor Summary</div>
+          <table>
+            <thead><tr><th>Floor</th><th>Active</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><strong>140 Wing</strong></td><td>11 rooms</td><td>Standard technical sessions</td></tr>
+              <tr><td><strong>250 Wing</strong></td><td>8 + 3 house</td><td>Standard breakouts (250C has VDA)</td></tr>
+              <tr><td><strong>300 Level</strong></td><td>Enhanced + support</td><td>330A/B large tech · 320/321 intimate · 312A show office · 310B CRC (on own)</td></tr>
+              <tr><td><strong>400 Level</strong></td><td>6 rooms</td><td>House audio only</td></tr>
+            </tbody>
+          </table>
+          <div class="sb-bar">Standard Kit (per-room)</div>
+          <p>8' table · stand · LCD · laptop · PC DI · PR · floor mic stand · wireless HH · pod mic · 2× desk mic · mixer · HS speaker.</p>
+          <div class="sb-bar">Enhanced Kit — 330A/B</div>
+          <p>2× 8' table · 2× stand · 2× LCD · VDA · 6× desk mic · mixer · HS · <strong>9 audio inputs</strong>.</p>
+          ${pageFooter(10,16)}
+        </div>`;
+    }
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Breakout Detail</small></div></div>
+        <h1>Rooms & Spaces</h1>
+        <table>
+          <thead><tr><th>Space</th><th>Use</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Forum Ballroom</strong></td><td>General Session + Awards</td><td>Locked</td></tr>
+            <tr><td><strong>South Foyer</strong></td><td>Welcome Reception (Tue)</td><td>Locked</td></tr>
+            <tr><td><strong>Theater 330B</strong></td><td>Battery Tech Theater</td><td>Locked</td></tr>
+            <tr><td><strong>Awards Ready Room</strong></td><td>Recovery / talent holding</td><td>Added 4/14</td></tr>
+          </tbody>
+        </table>
+        ${pageFooter(10,16)}
+      </div>`;
+  }
+
+  function renderLogistics(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Logistics</small></div></div>
+        <h1>Logistics</h1>
+        <div class="sb-bar">Trucking</div>
+        <p>Inbound trucks staged per marshalling yard schedule. Confirm times with dock at least 2 hours prior.</p>
+        <div class="sb-bar">Parking</div>
+        <p>Crew parking per venue note. Trucks to designated overnight lot after unload.</p>
+        <div class="sb-bar">Badging</div>
+        <p>All crew badged by show office before floor access. Show office: ${p.code==="SAE-WCX-2026"?"Meeting Room 312A":"Forum Pre-Function"}.</p>
+        ${pageFooter(11,16)}
+      </div>`;
+  }
+
+  function renderChanges(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Recent Changes</small></div></div>
+        <h1>Recent Changes (Last 7 Days)</h1>
+        <table>
+          <thead><tr><th style="width:100px;">Date</th><th>Change</th><th>Impact</th></tr></thead>
+          <tbody>
+            ${(p.changes||[]).map(c=>`<tr><td>${PCG.fmtShort(c.date)}</td><td><strong>${PCG.escapeHtml(c.title)}</strong></td><td>${PCG.escapeHtml(c.impact)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+        ${pageFooter(12,16)}
+      </div>`;
+  }
+
+  function renderCallTimes(){
+    const times = p.code==="LCE-2026" ? [
+      ["Apr 10 Fri","PREP","—","Warehouse only"],
+      ["Apr 11 Sat","LOAD-IN","06:00","Full crew call. Rig begins 07:00."],
+      ["Apr 12 Sun","REHEARSAL","08:00","DSM/QLab checks. Client walkthrough 14:00."],
+      ["Apr 13 Mon","SHOW DAY 1","05:00 (core)","Welcome/Keynote @ 09:00. Welcome reception 18:00."],
+      ["Apr 14 Tue","SHOW DAY 2","06:00","Keynote II–III @ 08:30. Awards @ 19:00."],
+      ["Apr 15 Wed","SHOW DAY 3 · STRIKE","06:00","Keynote IV @ 08:30. Strike immediately after 18:00."]
+    ] : [
+      ["Apr 10 Fri","SET DAY 1","07:00","Load-in — floors 140s, 250s, 300s large"],
+      ["Apr 13 Mon","SET DAY 2","07:00","Complete all floors. Keynote Ballroom check."],
+      ["Apr 14 Tue","SHOW DAY 1","07:00","Sweeps 07:00 / 12:00 / 17:00 daily"],
+      ["Apr 15 Wed","SHOW DAY 2","07:00","Sweeps 07:00 / 12:00 / 17:00"],
+      ["Apr 16 Thu","SHOW DAY 3 · STRIKE","07:00","Strike begins immediately after last session."]
+    ];
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Call Times</small></div></div>
+        <h1>Call Times</h1>
+        <table>
+          <thead><tr><th style="width:120px;">Date</th><th>Phase</th><th>Call</th><th>Notes</th></tr></thead>
+          <tbody>${times.map(r=>`<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join("")}</tbody>
+        </table>
+        ${pageFooter(13,16)}
+      </div>`;
+  }
+
+  function renderFlow(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Load-In · Show · Strike</small></div></div>
+        <h1>Flow</h1>
+        <div class="sb-bar">Load-In Sequence</div>
+        <ol>
+          <li>Truck arrival → marshalling yard → assigned dock window</li>
+          <li>Rigging first (truss + points) — verify plot before fly</li>
+          <li>Audio / Video / Lighting in parallel once rig is cleared</li>
+          <li>Scenic dress once AV is soft-patched</li>
+          <li>Cue-to-cue with DSM and Show Caller</li>
+        </ol>
+        <div class="sb-bar">Show Flow</div>
+        <p>Show Caller drives cues via ShoFlo. A1/V1/LD on comm (Arcadia). Any scope change goes through PM to Show Caller — do not change cues at the board.</p>
+        <div class="sb-bar">Strike</div>
+        <ol>
+          <li>Power down + unplug all video chain</li>
+          <li>Fly down trusses (rigging signs off)</li>
+          <li>Case labels checked before truck pack</li>
+          <li>Full inventory sweep before dock release</li>
+        </ol>
+        ${pageFooter(14,16)}
+      </div>`;
+  }
+
+  function renderSafety(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Safety & Operations</small></div></div>
+        <h1>Safety & Operational Notes</h1>
+        <div class="sb-callout warn"><strong>If an incident occurs:</strong> secure the area, notify venue security, notify PM immediately. Use FROI Employee Packet for any injury. Witness statements on separate form.</div>
+        <div class="sb-bar">PPE</div>
+        <p>Hard hats + high-vis during rig. Closed-toe footwear at all times on floor.</p>
+        <div class="sb-bar">Lift Certifications</div>
+        <p>Genie / scissor / forklift operators must show current certification to floor lead before operating.</p>
+        <div class="sb-bar">Electrical</div>
+        <p>All power distro lock-out/tag-out per venue protocol. No unlocked panels during show hours.</p>
+        <div class="sb-bar">Emergency Contacts</div>
+        <p>Venue Security · Show Office · PM Cell · Nearest Hospital (address in appendix).</p>
+        ${pageFooter(15,16)}
+      </div>`;
+  }
+
+  function renderDocs(){
+    return `
+      <div class="sb-page">
+        <div class="sb-hdr"><img class="logo" src="assets/pcg-logo.png" onerror="this.onerror=null;this.src='assets/pcg-logo.svg';" alt="PCG" /><div class="t">${p.code}<small>Document References</small></div></div>
+        <h1>Documents</h1>
+        <p>Scan QR codes for mobile access from the field.</p>
+        <table>
+          <thead><tr><th>Document</th><th>Category</th><th>Access</th></tr></thead>
+          <tbody>
+            ${(p.docs||[]).map(d=>`<tr><td><strong>${PCG.escapeHtml(d.title)}</strong></td><td>${PCG.escapeHtml(d.cat)}</td><td style="font-family:var(--font-mono); font-size:10px;">SharePoint ↗</td></tr>`).join("")}
+          </tbody>
+        </table>
+        <div class="sb-callout">This Show Book is generated from PCG Stage data as of the timestamp on the cover. For the latest, open the digital Playbook.</div>
+        ${pageFooter(16,16)}
+      </div>`;
+  }
+
+  // highlight TOC on scroll
+  const tocLinks = Array.from(toc.querySelectorAll("a"));
+  const secs = sections.map(s=>document.getElementById(`sec-${s.id}`));
+  window.addEventListener("scroll",()=>{
+    const y = window.scrollY + 200;
+    let cur = secs[0];
+    secs.forEach(s=>{ if(s && s.offsetTop<=y) cur = s; });
+    tocLinks.forEach(a=>a.classList.toggle("on", a.getAttribute("href")==="#"+(cur&&cur.id)));
+  },{passive:true});
+</script>
+</body>
+</html>

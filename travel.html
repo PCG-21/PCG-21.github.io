@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Travel & Per Diem</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Crew · Travel</div>
+          <h1>Travel & Per Diem</h1>
+          <div class="muted">Flight, hotel, rental car, per-diem coordination across active shows. Sync'd to ShiftAssignment.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <select id="show-sel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
+          <button class="btn sm" id="btn-new-travel">＋ Travel Record</button>
+          <button class="btn sm ghost" id="btn-export">Export Travel CSV</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="title">Travel Roster</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="sub"></span></div>
+        <div style="overflow-x:auto;">
+          <table class="pcg-table">
+            <thead><tr><th>Crew</th><th>Show</th><th>Flight</th><th>Route</th><th>Dep</th><th>Arr</th><th>Hotel</th><th>Per Diem</th><th>Source</th><th>Actual $</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="split" style="margin-top:var(--sp-5);">
+        <div class="card">
+          <div class="card-header"><div class="title">Arrival-vs-Call Time Risk</div></div>
+          <div class="card-body" id="risks"></div>
+        </div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Per Diem Policy (Demo)</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div>Default: <strong>$75 / day</strong></div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:4px;">
+                Configurable per market. OPEN DECISION per union jurisdiction. Reimbursement source options: PCG Card · Reimbursement · Client Direct.
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Hotel Blocks</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div><strong>Caesars Palace</strong><br><span class="muted">LCE Crew Block · 12 rooms</span></div>
+              <div class="divider"></div>
+              <div><strong>Marriott Huntington Place</strong><br><span class="muted">SAE WCX Crew Block · 18 rooms</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'travel', crumbs:[{label:'Travel'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ACCOUNTING)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    const shows = PCG.api.getProjects().filter(p=>p.show && ['Awarded','InPrep','OnShow'].includes(p.show.lifecycleState));
+    const sel = document.getElementById('show-sel');
+    sel.innerHTML = '<option value="all">All active shows</option>' + shows.map(s=>`<option value="${s.code}">${s.code} — ${s.name}</option>`).join('');
+
+    const render = ()=>{
+      const showCode = sel.value;
+      let all = (PCG.travelRecords||[]);
+      if(showCode!=='all') all = all.filter(t=>t.showId===showCode);
+
+      document.getElementById('sub').textContent = `${all.length} record${all.length===1?'':'s'}`;
+      document.getElementById('rows').innerHTML = all.length ? all.map(t=>{
+        const crew = PCG.findPerson(t.crewMemberId);
+        const totalPD = (t.perDiemRate||0) * (t.perDiemDays||0);
+        return `<tr>
+          <td><strong>${crew?PCG.escapeHtml(crew.name):t.crewMemberId}</strong></td>
+          <td class="mono">${t.showId}</td>
+          <td>${PCG.escapeHtml(t.airline||'')} ${t.flightConfirmation?`<span class="mono muted">· ${t.flightConfirmation}</span>`:''}</td>
+          <td class="mono">${t.departureCity||''} → ${t.arrivalCity||''}</td>
+          <td class="mono" style="font-size:11px;">${PCG.fmtDate(t.departureTime,{time:true})}</td>
+          <td class="mono" style="font-size:11px;">${PCG.fmtDate(t.arrivalTime,{time:true})}</td>
+          <td>${PCG.escapeHtml(t.hotelName||'—')}<div class="muted" style="font-size:var(--fs-xs);">${t.hotelConfirmation||''}</div></td>
+          <td class="mono">${PCG.money(totalPD)} <span class="muted">($${t.perDiemRate}×${t.perDiemDays})</span></td>
+          <td>${PCG.escapeHtml(t.perDiemReimbursementSource||'—')}</td>
+          <td class="mono">${PCG.canSeeTier('T2_MARGINS') ? PCG.money(t.travelCostActual) : '🔒'}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="10" class="empty">No travel records for this filter.</td></tr>';
+
+      // Risk check: arrival < 4 hrs before call time flagged
+      const risks = [];
+      all.forEach(t=>{
+        const assn = (PCG.shiftAssignments||[]).find(s=>s.crewMemberId===t.crewMemberId && s.showId===t.showId);
+        if(!assn || !t.arrivalTime || !assn.callTime) return;
+        const firstDay = (assn.dates||[])[0];
+        if(!firstDay) return;
+        const callDT = new Date(`${firstDay}T${assn.callTime}:00`);
+        const arrDT  = new Date(t.arrivalTime);
+        const diffH  = (callDT - arrDT)/(1000*60*60);
+        if(diffH < 4 && diffH >= 0){
+          risks.push({ person: PCG.findPerson(t.crewMemberId)?.name||t.crewMemberId, gap: Math.round(diffH*10)/10, show: t.showId, call: assn.callTime });
+        } else if(diffH < 0){
+          risks.push({ person: PCG.findPerson(t.crewMemberId)?.name||t.crewMemberId, gap:'AFTER CALL', show:t.showId, call:assn.callTime });
+        }
+      });
+      document.getElementById('risks').innerHTML = risks.length ? risks.map(r=>`
+        <div class="attn-item ${r.gap==='AFTER CALL'?'red':''}">
+          <div><div class="ttl">${PCG.escapeHtml(r.person)} — ${r.gap==='AFTER CALL'?'arrives after call time':`arrives ${r.gap}h before call`}</div><div class="meta">Show ${r.show} · Call ${r.call}</div></div>
+        </div>`).join('') : PCG.states.empty('All crew arrive with comfortable buffer to call time.');
+
+      // KPIs
+      const totalPD = all.reduce((s,t)=>s+(t.perDiemRate||0)*(t.perDiemDays||0),0);
+      const pcgCard = all.filter(t=>t.perDiemReimbursementSource==='PCG Card').length;
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi"><div class="label">Travelers</div><div class="value">${all.length}</div><div class="sub">${showCode==='all'?'across portfolio':showCode}</div></div>
+        <div class="kpi amber"><div class="label">Arrival Risks</div><div class="value">${risks.length}</div><div class="sub">&lt; 4h buffer</div></div>
+        <div class="kpi blue"><div class="label">Per Diem Budget</div><div class="value">${PCG.money(totalPD)}</div><div class="sub">total window</div></div>
+        <div class="kpi"><div class="label">PCG Card</div><div class="value">${pcgCard}</div><div class="sub">of ${all.length}</div></div>
+        <div class="kpi"><div class="label">Hotels Booked</div><div class="value">${all.filter(t=>t.hotelConfirmation).length}</div><div class="sub">w/ confirmation</div></div>
+        <div class="kpi"><div class="label">Flights Booked</div><div class="value">${all.filter(t=>t.flightConfirmation).length}</div><div class="sub">w/ PNR</div></div>
+      `;
+    };
+    render();
+    sel.addEventListener('change', render);
+
+    document.getElementById('btn-new-travel').addEventListener('click', ()=>alert('[Phase 3] Travel record creation — would pull from a confirmed ShiftAssignment.'));
+    document.getElementById('btn-export').addEventListener('click', ()=>alert('[Phase 3] CSV export — ties into per-diem reimbursement batch.'));
+  }
+</script>
+</body>
+</html>

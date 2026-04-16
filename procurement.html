@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Procurement</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Procurement</div>
+          <h1>RPO · PPO · Vendor Library</h1>
+          <div class="muted">Rental Purchase Orders (sub-rentals from EQLPC conflicts), PPOs (consumables), and vendor register.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="all">All</button>
+          <button class="chip" data-f="pending">Pending</button>
+          <button class="chip" data-f="approved">Approved</button>
+          <button class="chip" data-f="expiring">Hold Expiring &lt;24h</button>
+          <button class="btn sm primary" id="btn-rpo">＋ RPO from Conflict</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="title">RPO Pipeline</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="rpo-count"></span></div>
+            <div style="overflow-x:auto;">
+              <table class="pcg-table">
+                <thead><tr><th>RPO</th><th>Project</th><th>Vendor</th><th>Item</th><th>Qty</th><th>Window</th><th>Hold Expiry</th><th>Status</th><th>Cost</th><th></th></tr></thead>
+                <tbody id="rpo-rows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-5);">
+            <div class="card-header"><div class="title">Approval Queue</div></div>
+            <div class="card-body" id="approvals"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Vendor Library (Phase 3)</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div class="pinned" style="margin-bottom:6px;"><span class="icon">⊛</span><div><strong>Solotech</strong><div class="muted" style="font-size:var(--fs-xs);">Audio · Montreal / Nashville</div></div></div>
+              <div class="pinned" style="margin-bottom:6px;"><span class="icon">⊛</span><div><strong>PRG</strong><div class="muted" style="font-size:var(--fs-xs);">Audio · Lighting · Video</div></div></div>
+              <div class="pinned" style="margin-bottom:6px;"><span class="icon">⊛</span><div><strong>IMPACT</strong><div class="muted" style="font-size:var(--fs-xs);">Audio · Regional (Detroit)</div></div></div>
+              <div class="pinned"><span class="icon">⊛</span><div><strong>VER</strong><div class="muted" style="font-size:var(--fs-xs);">Video · National</div></div></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Approval Rules</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <ul style="margin:0; padding-left:18px;">
+                <li>RPO &gt; $10,000 → CFO approval (hardcoded)</li>
+                <li>Consumable PPO → PM + Warehouse Supervisor</li>
+                <li>Hold expiry countdown: 72h / 24h / 4h notifications</li>
+              </ul>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'procurement', crumbs:[{label:'Procurement'}]});
+
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    let filter = 'all';
+    const rpos = PCG.api.getSubRentals();
+
+    const render = ()=>{
+      const now = new Date();
+      let list = rpos.slice();
+      if(filter==='pending')  list = list.filter(r=>r.status==='PendingApproval');
+      if(filter==='approved') list = list.filter(r=>r.status==='Approved');
+      if(filter==='expiring') list = list.filter(r=>{
+        const exp = new Date(r.holdExpiry);
+        return (exp - now) < 24*60*60*1000 && (exp - now) > 0;
+      });
+
+      document.getElementById('rpo-count').textContent = `${list.length} of ${rpos.length}`;
+
+      document.getElementById('rpo-rows').innerHTML = list.length ? list.map(r=>{
+        const exp = new Date(r.holdExpiry);
+        const hrs = (exp - now)/(1000*60*60);
+        const countdown = hrs < 0 ? `<span class="pill red">EXPIRED</span>` :
+                         hrs < 4 ? `<span class="pill red">${Math.round(hrs*10)/10}h LEFT</span>` :
+                         hrs < 24 ? `<span class="pill amber">${Math.round(hrs)}h LEFT</span>` :
+                         `<span class="mono muted">${PCG.fmtDate(r.holdExpiry,{time:true})}</span>`;
+        const stCls = {PendingApproval:'amber', Approved:'green', Delivered:'blue', Returned:'gray', Closed:'gray'}[r.status]||'gray';
+        return `<tr>
+          <td class="mono">${r.id}</td>
+          <td class="mono">${r.projectCode}</td>
+          <td><strong>${PCG.escapeHtml(r.vendorName)}</strong></td>
+          <td>${PCG.escapeHtml(r.itemDescription)}</td>
+          <td class="mono">${r.qty}</td>
+          <td class="mono">${PCG.fmtShort(r.fromDate)}→${PCG.fmtShort(r.toDate)}</td>
+          <td>${countdown}</td>
+          <td><span class="pill ${stCls}">${r.status.toUpperCase()}</span></td>
+          <td class="mono">${PCG.canSeeTier('T2_MARGINS')?PCG.money(r.quotedCost):'—'}</td>
+          <td style="display:flex; gap:4px;">
+            ${r.status==='PendingApproval' && PCG.hasAnyPermission(PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN)
+              ? `<button class="btn sm primary" onclick="approveRPO('${r.id}')">Approve</button>` : ''}
+            <a class="btn sm ghost" href="eqlpc.html">EQLPC</a>
+          </td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="10" class="empty">No RPOs match.</td></tr>';
+
+      const approvalItems = rpos.filter(r=>r.status==='PendingApproval');
+      document.getElementById('approvals').innerHTML = approvalItems.length ? approvalItems.map(r=>`
+        <div class="attn-item ${r.quotedCost>10000?'red':''}">
+          <div><div class="ttl">${PCG.escapeHtml(r.vendorName)} — ${PCG.escapeHtml(r.itemDescription)}</div><div class="meta">${PCG.escapeHtml(r.projectCode)} · ${PCG.canSeeTier('T2_MARGINS')?PCG.money(r.quotedCost):'—'} · ${r.quotedCost>10000?'Requires CFO':'PM approval'}</div></div>
+          <div class="act"><button class="btn sm primary" onclick="approveRPO('${r.id}')">Approve</button></div>
+        </div>
+      `).join('') : PCG.states.empty('No approvals pending.');
+
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi"><div class="label">Open RPOs</div><div class="value">${rpos.filter(r=>r.status!=='Closed'&&r.status!=='Returned').length}</div><div class="sub">Active sub-rentals</div></div>
+        <div class="kpi amber"><div class="label">Pending Approval</div><div class="value">${rpos.filter(r=>r.status==='PendingApproval').length}</div><div class="sub">Awaiting Director/CFO</div></div>
+        <div class="kpi red"><div class="label">Hold &lt;24h</div><div class="value">${rpos.filter(r=>{const e=new Date(r.holdExpiry);return (e-now)<24*3600*1000 && (e-now)>0;}).length}</div><div class="sub">Expiring soon</div></div>
+        <div class="kpi blue"><div class="label">Committed Spend</div><div class="value">${PCG.canSeeTier('T2_MARGINS')?PCG.money(rpos.reduce((s,r)=>s+(r.quotedCost||0),0)):'—'}</div><div class="sub">Window total</div></div>
+        <div class="kpi"><div class="label">Vendors in Play</div><div class="value">${new Set(rpos.map(r=>r.vendorName)).size}</div><div class="sub">unique</div></div>
+        <div class="kpi"><div class="label">CFO-gate RPOs</div><div class="value">${rpos.filter(r=>r.quotedCost>10000).length}</div><div class="sub">&gt; $10K threshold</div></div>
+      `;
+    };
+
+    render();
+    document.querySelectorAll('.chip[data-f]').forEach(c=>c.addEventListener('click', e=>{
+      document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.toggle('on', x===e.target));
+      filter = e.target.dataset.f;
+      render();
+    }));
+
+    window.approveRPO = (id)=>{
+      if(!PCG.hasAnyPermission(PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN)){ alert('Director approval required.'); return; }
+      const r = rpos.find(x=>x.id===id);
+      if(!r) return;
+      if(r.quotedCost>10000 && !PCG.hasAnyPermission(PCG.GROUPS.ADMIN)){ alert('RPO > $10,000 requires CFO. Admin stand-in required in demo.'); return; }
+      r.status = 'Approved';
+      PCG.engines.notify.emit('RPOApproved', { id:r.id, by:PCG.user.id });
+      render();
+    };
+
+    document.getElementById('btn-rpo').addEventListener('click', ()=>location.href='eqlpc.html');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Scheduling</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Crew Scheduling</div>
+          <h1>Scheduling Grid</h1>
+          <div class="muted">Crew × 14 days. Conflict detection runs synchronously on assignment create/modify.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center;">
+          <span class="eyebrow" style="font-size:10px;">Window</span>
+          <input type="date" id="range-start" value="2026-04-08" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 8px; border-radius:var(--r-sm);" />
+          <span class="muted">through 14 days</span>
+          <button class="btn sm" id="btn-new-shift">＋ Shift</button>
+          <button class="btn sm ghost" id="btn-gen-letters">Generate Crew Letters</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="card" style="overflow:auto;">
+        <table class="sched-grid">
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="split" style="margin-top:var(--sp-5);">
+        <div class="card">
+          <div class="card-header"><div class="title">Labor Actuals (Closed / In Progress)</div></div>
+          <table class="pcg-table">
+            <thead><tr><th>Show</th><th>Position</th><th>Crew</th><th>Sch.</th><th>Worked</th><th>OT</th><th>DT</th><th>Variance</th><th>Cost</th></tr></thead>
+            <tbody id="actuals"></tbody>
+          </table>
+        </div>
+        <aside>
+          <div class="card">
+            <div class="card-header"><div class="title">Conflict Alerts</div></div>
+            <div class="card-body" id="conflicts"></div>
+          </div>
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">OT / DT Thresholds</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div>OT after <strong id="ot-h">—</strong> hrs</div>
+              <div>DT after <strong id="dt-h">—</strong> hrs</div>
+              <div class="muted" style="font-size:var(--fs-xs); margin-top:6px;">Configurable per union jurisdiction (§3.5). Current values are demo defaults.</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'scheduling', crumbs:[{label:'Scheduling'}]});
+
+  // Permission gate
+  if(!PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS)){
+    document.querySelector('.container').innerHTML = `<div class="card card-pad" style="margin-top:var(--sp-8);">${PCG.states.forbidden()}</div>`;
+  } else {
+    document.getElementById('ot-h').textContent = PCG.engines.scheduling.OT_THRESHOLD_HRS;
+    document.getElementById('dt-h').textContent = PCG.engines.scheduling.DT_THRESHOLD_HRS;
+
+    const render = ()=>{
+      const start = new Date(document.getElementById('range-start').value);
+      const DAYS = 14;
+      const dates = Array.from({length:DAYS},(_,i)=>{
+        const d = new Date(start); d.setDate(start.getDate()+i); return d;
+      });
+      const isoShort = d => d.toISOString().slice(0,10);
+
+      // Head
+      document.getElementById('thead').innerHTML = `
+        <tr>
+          <th class="name">Crew Member</th>
+          ${dates.map(d=>{
+            const todayCls = d.toDateString()===new Date().toDateString() ? ' style="background:rgba(1,153,253,0.12); color:var(--pcg-bright-blue);"' : '';
+            return `<th class="day" ${todayCls}>${d.toLocaleString('en-US',{weekday:'short'})}<br><span class="mono" style="font-size:9px;">${d.getMonth()+1}/${d.getDate()}</span></th>`;
+          }).join('')}
+        </tr>`;
+
+      // Body
+      const crew = PCG.api.getCrewRoster();
+      const assns = (PCG.shiftAssignments||[]);
+      const blocks = (PCG.availabilityBlocks||[]);
+
+      // Build conflict map (crew x date → count of concurrent assignments)
+      const dayMap = {};
+      assns.forEach(a=>{
+        (a.dates||[]).forEach(d=>{
+          const k = `${a.crewMemberId}|${d}`;
+          (dayMap[k] = dayMap[k] || []).push(a);
+        });
+      });
+
+      let conflictCount = 0;
+      const rows = crew.map(m=>{
+        const cells = dates.map(d=>{
+          const iso = isoShort(d);
+          const key = `${m.id}|${iso}`;
+          const list = dayMap[key] || [];
+          const blk = blocks.find(b=>b.crewMemberId===m.id && iso>=b.fromDate && iso<=b.toDate);
+          if(blk) return `<td class="cell-block" title="${PCG.escapeHtml(blk.reason)}"></td>`;
+          const isConflict = list.length > 1;
+          if(isConflict) conflictCount++;
+          if(!list.length) return '<td></td>';
+          return '<td>'+list.map(a=>{
+            const pos = PCG.api.getCrewPosition(a.positionId);
+            const cls = isConflict ? 'conflict' : (a.status==='Confirmed' ? 'confirmed' : (a.status==='Invited' ? 'invited' : ''));
+            return `<div class="cell-assn ${cls}" title="${PCG.escapeHtml(a.showId)} · ${pos?pos.name:''} · ${a.status}">${PCG.escapeHtml(a.showId.split('-')[0])}<br><span style="font-size:9px;">${PCG.escapeHtml(pos?pos.name.split('—')[0]:'')}</span></div>`;
+          }).join('')+'</td>';
+        }).join('');
+
+        return `<tr>
+          <td class="cell-name">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="avatar" style="width:24px; height:24px; font-size:10px;">${(m.name||'').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase()}</span>
+              <div>
+                <div style="font-weight:600; color:var(--text-primary); font-size:12px;">${PCG.escapeHtml(m.name)}</div>
+                <div class="muted" style="font-size:10px;">${PCG.escapeHtml(m.employmentType||'W2')} · ${m.qualifications?m.qualifications.length:0} pos.</div>
+              </div>
+            </div>
+          </td>
+          ${cells}
+        </tr>`;
+      }).join('');
+      document.getElementById('tbody').innerHTML = rows;
+
+      // Conflicts panel
+      const confAlerts = [];
+      crew.forEach(m=>{
+        dates.forEach(d=>{
+          const key = `${m.id}|${isoShort(d)}`;
+          const list = dayMap[key]||[];
+          if(list.length>1) confAlerts.push({ person:m.name, date:isoShort(d), shows:list.map(a=>a.showId) });
+        });
+      });
+      document.getElementById('conflicts').innerHTML = confAlerts.length ? confAlerts.slice(0,10).map(c=>`
+        <div class="attn-item red" style="margin-bottom:6px;"><div><div class="ttl">${PCG.escapeHtml(c.person)} — double-booked ${c.date}</div><div class="meta">On ${c.shows.join(', ')}</div></div></div>
+      `).join('') : PCG.states.empty('No conflicts detected.');
+
+      // KPIs
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi"><div class="label">Crew in Pool</div><div class="value">${crew.length}</div><div class="sub">internal + 1099</div></div>
+        <div class="kpi blue"><div class="label">Assignments in Window</div><div class="value">${assns.filter(a=>(a.dates||[]).some(d=>{const dd=new Date(d); return dd>=start && dd<dates[DAYS-1];})).length}</div><div class="sub">14-day</div></div>
+        <div class="kpi amber"><div class="label">Invited · Awaiting Reply</div><div class="value">${assns.filter(a=>a.status==='Invited').length}</div><div class="sub">No-show risk</div></div>
+        <div class="kpi red"><div class="label">Conflicts</div><div class="value">${confAlerts.length}</div><div class="sub">double-booked days</div></div>
+        <div class="kpi"><div class="label">Availability Blocks</div><div class="value">${blocks.length}</div><div class="sub">PTO / unavailable</div></div>
+        <div class="kpi"><div class="label">TBDs</div><div class="value">${assns.filter(a=>!a.crewMemberId).length}</div><div class="sub">unassigned slots</div></div>
+      `;
+    };
+
+    render();
+    document.getElementById('range-start').addEventListener('change', render);
+
+    // Labor actuals
+    const actuals = PCG.api.getLaborActuals('GLBX-GSK26');
+    document.getElementById('actuals').innerHTML = (actuals && actuals.length) ? actuals.map(l=>{
+      const assn = (PCG.shiftAssignments||[]).find(s=>s.id===l.shiftAssignmentId);
+      const pos = assn && PCG.api.getCrewPosition(assn.positionId);
+      const crew = assn && PCG.findPerson(assn.crewMemberId);
+      return `<tr>
+        <td class="mono">${l.showId}</td>
+        <td>${pos?PCG.escapeHtml(pos.name):'—'}</td>
+        <td>${crew?PCG.escapeHtml(crew.name):'—'}</td>
+        <td class="mono">${l.scheduledHours}</td>
+        <td class="mono">${l.workedHours}</td>
+        <td class="mono">${l.otHours}</td>
+        <td class="mono">${l.dtHours}</td>
+        <td class="mono" style="color:${l.variance>0?'var(--status-amber)':'var(--status-green)'};">+${l.variance}</td>
+        <td class="mono">${PCG.canSeeTier('T1_CREW_PAY_RATES') ? PCG.money(l.totalCost) : '🔒'}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="9" class="empty">No locked actuals yet — shows in Closing state only.</td></tr>';
+
+    // Wire buttons (no fake workflows)
+    const notImpl = (label) => ()=>alert(`[Phase 3] "${label}" — spec defines the workflow; not wired in Phase 1 build.`);
+    document.getElementById('btn-new-shift').addEventListener('click', notImpl('Create Shift Assignment (with sync conflict check)'));
+    document.getElementById('btn-gen-letters').addEventListener('click', ()=>{
+      alert(`Crew letter generation — one PDF per crew member per show. Phase 3 wires the Word→PDF pipeline via Power Automate. See Spec §6.4.`);
+      PCG.engines.notify.emit('CrewLettersRequested', { by: PCG.user.id });
+    });
+  }
+</script>
+</body>
+</html>

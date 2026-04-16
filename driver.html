@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Driver · Manifest</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="mobile-shell">
+
+  <header style="padding-bottom: var(--sp-4); border-bottom: 1px solid var(--border);">
+    <div style="display:flex; align-items:center; gap:var(--sp-3);">
+      <div class="avatar" style="background: var(--grad-show-light-purple);">🚚</div>
+      <div>
+        <div class="eyebrow" style="font-size:10px;">PCG · DRIVER</div>
+        <h1 id="title" style="font-size:18px;">—</h1>
+      </div>
+      <div id="status" style="margin-left:auto;"></div>
+    </div>
+    <div class="muted" style="margin-top:6px; font-size:var(--fs-xs);" id="tokenNote"></div>
+  </header>
+
+  <main style="padding-top: var(--sp-4);">
+
+    <div class="driver-step active" id="step-arrival">
+      <div class="eyebrow">Step 1 · Arrival at Dock</div>
+      <h3 id="dest">—</h3>
+      <div class="muted" style="font-size:var(--fs-sm); margin-top:6px;" id="addr"></div>
+      <div style="margin-top:var(--sp-3); padding:10px; background:var(--surface-2); border-radius:var(--r-sm); font-size:var(--fs-sm);" id="dockInfo">—</div>
+
+      <div style="margin-top:var(--sp-4); display:flex; gap:var(--sp-2); flex-wrap:wrap;">
+        <a class="btn sm ghost" id="navLink">Navigate ↗</a>
+        <a class="btn sm ghost" id="callPM">Call PM</a>
+        <button class="btn primary" id="btn-arrived">I've Arrived</button>
+      </div>
+    </div>
+
+    <div class="driver-step" id="step-load">
+      <div class="eyebrow">Step 2 · Load Zones</div>
+      <div id="zones" style="margin-top:var(--sp-2);"></div>
+      <button class="btn" id="btn-loaded" style="margin-top:var(--sp-3); width:100%;">Confirm Load Complete</button>
+    </div>
+
+    <div class="driver-step" id="step-depart">
+      <div class="eyebrow">Step 3 · Depart</div>
+      <div style="font-size:var(--fs-sm); margin-top:6px;" class="muted">Confirm departure time to trigger automatic state transition (Striking → Returning).</div>
+      <button class="btn spectrum" id="btn-depart" style="margin-top:var(--sp-3); width:100%;">Log Departure</button>
+    </div>
+
+    <div class="driver-step" id="step-deliver">
+      <div class="eyebrow">Step 4 · Delivery Confirmation</div>
+      <div style="font-size:var(--fs-sm); margin-top:6px;" class="muted">On arrival at destination dock.</div>
+      <button class="btn spectrum" id="btn-deliver" style="margin-top:var(--sp-3); width:100%;">Confirm Delivered</button>
+    </div>
+
+  </main>
+
+  <footer style="margin-top: var(--sp-6); text-align:center;" class="muted">
+    <div style="font-size:var(--fs-xs);">Magic-link session scoped to this manifest · expires at show.loadOut + 48h</div>
+  </footer>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const mfId = PCG.qs('manifest','man.sae.out1');
+  const token = PCG.qs('token'); // demo: no actual token validation
+
+  const m = PCG.api.getDriverManifest(mfId);
+  if(!m){
+    document.querySelector('.mobile-shell').innerHTML = `<h2>Manifest not found.</h2>`;
+  } else {
+    document.getElementById('title').textContent = `${m.id}`;
+    document.getElementById('dest').textContent = m.showName || m.showId;
+    document.getElementById('addr').textContent = m.address || '—';
+    document.getElementById('dockInfo').textContent = m.dockInfo || '—';
+    document.getElementById('tokenNote').textContent = `Manifest ${m.id} · Vehicle ${m.vehicle||'—'} · Driver ${m.driverName||'—'}`;
+    if(m.address){
+      document.getElementById('navLink').href = `https://maps.apple.com/?q=${encodeURIComponent(m.address)}`;
+      document.getElementById('navLink').target = '_blank';
+    }
+    document.getElementById('callPM').href = 'tel:+13135550100';
+
+    const statusPill = (s)=> {
+      const map = {Staged:'gray',Departed:'blue',Delivered:'green',Returning:'amber',Received:'purple'};
+      return `<span class="pill ${map[s]||'gray'}">${s.toUpperCase()}</span>`;
+    };
+    const setStatus = (s)=>{ m.status = s; document.getElementById('status').innerHTML = statusPill(s); };
+    setStatus(m.status);
+
+    // Zones
+    document.getElementById('zones').innerHTML = (m.items||[]).map(z=>`
+      <div class="pinned" style="margin-bottom:6px;">
+        <span class="icon">▣</span>
+        <div><strong>${PCG.escapeHtml(z.zone)}</strong><div class="muted" style="font-size:var(--fs-xs);">${z.cases} cases</div></div>
+      </div>
+    `).join('') || PCG.states.empty('No load zones.');
+
+    const advance = (fromId, toId) => {
+      document.getElementById(fromId).classList.remove('active');
+      if(toId) document.getElementById(toId).classList.add('active');
+    };
+
+    document.getElementById('btn-arrived').addEventListener('click', ()=>{
+      setStatus('Staged');
+      advance('step-arrival','step-load');
+      PCG.engines.notify.emit('DriverArrived', { manifestId: m.id });
+    });
+    document.getElementById('btn-loaded').addEventListener('click', ()=>{
+      advance('step-load','step-depart');
+    });
+    document.getElementById('btn-depart').addEventListener('click', ()=>{
+      setStatus('Departed');
+      advance('step-depart','step-deliver');
+      PCG.engines.notify.emit('ManifestDeparted', { manifestId: m.id });
+    });
+    document.getElementById('btn-deliver').addEventListener('click', ()=>{
+      setStatus('Delivered');
+      PCG.engines.notify.emit('ManifestDelivered', { manifestId: m.id });
+      alert('Delivery confirmed. Warehouse team notified.');
+    });
+  }
+</script>
+</body>
+</html>

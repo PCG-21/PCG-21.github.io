@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Action Queue</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Action Queue</div>
+          <h1>What Needs Me</h1>
+          <div class="muted">Cross-project — approvals, decisions, ownership gaps, urgent risks.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="chip on" data-f="all">All</button>
+          <button class="chip" data-f="approval">Approvals</button>
+          <button class="chip" data-f="decision">Decisions</button>
+          <button class="chip" data-f="ownership">Ownership Gaps</button>
+          <button class="chip" data-f="risk">Urgent Risks</button>
+        </div>
+      </div>
+
+      <div class="kpi-strip" id="q-kpis"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="title">Queue</div>
+          <div class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="q-count"></div>
+        </div>
+        <div id="q-list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:"action", crumbs:[{label:"Action Queue"}]});
+
+  const q = PCG.actionQueue;
+  const countBy = k => q.filter(x=>x.kind===k).length;
+  const kpi = document.getElementById("q-kpis");
+  kpi.innerHTML = `
+    <div class="kpi"><div class="label">Total Open</div><div class="value">${q.length}</div><div class="sub">Needing attention</div></div>
+    <div class="kpi red"><div class="label">High Priority</div><div class="value">${q.filter(x=>x.priority==="high").length}</div><div class="sub">Addressing today</div></div>
+    <div class="kpi blue"><div class="label">Approvals</div><div class="value">${countBy("approval")}</div><div class="sub">Awaiting sign-off</div></div>
+    <div class="kpi amber"><div class="label">Decisions</div><div class="value">${countBy("decision")}</div><div class="sub">Pending input</div></div>
+    <div class="kpi"><div class="label">Ownership Gaps</div><div class="value">${countBy("ownership")}</div><div class="sub">Unassigned</div></div>
+    <div class="kpi red"><div class="label">Urgent Risks</div><div class="value">${countBy("risk")}</div><div class="sub">Live mitigations</div></div>
+  `;
+
+  const list = document.getElementById("q-list");
+  const count = document.getElementById("q-count");
+  const render = filter => {
+    const items = filter==="all"?q:q.filter(x=>x.kind===filter);
+    count.textContent = `${items.length} shown`;
+    list.innerHTML = items.map(it=>{
+      const pr = it.priority==="high"?'<span class="pill red">HIGH</span>':it.priority==="medium"?'<span class="pill amber">MED</span>':'<span class="pill gray">LOW</span>';
+      const kindIcon = ({approval:"◎",decision:"?",ownership:"△",risk:"⚠"})[it.kind]||"•";
+      return `
+        <div class="q-row">
+          <div style="color:var(--pcg-bright-blue); font-family:var(--font-display); font-weight:700;">${kindIcon}</div>
+          <div>
+            <div class="why">${PCG.escapeHtml(it.title)}</div>
+            <div class="ctx"><span class="mono">${it.proj}</span> · ${it.kind.toUpperCase()} · Waiting on ${PCG.escapeHtml(it.waitOn)}</div>
+          </div>
+          <div>${pr}</div>
+          <div class="mono muted">${it.stale}</div>
+          <div style="display:flex; gap:4px; justify-content:flex-end;">
+            <a class="btn sm" href="playbook.html?project=${it.proj}">Open</a>
+            ${it.kind==="approval"?`<button class="btn sm primary">Approve</button>`:""}
+          </div>
+        </div>`;
+    }).join("") || '<div class="empty">Nothing here.</div>';
+  };
+  render("all");
+  document.querySelectorAll(".chip[data-f]").forEach(c=>c.addEventListener("click",e=>{
+    document.querySelectorAll(".chip[data-f]").forEach(x=>x.classList.toggle("on", x===e.target));
+    render(e.target.dataset.f);
+  }));
+</script>
+</body>
+</html>

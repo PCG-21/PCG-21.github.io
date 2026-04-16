@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Warehouse · TV Mode</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  body { background: #000; }
+  .tv-hdr { display:flex; align-items:center; gap:var(--sp-5); padding-bottom: var(--sp-4); border-bottom: 2px solid #1B3150; margin-bottom: var(--sp-5); }
+  .tv-hdr .stamp { margin-left:auto; font-family: var(--font-mono); color:#9DD4FF; font-size: 22px; }
+  .tv-ticker { background: #0B1625; border:1px solid #1B3150; padding: 18px 24px; border-radius: var(--r-md); margin-top: var(--sp-5); font-family: var(--font-display); text-transform:uppercase; letter-spacing:0.08em; color:#9DD4FF; font-size: 22px; }
+  .tv-row {
+    display:grid; grid-template-columns: 180px 1fr 180px 240px;
+    gap: var(--sp-4); align-items:center;
+    padding: 14px 20px; border-bottom: 1px solid #1B3150;
+    font-size: 22px;
+  }
+  .tv-row .code { font-family: var(--font-mono); color:#9DD4FF; }
+  .tv-row .status { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 14px; border-radius: 999px; font-size: 16px; }
+  .s-inprog  { background: rgba(245,183,60,0.18); color: #F5B73C; border:1px solid #F5B73C; }
+  .s-prepped { background: rgba(1,153,253,0.18); color: #0199FD; border:1px solid #0199FD; }
+  .s-shipped { background: rgba(122,65,229,0.18); color: #B79AFD; border:1px solid #8848FF; }
+  .s-not     { background: rgba(110,125,148,0.18); color: #AAB8CC; border:1px solid #AAB8CC; }
+  .s-final   { background: rgba(47,191,113,0.18); color: #2FBF71; border:1px solid #2FBF71; }
+</style>
+</head>
+<body class="tv-shell">
+  <div class="tv-hdr">
+    <div>
+      <div style="color:#9DD4FF; font-family: var(--font-display); text-transform:uppercase; letter-spacing:0.14em; font-size: 18px;">PCG · WAREHOUSE</div>
+      <h1 style="margin-top:4px;">Premier — Main Office</h1>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </div>
+
+  <div class="tv-grid">
+    <div class="tv-card tv-pulse" id="cardPulls">
+      <h2>Active Pulls</h2>
+      <div class="big" id="kpiPulls">—</div>
+      <div style="color:#AAB8CC; margin-top:10px; font-size:18px;" id="kpiPullsSub">—</div>
+    </div>
+    <div class="tv-card" id="cardScans">
+      <h2>Scans Today</h2>
+      <div class="big" id="kpiScans">—</div>
+      <div style="color:#AAB8CC; margin-top:10px; font-size:18px;">Offline queue: <span id="kpiQueue">0</span></div>
+    </div>
+    <div class="tv-card" id="cardTickets">
+      <h2>Open Svc Tickets</h2>
+      <div class="big" id="kpiSvc" style="color:#F04E55;">—</div>
+      <div style="color:#AAB8CC; margin-top:10px; font-size:18px;" id="kpiSvcSub">—</div>
+    </div>
+  </div>
+
+  <div class="tv-card" style="margin-top:var(--sp-5);">
+    <h2 style="margin-bottom: var(--sp-3);">Today's Pull Floor</h2>
+    <div id="pullList"></div>
+  </div>
+
+  <div class="tv-ticker" id="ticker">Auto-refresh every 60 seconds · Scan a barcode anywhere to jump to that pull</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const render = ()=>{
+    const pulls = (PCG.pullSheets||[]);
+    const active = pulls.filter(p=>['InProgress','Prepped','Finalized'].includes(p.status));
+    const scansToday = (PCG.scanRecords||[]).filter(s=>s.ts && new Date(s.ts).toDateString()===new Date().toDateString()).length;
+    const svc = PCG.api.getServiceTickets({status:'Open'});
+
+    document.getElementById('stamp').textContent = new Date().toLocaleTimeString();
+    document.getElementById('kpiPulls').textContent = active.length;
+    document.getElementById('kpiPullsSub').textContent = `${pulls.reduce((s,p)=>s+(p.lines||[]).length,0)} lines total across floor`;
+    document.getElementById('kpiScans').textContent = scansToday;
+    document.getElementById('kpiSvc').textContent = svc.length;
+    document.getElementById('kpiSvcSub').textContent = svc.length ? svc[0].description.slice(0,60)+(svc[0].description.length>60?'…':'') : 'All clear';
+
+    // queue from IndexedDB (async)
+    if(PCG.engines.sync && PCG.engines.sync.pending){
+      PCG.engines.sync.pending().then(list=>{
+        document.getElementById('kpiQueue').textContent = (list||[]).length;
+      }).catch(()=>{ document.getElementById('kpiQueue').textContent = '—'; });
+    }
+
+    document.getElementById('pullList').innerHTML = pulls.map(p=>{
+      const scanned = (p.lines||[]).filter(l=>l.scanStatus==='verified').length;
+      const total   = (p.lines||[]).length;
+      const pct     = total? Math.round(scanned/total*100):0;
+      const stCls = {'NotStarted':'s-not','InProgress':'s-inprog','Prepped':'s-prepped','Finalized':'s-final','Shipped':'s-shipped'}[p.status]||'s-not';
+      return `<div class="tv-row">
+        <div class="code">${p.id}</div>
+        <div><strong style="color:white; font-size:26px;">${p.showId}</strong> · ${p.department}</div>
+        <div style="font-family: var(--font-mono); color:#9DD4FF;">${scanned} / ${total} · ${pct}%</div>
+        <div><span class="status ${stCls}">${p.status.toUpperCase()}</span></div>
+      </div>`;
+    }).join('');
+  };
+
+  render();
+  setInterval(render, 60000); // §6.2 auto-refresh 60s (Open Decision #13 default)
+</script>
+</body>
+</html>

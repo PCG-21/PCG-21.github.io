@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Breakouts</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .floor-hdr {
+    display:flex; align-items:center; gap: var(--sp-3);
+    padding: 10px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin: var(--sp-5) 0 var(--sp-2);
+  }
+  .floor-hdr .nm { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: var(--fs-md); }
+  .floor-hdr .ct { color: var(--text-tertiary); font-size: var(--fs-xs); }
+  .totals-card { position: sticky; top: calc(var(--topbar-h) + var(--sp-4)); }
+  .seg {
+    display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-pill); overflow: hidden; font-size: var(--fs-xs);
+  }
+  .seg button {
+    padding: 4px 12px; background: transparent; color: var(--text-secondary); border: 0; border-right: 1px solid var(--border); font-weight: 600;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: var(--pcg-bright-blue); color: #001a2a; }
+
+  .kit-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-family: var(--font-mono); font-size: 10px;
+    background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue);
+    margin-right: 3px;
+  }
+  .kit-badge.enh { background: rgba(122,65,229,0.22); color: #B79AFD; }
+  .kit-badge.house { background: rgba(110,125,148,0.2); color: var(--text-secondary); }
+  .kit-badge.onown { background: rgba(217,47,180,0.2); color: #FA8DDC; }
+  .kit-badge.office { background: rgba(47,191,113,0.18); color: #8CEFBE; }
+
+  .legend {
+    display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center;
+    font-size: var(--fs-xs); color: var(--text-secondary);
+    padding: 10px 0;
+  }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+  .overlay-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .overlay-backdrop.show { opacity: 1; pointer-events: auto; }
+  .overlay {
+    position: fixed; top: 0; right: 0; height: 100vh; width: 420px;
+    background: var(--surface-1); border-left: 1px solid var(--border);
+    z-index: 100; transform: translateX(100%); transition: transform 0.24s ease;
+    overflow-y: auto;
+  }
+  .overlay.show { transform: translateX(0); }
+  .overlay .ov-body { padding: var(--sp-5); }
+  .overlay .close { position: absolute; top: 10px; right: 10px; background: transparent; border: 0; color: var(--text-secondary); font-size: 20px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div id="pheader"></div>
+
+      <div style="display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap; margin-bottom:var(--sp-4);">
+        <h2>Breakout Grid</h2>
+        <span class="muted" id="day-caption"></span>
+        <div class="seg" id="day-seg" style="margin-left:auto;"></div>
+        <div class="seg">
+          <button class="on" data-view="grid">Grid</button>
+          <button data-view="list">List</button>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div><span class="sw" style="background:rgba(1,153,253,0.25); border-left:3px solid var(--pcg-bright-blue);"></span>Active · Standard Kit</div>
+        <div><span class="sw" style="background:rgba(122,65,229,0.2); border-left:3px solid var(--pcg-spotlight-purple);"></span>Enhanced (Large Tech)</div>
+        <div><span class="sw" style="background:rgba(110,125,148,0.15); border-left:3px solid var(--status-gray);"></span>House Audio Only</div>
+        <div><span class="sw" style="background:rgba(217,47,180,0.15); border-left:3px solid var(--status-red);"></span>Billed On Own</div>
+        <div><span class="sw" style="background:rgba(47,191,113,0.12); border-left:3px solid var(--status-green);"></span>Show Office / Support</div>
+      </div>
+
+      <div class="split">
+        <div id="grid-wrap"></div>
+        <aside>
+          <div class="card totals-card">
+            <div class="card-header"><div class="title">Aggregate Totals (Show-Wide)</div></div>
+            <div class="card-body">
+              <div class="muted" style="font-size:var(--fs-xs);">Across all active rooms. Drives warehouse pull.</div>
+              <div class="divider"></div>
+              <table class="pcg-table" id="totals-table">
+                <tbody></tbody>
+              </table>
+              <div class="divider"></div>
+              <a class="btn sm" href="warehouse.html">Warehouse View →</a>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-4);">
+            <div class="card-header"><div class="title">Floor Ownership</div></div>
+            <div class="card-body" style="font-size:var(--fs-sm);">
+              <div style="display:grid; gap:8px;">
+                <div class="contact"><div class="av">TS</div><div><div class="nm">Tyler Scheff</div><div class="role">100s · 400s</div></div></div>
+                <div class="contact"><div class="av">DK</div><div><div class="nm">Dana Kim</div><div class="role">140s · 142s</div></div></div>
+                <div class="contact"><div class="av">CR</div><div><div class="nm">C. Ramos</div><div class="role">250s</div></div></div>
+                <div class="contact"><div class="av">CT</div><div><div class="nm">Chris Taylor</div><div class="role">300s (330A/B lead)</div></div></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay-backdrop" id="ov-bd" onclick="PCG.closeOverlay()"></div>
+<aside class="overlay" id="ov">
+  <button class="close" onclick="PCG.closeOverlay()">×</button>
+  <div class="ov-body" id="ov-body"></div>
+</aside>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  const code = PCG.qs("project","SAE-WCX-2026");
+  const p = PCG.findProject(code) || PCG.projects.find(x=>x.code==="SAE-WCX-2026");
+
+  PCG.mountShell({
+    active: "breakouts",
+    crumbs: [{label:"Portfolio",href:"index.html"},{label:p.code,href:`project.html?project=${p.code}`},{label:"Breakouts"}],
+    pageActions: `
+      <a class="btn" href="playbook.html?project=${p.code}">Playbook</a>
+      <button class="btn">Export Room Sheet</button>
+    `
+  });
+
+  document.getElementById("pheader").innerHTML = PCG.projectHeader(p);
+
+  const data = window.PCG.saeBreakouts;
+  const days = data ? data.days : [];
+  let currentDay = days[2] ? days[2].id : (days[0]&&days[0].id);
+
+  const daySeg = document.getElementById("day-seg");
+  daySeg.innerHTML = days.map(d=>`<button data-id="${d.id}" class="${d.id===currentDay?'on':''}">${PCG.escapeHtml(d.label)}</button>`).join("");
+  daySeg.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    currentDay = b.dataset.id;
+    daySeg.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
+    render();
+  });
+
+  const activeCaption = ()=>{
+    const d = days.find(x=>x.id===currentDay);
+    const actives = data.floors.reduce((n,f)=>n+Object.keys(f.activeMap).length,0);
+    return `${d?d.label:""} · ${actives} active rooms`;
+  };
+
+  const kitBadge = (label) => {
+    if(!label) return "";
+    if(/TECHNICAL SESSION LARGE/i.test(label)) return `<span class="kit-badge enh">ENHANCED</span>`;
+    if(/on own/i.test(label)) return `<span class="kit-badge onown">ON OWN</span>`;
+    if(/House Audio/i.test(label)) return `<span class="kit-badge house">HOUSE</span>`;
+    if(/Show Office/i.test(label)) return `<span class="kit-badge office">OFFICE</span>`;
+    if(/Marketing Office/i.test(label)) return `<span class="kit-badge office">OFFICE</span>`;
+    return `<span class="kit-badge">STD</span>`;
+  };
+
+  const roomKit = (roomName, label) => {
+    if(/TECHNICAL SESSION LARGE/i.test(label)) {
+      return "2× 8' table · 2× stand · 2× LCD · 1× VDA · 6× desk mic · mixer · HS · **9 audio inputs**";
+    }
+    if(/Technical Session \(intimate\)|Technical Session \(larger\)/i.test(label)) {
+      return "8' table · stand · LCD · laptop · PC DI · PR · floor mic stand · wireless HH · pod mic · 2× desk mic · mixer · HS · **5 audio inputs**";
+    }
+    if(/Breakout.*VDA/i.test(label)) {
+      return "8' table · stand · LCD · **VDA** · laptop · PC DI · PR · floor mic stand · wireless HH · pod mic · 2× desk mic · mixer · HS";
+    }
+    if(/Breakout|Technical Session/i.test(label)) {
+      return "8' table · stand · LCD · laptop · PC DI · PR · floor mic stand · wireless HH · pod mic · 2× desk mic · mixer · HS speaker";
+    }
+    if(/CRC Classroom/i.test(label)) {
+      return "7' table · stand · LCD · laptop · PC DI · PR · floor mic stand · wireless HH · pod mic · 2× desk mic · mixer · HS · chart stand (5)";
+    }
+    if(/House Audio/i.test(label)) return "House audio only (HS speaker + basic patch). No PCG kit rolled in.";
+    if(/Show Office|Marketing Office/i.test(label)) return "Support space — furniture + power only.";
+    if(/Ground Vehicle Committee/i.test(label)) return "Committee meeting — minimal kit. Confirm w/ session owner.";
+    return "—";
+  };
+
+  const render = () => {
+    document.getElementById("day-caption").innerHTML = activeCaption();
+    const gridHtml = data.floors.map(f=>{
+      const activeCount = Object.keys(f.activeMap).length;
+      const rows = f.rooms.map(r=>{
+        const label = f.activeMap[r];
+        const active = !!label;
+        const classes = active ? "session" : "session dark";
+        const specialCls = !active ? "" :
+          /TECHNICAL SESSION LARGE/i.test(label) ? "rehearsal" :
+          /House Audio/i.test(label) ? "setup" :
+          /on own|CRC Classroom|PFL 180/i.test(label) ? "rehearsal" :
+          "";
+        return `
+          <tr>
+            <td style="font-family:var(--font-mono); font-weight:600; color:var(--text-primary); width:90px;">${r}</td>
+            <td class="${classes} ${specialCls}" style="cursor:${active?'pointer':'default'};"
+                onclick="${active?`PCG.openRoom('${r}', ${JSON.stringify(label).replace(/"/g,'&quot;')}, '${f.name}')`:""}">
+              ${active ? `${kitBadge(label)}<span class="t">${PCG.escapeHtml(label)}</span><span class="o">Click for kit detail</span>` : '<span class="o">—</span>'}
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <div class="floor-hdr">
+          <div class="nm">${PCG.escapeHtml(f.name)}</div>
+          <div class="ct">${activeCount} active · ${f.rooms.length} total</div>
+        </div>
+        <table class="brk-grid"><tbody>${rows}</tbody></table>
+      `;
+    }).join("");
+    document.getElementById("grid-wrap").innerHTML = gridHtml;
+  };
+  render();
+
+  // totals
+  const tb = document.querySelector("#totals-table tbody");
+  tb.innerHTML = Object.entries(data.totals).map(([k,v])=>`
+    <tr><td style="font-family:var(--font-display); text-transform:uppercase; font-size:11px; letter-spacing:0.06em;">${k}</td><td class="mono" style="text-align:right; font-weight:600;">${v}</td></tr>
+  `).join("");
+
+  // Room detail overlay
+  PCG.openRoom = (room, label, floor) => {
+    const bd = document.getElementById("ov-bd"), ov = document.getElementById("ov");
+    const body = document.getElementById("ov-body");
+    const kit = roomKit(room, label);
+    body.innerHTML = `
+      <div class="eyebrow">${PCG.escapeHtml(floor)}</div>
+      <h2 style="margin-top:4px;">Room ${PCG.escapeHtml(room)}</h2>
+      <div style="margin-top:6px;">${kitBadge(label)}<strong style="margin-left:4px;">${PCG.escapeHtml(label)}</strong></div>
+      <div class="divider"></div>
+      <div class="eyebrow">Kit</div>
+      <div style="margin-top:6px; font-size:var(--fs-sm); line-height:1.7;">${kit.replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--pcg-bright-blue);">$1</strong>')}</div>
+      <div class="divider"></div>
+      <div class="eyebrow">Session Detail</div>
+      <div class="muted" style="font-size:var(--fs-sm); margin-top:6px;">
+        ${/TECHNICAL SESSION LARGE/i.test(label) ? "Ryan Hoffman produces these personally. Enhanced 9-input audio, 2 confidence monitors." :
+          /on own/i.test(label) ? "Billed separately from master SAE PO. Confirm with Steph Vance before invoicing." :
+          /House Audio/i.test(label) ? "PCG provides house audio patch only. No kit rolled in." :
+          /Show Office/i.test(label) ? "PCG show office for duration. Radio base + charging." :
+          /Ground Vehicle Committee/i.test(label) ? "Client-side committee — often want silence. Confirm kit need with session owner." :
+          /PFL 180/i.test(label) ? "Product Focus Live 180 session. Hands-on demo format. Chart stand required." :
+          "Standard breakout session. 50 pax typical."}
+      </div>
+      <div class="divider"></div>
+      <div class="eyebrow">Quick Actions</div>
+      <div style="display:grid; gap:6px; margin-top:6px;">
+        <a class="btn sm" href="#">Edit Kit</a>
+        <a class="btn sm ghost" href="#">View in Flex ↗</a>
+        <a class="btn sm ghost" href="#">Add to ShoFlo ↗</a>
+        <a class="btn sm ghost" href="#">Print Room Card</a>
+      </div>
+    `;
+    bd.classList.add("show"); ov.classList.add("show");
+  };
+  PCG.closeOverlay = () => {
+    document.getElementById("ov-bd").classList.remove("show");
+    document.getElementById("ov").classList.remove("show");
+  };
+</script>
+</body>
+</html>
