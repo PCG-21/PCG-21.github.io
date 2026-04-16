@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Timecard</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .tc-wrap { overflow-x:auto; }
+  .tc-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .tc-table th { background: var(--surface-2); font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.06em; font-size:9px; color:var(--text-tertiary); padding:8px 6px; text-align:left; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:2; }
+  .tc-table td { padding:6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tc-row-dayhead { background: var(--surface-2); }
+  .tc-row-dayhead td { font-family:var(--font-display); letter-spacing:0.08em; text-transform:uppercase; font-size:10px; color:var(--text-secondary); padding:8px 10px; }
+  .tc-row.scheduled { background: rgba(1,153,253,0.04); }
+  .tc-row.manual   { background: var(--surface-1); }
+  .tc-row.weekend  { background: var(--surface-2); opacity:0.85; }
+  .tc-row.submitted { border-left: 3px solid var(--pcg-bright-blue); }
+  .tc-row.approved  { border-left: 3px solid var(--status-green); }
+  .tc-inp { width:100%; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:3px; padding:4px 6px; font-family:var(--font-mono); font-size:11px; }
+  .tc-inp.time { width:68px; text-align:center; }
+  .tc-inp.num  { width:56px; text-align:right; }
+  .tc-sel { background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:3px; padding:3px 4px; font-size:11px; width:100%; min-width:100px; }
+  .tc-chip { padding:2px 6px; border-radius:10px; font-size:9px; font-family:var(--font-display); letter-spacing:0.06em; text-transform:uppercase; display:inline-block; }
+  .tc-chip.draft     { background: var(--surface-3); color: var(--text-secondary); }
+  .tc-chip.submitted { background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue); }
+  .tc-chip.approved  { background: rgba(47,191,113,0.18); color: var(--status-green); }
+  .tc-summary { background: var(--surface-1); border:1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4); margin-top: var(--sp-4); display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:var(--sp-3); }
+  .tc-summary .cell { padding:0; }
+  .tc-summary .cell .lbl { font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.08em; font-size:10px; color:var(--text-tertiary); }
+  .tc-summary .cell .val { font-family:var(--font-display); font-size:22px; font-weight:600; margin-top:2px; }
+  .tc-summary .cell.ot .val { color: var(--status-amber); }
+  .tc-summary .cell.dt .val { color: var(--status-red); }
+  .tc-summary .cell.wage .val { color: var(--status-green); }
+  .add-row-btn {
+    display:inline-flex; align-items:center; gap:6px; padding:4px 10px;
+    background:transparent; border:1px dashed var(--border); border-radius:var(--r-sm);
+    color:var(--text-secondary); font-size:11px; cursor:pointer; margin-top:4px;
+  }
+  .add-row-btn:hover { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4); flex-wrap:wrap;">
+        <div>
+          <div class="eyebrow">Timecard · Employee Self-Service</div>
+          <h1 id="hdr">Weekly Timecard</h1>
+          <div class="muted" id="subhdr">Jobs auto-populate from your scheduled shifts. Add manual rows for shop work, prep, meetings, travel, or PTO.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center; flex-wrap:wrap;">
+          <label class="muted" style="font-size:10px; letter-spacing:0.08em; text-transform:uppercase;">Pay Period</label>
+          <button class="btn sm ghost" id="btn-prev-week">← Prev</button>
+          <span class="mono" id="weekLabel" style="font-size:var(--fs-sm); padding:5px 10px; background:var(--surface-2); border-radius:var(--r-sm);">—</span>
+          <button class="btn sm ghost" id="btn-next-week">Next →</button>
+          <button class="btn sm" id="btn-today">Today</button>
+          <select id="empSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); display:none;"></select>
+        </div>
+      </div>
+
+      <div id="banner"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="title">Timecard Entries</div>
+          <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="rowCount"></span>
+        </div>
+        <div class="tc-wrap">
+          <table class="tc-table" id="tcTable"></table>
+        </div>
+      </div>
+
+      <div class="tc-summary" id="tcSummary"></div>
+
+      <div style="display:flex; gap:var(--sp-2); margin-top:var(--sp-4); flex-wrap:wrap;">
+        <button class="btn primary" id="btn-submit">Submit Timecard</button>
+        <button class="btn" id="btn-approve" style="display:none;">Approve (Scheduling)</button>
+        <button class="btn ghost" id="btn-rules">Premier Pay Rules ▾</button>
+      </div>
+
+      <div id="rules-panel" style="display:none; margin-top:var(--sp-3);">
+        <div class="card">
+          <div class="card-header"><div class="title">Premier Non-Exempt Technician Pay Rules</div></div>
+          <div class="card-body" style="font-size:var(--fs-sm); line-height:1.7;">
+            <div class="grid-2" style="gap:var(--sp-4);">
+              <div>
+                <div class="eyebrow" style="margin-bottom:4px;">Consecutive Hour Rules</div>
+                <ul style="margin:0; padding-left:18px;">
+                  <li><strong>Straight time:</strong> first 10 consecutive hours after call start</li>
+                  <li><strong>Overtime 1.5×:</strong> 10th → 16th consecutive hour OR &gt; 40h/week</li>
+                  <li><strong>Double time 2.0×:</strong> &gt; 16 consecutive hours</li>
+                  <li><strong>Premium time 2.0×:</strong> hours worked 12am–6am</li>
+                </ul>
+
+                <div class="eyebrow" style="margin-top:12px; margin-bottom:4px;">10-Hour Call Minimum</div>
+                <ul style="margin:0; padding-left:18px;">
+                  <li>Applies <strong>per event</strong> (not per day) — multiple events in 24h = multiple minimums</li>
+                  <li>Also applies to out-of-town work, dark days, travel</li>
+                  <li>Does <strong>not</strong> apply to shop/prep/meeting/training (non-event hourly)</li>
+                </ul>
+
+                <div class="eyebrow" style="margin-top:12px; margin-bottom:4px;">Gifted vs PTO for 40h threshold</div>
+                <ul style="margin:0; padding-left:18px;">
+                  <li><strong>Gifted hours count</strong> toward 40h FLSA OT threshold</li>
+                  <li>PTO / Holiday / Sick / Bereavement / Jury Duty <strong>do not count</strong></li>
+                </ul>
+              </div>
+
+              <div>
+                <div class="eyebrow" style="margin-bottom:4px;">Holidays (8 recognized)</div>
+                <ul style="margin:0; padding-left:18px; font-size:var(--fs-xs);">
+                  <li>New Year's Day · Jan 1</li>
+                  <li>Memorial Day · last Mon May</li>
+                  <li>Independence Day · Jul 4</li>
+                  <li>Labor Day · first Mon Sep</li>
+                  <li>Thanksgiving · 4th Thu Nov</li>
+                  <li>Day after Thanksgiving</li>
+                  <li>Christmas Eve · Dec 24</li>
+                  <li>Christmas Day · Dec 25</li>
+                </ul>
+                <div class="muted" style="font-size:11px; margin-top:4px;">Paid 8h automatically. If worked, 8h holiday + OT on worked hours.</div>
+
+                <div class="eyebrow" style="margin-top:12px; margin-bottom:4px;">Out-of-Town (&gt; 60mi)</div>
+                <ul style="margin:0; padding-left:18px;">
+                  <li>10-hour minimum applies</li>
+                  <li>Air travel: 2h before flight, 1h after</li>
+                  <li>Vehicle travel: door-to-door</li>
+                  <li>Per diem at GSA rate of destination city</li>
+                  <li>Dark day (no work) = 10-hour minimum if willing/able</li>
+                </ul>
+
+                <div class="eyebrow" style="margin-top:12px; margin-bottom:4px;">Turnaround &amp; Continuous</div>
+                <ul style="margin:0; padding-left:18px;">
+                  <li><strong>Continuous (&lt; 4h break):</strong> entire 4h paid at current rate</li>
+                  <li><strong>Turnaround (&lt; 8h break after ≥10h shift):</strong> next shift starts at last rate of pay until 8h break</li>
+                </ul>
+
+                <div class="eyebrow" style="margin-top:12px; margin-bottom:4px;">Work Week</div>
+                <ul style="margin:0; padding-left:18px;">
+                  <li>Mon 12:00am → Sun 11:59pm</li>
+                  <li>Submit by <strong>Tuesday 3pm</strong></li>
+                  <li>Pay day: Friday</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="muted" style="font-size:var(--fs-xs);">
+              Source: Premier Pay Rules spreadsheet · Non-Exempt Technician. Applies automatically to Show Work / Travel / On Call rows.
+              Shop, Prep, Meeting, and Training rows are paid hourly with no 10-hour minimum.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'crew', crumbs:[{label:'Crew & Labor'},{label:'Timecard'}]});
+
+  // ---- Employee selection (admin/scheduling can pick others) ----
+  const canPickOthers = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS);
+  let activeCrewId = PCG.qs('crew') || PCG.user.id;
+  if(canPickOthers){
+    const sel = document.getElementById('empSel');
+    sel.style.display = '';
+    sel.innerHTML = (PCG.crewMembers||[]).map(m => `<option value="${m.id}" ${m.id===activeCrewId?'selected':''}>${PCG.escapeHtml(m.name)}</option>`).join('');
+    sel.addEventListener('change', () => { activeCrewId = sel.value; render(); });
+  }
+
+  // ---- Week pointer ----
+  let weekStart = PCG.api.getTimecardWeekStart(new Date().toISOString().slice(0,10));
+
+  const CATS = PCG.api.getTimecardCategories();
+
+  function fmtDate(iso){
+    const d = new Date(iso+'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  }
+  function fmtWeekRange(startISO){
+    const s = new Date(startISO+'T12:00:00');
+    const e = new Date(s); e.setDate(s.getDate()+6);
+    const sStr = s.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    const eStr = e.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    return `${sStr} – ${eStr}`;
+  }
+
+  function render(){
+    document.getElementById('weekLabel').textContent = fmtWeekRange(weekStart);
+    const crew = (PCG.crewMembers||[]).find(m => m.id === activeCrewId) || { name: activeCrewId };
+    document.getElementById('hdr').textContent = `${crew.name}'s Timecard`;
+
+    const week = PCG.api.getTimecardWeek(activeCrewId, weekStart);
+    const table = document.getElementById('tcTable');
+
+    // Group rows by date
+    const byDate = {};
+    week.days.forEach(d => byDate[d] = []);
+    week.rows.forEach(r => { (byDate[r.date] = byDate[r.date] || []).push(r); });
+
+    let html = `
+      <thead>
+        <tr>
+          <th style="width:108px;">Date</th>
+          <th style="width:140px;">Category / Event</th>
+          <th style="width:72px;">In</th>
+          <th style="width:72px;">Out</th>
+          <th style="width:60px;">Break</th>
+          <th style="width:56px;">Hrs</th>
+          <th style="width:56px;">OT</th>
+          <th style="width:72px;">Pay Rate</th>
+          <th style="width:78px;">Wage</th>
+          <th style="width:180px;">Position</th>
+          <th style="width:140px;">Client</th>
+          <th>Job Doing / Notes</th>
+          <th style="width:70px;">Status</th>
+          <th style="width:40px;"></th>
+        </tr>
+      </thead><tbody>`;
+
+    week.days.forEach(date => {
+      const rows = byDate[date] || [];
+      const dow = new Date(date+'T12:00:00').getDay();
+      const isWeekend = (dow === 0 || dow === 6);
+      const holidayName = PCG.api.isPremierHoliday(date);
+      const holidayTag = holidayName ? ` <span class="tc-chip" style="background:rgba(240,78,85,0.18); color:var(--status-red);">🏛 ${holidayName}</span>` : '';
+      html += `<tr class="tc-row-dayhead"><td colspan="14">${fmtDate(date)}${isWeekend?' <span class="tc-chip draft">weekend</span>':''}${holidayTag}</td></tr>`;
+      rows.forEach(r => {
+        html += renderRow(r, isWeekend);
+      });
+      html += `<tr><td colspan="14" style="padding:4px 10px; text-align:right; border-bottom:1px solid var(--border);">
+        <button class="add-row-btn" onclick="addRowForDate('${date}')">＋ Add row for ${fmtDate(date)}</button>
+      </td></tr>`;
+    });
+
+    html += '</tbody>';
+    table.innerHTML = html;
+
+    document.getElementById('rowCount').textContent = `${week.rows.length} row${week.rows.length===1?'':'s'} this week`;
+
+    const totals = PCG.api.computeTimecardTotals(week.rows);
+    const holidayCells = totals.holidayHours > 0 ? `<div class="cell"><div class="lbl">Holiday (8hr)</div><div class="val">${totals.holidayHours.toFixed(2)}</div></div>` : '';
+    const minCallCell = totals.minCallBonusHours > 0 ? `<div class="cell"><div class="lbl">10hr-Min Bonus</div><div class="val">${totals.minCallBonusHours.toFixed(2)}</div></div>` : '';
+    const premiumCell = totals.premiumHours > 0 ? `<div class="cell ot"><div class="lbl">Premium 12-6a</div><div class="val">${totals.premiumHours.toFixed(2)}</div></div>` : '';
+    document.getElementById('tcSummary').innerHTML = `
+      <div class="cell"><div class="lbl">Straight Hrs</div><div class="val">${totals.regHours.toFixed(2)}</div></div>
+      <div class="cell ot"><div class="lbl">OT Hrs (×1.5)</div><div class="val">${totals.otHours.toFixed(2)}</div></div>
+      <div class="cell dt"><div class="lbl">DT Hrs (×2)</div><div class="val">${totals.dtHours.toFixed(2)}</div></div>
+      ${premiumCell}
+      <div class="cell"><div class="lbl">Gifted / PTO</div><div class="val">${(totals.giftedHours).toFixed(2)}</div></div>
+      ${holidayCells}
+      ${minCallCell}
+      <div class="cell"><div class="lbl">Total Hrs</div><div class="val">${totals.totalHours.toFixed(2)}</div></div>
+      <div class="cell wage"><div class="lbl">Total Wage</div><div class="val">${PCG.money(totals.totalWage)}</div></div>
+    `;
+
+    // Submit button label based on existing status
+    const anyDraft = week.rows.some(r => r.status === 'Draft');
+    const anySubmitted = week.rows.some(r => r.status === 'Submitted');
+    const allApproved = week.rows.length && week.rows.every(r => r.status === 'Approved');
+    const submitBtn = document.getElementById('btn-submit');
+    const approveBtn = document.getElementById('btn-approve');
+    if(allApproved){
+      submitBtn.textContent = '✓ Approved';
+      submitBtn.disabled = true;
+      submitBtn.classList.remove('primary');
+      document.getElementById('banner').innerHTML = `<div class="attn-item" style="margin-bottom:var(--sp-4);"><div><div class="ttl">✓ Week approved and locked</div><div class="meta">Timecard approved for payroll export.</div></div></div>`;
+    } else if(anySubmitted && !anyDraft){
+      submitBtn.textContent = '✓ Submitted';
+      submitBtn.disabled = true;
+      submitBtn.classList.remove('primary');
+      document.getElementById('banner').innerHTML = `<div class="attn-item blue" style="margin-bottom:var(--sp-4);"><div><div class="ttl">✓ Submitted for approval</div><div class="meta">Waiting on Scheduling / Accounting sign-off.</div></div></div>`;
+    } else {
+      submitBtn.textContent = 'Submit Timecard';
+      submitBtn.disabled = false;
+      submitBtn.classList.add('primary');
+      document.getElementById('banner').innerHTML = '';
+    }
+    approveBtn.style.display = (anySubmitted && canPickOthers) ? '' : 'none';
+  }
+
+  function renderRow(r, isWeekend){
+    const cls = (r.sourceType === 'scheduled' ? 'scheduled' : 'manual')
+              + (r.status==='Submitted' ? ' submitted' : r.status==='Approved' ? ' approved' : '')
+              + (isWeekend ? ' weekend' : '');
+    const cat = CATS.find(c => c.key === r.category) || { label:r.category };
+    const hours = Number(r.hoursWorked)||0;
+    const rate = Number(r.payRate)||0;
+    const wage = hours * rate; // simple display; totals use real calc
+    const locked = r.status === 'Approved';
+    const disabledAttr = locked ? 'disabled' : '';
+    return `<tr class="tc-row ${cls}" data-id="${r.id}">
+      <td class="mono" style="font-size:10px; color:var(--text-tertiary);">
+        ${r.sourceType==='scheduled' ? '📅' : '✎'} ${(r.shiftAssignmentId||'').slice(0,14)}
+      </td>
+      <td>
+        <select class="tc-sel" ${disabledAttr} onchange="updateField('${r.id}','category',this.value)">
+          ${CATS.map(c => `<option value="${c.key}" ${c.key===r.category?'selected':''}>${PCG.escapeHtml(c.label)}</option>`).join('')}
+        </select>
+        <div class="muted" style="font-size:10px; margin-top:3px;">${PCG.escapeHtml(r.eventName || '—')}</div>
+      </td>
+      <td><input class="tc-inp time" ${disabledAttr} value="${PCG.escapeHtml(r.clockIn||'')}" placeholder="7:30a" onchange="updateField('${r.id}','clockIn',this.value)"/></td>
+      <td><input class="tc-inp time" ${disabledAttr} value="${PCG.escapeHtml(r.clockOut||'')}" placeholder="5:00p" onchange="updateField('${r.id}','clockOut',this.value)"/></td>
+      <td><input class="tc-inp num" ${disabledAttr} type="number" min="0" step="5" value="${r.breakMin||0}" onchange="updateField('${r.id}','breakMin',parseInt(this.value,10)||0)"/></td>
+      <td class="mono" style="text-align:right; font-weight:600;">${hours.toFixed(2)}</td>
+      <td><input class="tc-inp num" ${disabledAttr} type="number" min="0" step="0.25" value="${r.otOverride||''}" placeholder="auto" title="OT override (leave blank for auto 40h threshold)" onchange="updateField('${r.id}','otOverride',this.value===''?null:parseFloat(this.value))"/></td>
+      <td class="mono" style="text-align:right;">${PCG.money(rate)}</td>
+      <td class="mono" style="text-align:right; font-weight:600;">${PCG.money(wage)}</td>
+      <td style="font-size:10px;">${PCG.escapeHtml(r.positionName || '—')}</td>
+      <td style="font-size:10px;">${PCG.escapeHtml(r.clientName || '—')}</td>
+      <td><input class="tc-inp" ${disabledAttr} value="${PCG.escapeHtml(r.jobDoing||'')}" placeholder="What you did · notes" onchange="updateField('${r.id}','jobDoing',this.value)"/></td>
+      <td><span class="tc-chip ${r.status.toLowerCase()}">${r.status}</span></td>
+      <td>${!locked ? `<button class="btn sm ghost" onclick="removeRow('${r.id}')" style="font-size:10px; padding:1px 5px;">✕</button>` : ''}</td>
+    </tr>`;
+  }
+
+  // ---- Field update wiring ----
+  window.updateField = (rowId, field, value) => {
+    const week = PCG.api.getTimecardWeek(activeCrewId, weekStart);
+    const row = week.rows.find(r => r.id === rowId);
+    if(!row) return;
+    row[field] = value;
+    if(['clockIn','clockOut','breakMin','payRate','category'].includes(field)){
+      // saveTimecardRow will recompute hoursWorked
+    }
+    try {
+      PCG.api.saveTimecardRow(row);
+      render();
+    } catch(e){ alert('Save failed: '+e.message); }
+  };
+
+  window.removeRow = (rowId) => {
+    if(!confirm('Remove this row?')) return;
+    try {
+      PCG.api.deleteTimecardRow(rowId);
+      render();
+    } catch(e){ alert(e.message); }
+  };
+
+  window.addRowForDate = (date) => {
+    // Build an empty manual row and persist it
+    const person = (PCG.crewMembers||[]).find(m => m.id === activeCrewId);
+    const payRate = (person && person.payRate) || 40;
+    const row = {
+      id: 'tc.'+activeCrewId+'.'+date+'.manual.'+Math.random().toString(36).slice(2,5),
+      crewMemberId: activeCrewId, date,
+      shiftAssignmentId: null,
+      category: 'Shop',
+      clockIn: '', clockOut: '', breakMin: 30,
+      hoursWorked: 0,
+      showId: null, eventName: '(non-event work)', clientName: '',
+      positionId: null, positionName: '',
+      rosterPositionId: null, eventId: null,
+      workingEvent: false, onCall: false, shift: 'Day', stOverride: 0,
+      jobDoing: '', venueName: '', cityState: '', timeZone: '',
+      perDiem: 0, transportation: '', payRate,
+      otOverride: null, dtOverride: null,
+      status: 'Draft', sourceType: 'manual', notes: ''
+    };
+    try {
+      PCG.api.saveTimecardRow(row);
+      render();
+    } catch(e){ alert('Add failed: '+e.message); }
+  };
+
+  // ---- Week nav ----
+  document.getElementById('btn-prev-week').addEventListener('click', () => {
+    const d = new Date(weekStart+'T12:00:00'); d.setDate(d.getDate()-7);
+    weekStart = d.toISOString().slice(0,10); render();
+  });
+  document.getElementById('btn-next-week').addEventListener('click', () => {
+    const d = new Date(weekStart+'T12:00:00'); d.setDate(d.getDate()+7);
+    weekStart = d.toISOString().slice(0,10); render();
+  });
+  document.getElementById('btn-today').addEventListener('click', () => {
+    weekStart = PCG.api.getTimecardWeekStart(new Date().toISOString().slice(0,10));
+    render();
+  });
+
+  // ---- Submit / Approve ----
+  document.getElementById('btn-submit').addEventListener('click', () => {
+    const week = PCG.api.getTimecardWeek(activeCrewId, weekStart);
+    // Save any un-persisted scheduled rows first
+    week.rows.forEach(r => {
+      const existing = (PCG.timecards||[]).find(tc => tc.id === r.id);
+      if(!existing) PCG.api.saveTimecardRow(r);
+    });
+    if(!confirm('Submit this week for approval? Entries will be locked to read-only.')) return;
+    try {
+      PCG.api.submitTimecard(activeCrewId, weekStart);
+      PCG.toast && PCG.toast('Timecard submitted.');
+      render();
+    } catch(e){ alert(e.message); }
+  });
+  document.getElementById('btn-approve').addEventListener('click', () => {
+    if(!confirm('Approve this week for payroll?')) return;
+    try {
+      PCG.api.approveTimecard(activeCrewId, weekStart);
+      render();
+    } catch(e){ alert(e.message); }
+  });
+
+  document.getElementById('btn-rules').addEventListener('click', () => {
+    const panel = document.getElementById('rules-panel');
+    const btn = document.getElementById('btn-rules');
+    const open = panel.style.display === '';
+    panel.style.display = open ? 'none' : '';
+    btn.textContent = open ? 'Premier Pay Rules ▾' : 'Premier Pay Rules ▴';
+  });
+
+  render();
+</script>
+</body>
+</html>

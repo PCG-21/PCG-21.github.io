@@ -25,11 +25,22 @@
           <button data-v="warehouse">Warehouse</button>
           <button data-v="labor">Labor</button>
         </div>
-        <div style="margin-left:auto; display:flex; gap:var(--sp-2); flex-wrap:wrap;">
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); flex-wrap:wrap; align-items:center;">
+          <span class="muted" style="font-size:10px; text-transform:uppercase; letter-spacing:0.08em;">Status</span>
+          <select id="quote-status" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+            <option value="Draft">Draft</option>
+            <option value="InReview">In Review</option>
+            <option value="Issued">Issued to Client</option>
+            <option value="Awarded">Awarded</option>
+            <option value="OnHold">On Hold</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Lost">Lost</option>
+          </select>
           <button class="btn sm ghost" id="btn-new-line">＋ Add Line</button>
           <button class="btn sm ghost" id="btn-copy-from">Copy From Prior Quote</button>
-          <button class="btn sm" id="btn-recheck">Re-check Availability</button>
+          <button class="btn sm" id="btn-recheck">Re-check Avail</button>
           <button class="btn sm" id="btn-client-preview">Client Portal Preview ↗</button>
+          <button class="btn sm spectrum" id="btn-convert-ps">Convert to Pull Sheets →</button>
           <button class="btn sm primary" id="btn-issue">Issue Proposal</button>
         </div>
       </div>
@@ -74,6 +85,9 @@
 
       <!-- §YY Margin Risk Warnings (real-time) -->
       <div id="margin-warnings"></div>
+
+      <!-- Quote Options (A/B/C pricing scenarios) + Revision Bar -->
+      <div id="quote-options-bar" style="margin-bottom: var(--sp-3);"></div>
 
       <!-- View container -->
       <div class="card" style="overflow:hidden;">
@@ -189,7 +203,7 @@
     <div style="overflow-x:auto;">
       <table class="qb-line-grid">
         <thead>
-          <tr><th style="width:32px;">#</th><th>Item / Description</th><th style="width:70px;">Qty</th><th style="width:90px;">Rate</th><th style="width:60px;">Days</th><th style="width:110px;">Extended</th><th style="width:140px;">Availability</th></tr>
+          <tr><th style="width:32px;">#</th><th>Item / Description + Rate Model</th><th style="width:64px; text-align:right;">Qty</th><th style="width:90px; text-align:right;">Rate</th><th style="width:60px; text-align:right;">Days</th><th style="width:110px; text-align:right;">Extended</th><th style="width:120px;">Availability</th><th style="width:32px;"></th></tr>
         </thead>
         <tbody id="tb-working"></tbody>
       </table>
@@ -247,27 +261,87 @@
     const groups = {};
     (rev.lines||[]).forEach(l => { (groups[l.packageName] = groups[l.packageName] || []).push(l); });
     const tb = document.getElementById('tb-working');
+    const client = quote && quote.clientId ? PCG.api.getClient(quote.clientId) : null;
+    const clientDisc = client && client.discountPct ? Math.round(client.discountPct*100) : 0;
     let i = 0;
     let html = '';
     Object.entries(groups).forEach(([pkg, lines])=>{
-      html += `<tr class="pkg-header"><td colspan="7">${PCG.escapeHtml(pkg)}</td></tr>`;
+      html += `<tr class="pkg-header"><td colspan="8">${PCG.escapeHtml(pkg)}</td></tr>`;
       lines.forEach(l=>{
         i++;
         const ext = (l.unitPrice||0) * (l.qty||0) * (l.days||1);
+        const inv = l.inventoryItemId ? findItem(l.inventoryItemId) : null;
+        const rates = (inv && inv.rates) || {};
+        const isLabor = l.type === 'Labor';
+        const currentTier = l.rateTier || 'day';
+
+        // Build rate-model options — only show tiers that exist on the inventory item
+        const tierOpts = [];
+        if(rates.day != null || isLabor) tierOpts.push({v:'day', label:`Day${rates.day!=null?' · '+PCG.money(rates.day):''}`});
+        if(rates.week != null) tierOpts.push({v:'week', label:'Week · '+PCG.money(rates.week)});
+        if(rates.twoWeek != null) tierOpts.push({v:'twoWeek', label:'2-Week · '+PCG.money(rates.twoWeek)});
+        if(rates.fourWeek != null) tierOpts.push({v:'fourWeek', label:'4-Week · '+PCG.money(rates.fourWeek)});
+        if(client && client.discountPct) tierOpts.push({v:'client', label:`Client · ${client.name.split(' ')[0]} -${clientDisc}%`});
+        tierOpts.push({v:'custom', label:'Custom rate'});
+
+        const rateSelect = editableByMe && !isLabor ? `
+          <select onchange="updateRental('${l.id}','rateTier',this.value)"
+                  style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:2px 6px; border-radius:var(--r-sm); font-size:11px; margin-bottom:2px; width:100%;">
+            ${tierOpts.map(t => `<option value="${t.v}" ${t.v===currentTier?'selected':''}>${PCG.escapeHtml(t.label)}</option>`).join('')}
+          </select>` : `<div style="font-size:10px; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.06em;">${currentTier}</div>`;
+
+        const qtyCell = editableByMe && !isLabor
+          ? `<input type="number" min="0" step="1" value="${l.qty||0}" onchange="updateRental('${l.id}','qty',parseInt(this.value,10)||0)" style="width:52px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:3px 6px; border-radius:var(--r-sm); font-family:var(--font-mono); text-align:right;"/>`
+          : `<span class="mono">${l.qty||0}</span>`;
+
+        const rateCell = editableByMe && !isLabor
+          ? `<input type="number" min="0" step="0.01" value="${l.unitPrice||0}" onchange="updateRental('${l.id}','unitPrice',parseFloat(this.value)||0); document.getElementById('rateSelect-${l.id}')?.setAttribute('data-custom','1')" style="width:80px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:3px 6px; border-radius:var(--r-sm); font-family:var(--font-mono); text-align:right;"/>`
+          : `<span class="mono">${PCG.money(l.unitPrice)}</span>`;
+
+        const daysCell = editableByMe && !isLabor
+          ? `<input type="number" min="0.25" step="0.25" value="${l.days||1}" onchange="updateRental('${l.id}','days',parseFloat(this.value)||1)" style="width:52px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:3px 6px; border-radius:var(--r-sm); font-family:var(--font-mono); text-align:right;"/>`
+          : `<span class="mono">${l.days||1}</span>`;
+
+        const discBadge = l.clientDiscountPct ? `<span class="pill blue plain" style="font-size:9px; margin-left:4px;">-${Math.round(l.clientDiscountPct*100)}%</span>` : '';
+
         html += `
-          <tr>
+          <tr id="ln-${l.id}">
             <td class="mono muted">${i}</td>
-            <td>${PCG.escapeHtml(l.description)}</td>
-            <td class="mono">${l.qty}</td>
-            <td class="mono">${PCG.money(l.unitPrice)}</td>
-            <td class="mono">${l.days||1}</td>
-            <td class="mono">${PCG.money(ext)}</td>
+            <td>
+              ${PCG.escapeHtml(l.description)}${discBadge}
+              ${!isLabor ? `<div id="rateSelect-${l.id}" style="margin-top:3px;">${rateSelect}</div>` : `<div style="font-size:10px; color:var(--text-tertiary); margin-top:2px;">LABOR</div>`}
+            </td>
+            <td class="mono" style="text-align:right;">${qtyCell}</td>
+            <td class="mono" style="text-align:right;">${rateCell}</td>
+            <td class="mono" style="text-align:right;">${daysCell}</td>
+            <td class="mono" style="text-align:right; font-weight:600;">${PCG.money(ext)}</td>
             <td id="avail-${l.id}" class="mono muted">…</td>
+            <td>${editableByMe && !isLabor ? `<button class="btn sm ghost" onclick="removeRental('${l.id}')" style="font-size:11px; padding:2px 6px;">✕</button>` : ''}</td>
           </tr>`;
       });
     });
     tb.innerHTML = html;
     runAvailChecks();
+  };
+
+  // ---- Rental line editing (§EE) ----
+  window.updateRental = (lineId, field, value) => {
+    try {
+      const patch = { [field]: value };
+      PCG.api.updateQuoteLine(rev.id, lineId, patch);
+      renderWorking();
+      renderProfit();
+      renderTotals();
+    } catch(e){ alert('Update failed: '+e.message); }
+  };
+  window.removeRental = (lineId) => {
+    if(!confirm('Remove this line from the quote?')) return;
+    try {
+      PCG.api.removeQuoteLine(rev.id, lineId);
+      renderWorking();
+      renderProfit();
+      renderTotals();
+    } catch(e){ alert('Remove failed: '+e.message); }
   };
 
   const renderProfit = () => {
@@ -456,19 +530,67 @@
   // -------- Totals --------
   const renderTotals = () => {
     const t = PCG.engines.pricing.computeRevisionTotals(rev.lines);
-    // Sync revision object so margin warnings use fresh values
-    rev.totalRevenue = t.totalRevenue;
+    // Apply revision-level discount if set
+    const disc = rev.discount;
+    let discAmount = 0;
+    if(disc){
+      discAmount = disc.type === 'percent'
+        ? Math.round(t.totalRevenue * disc.value * 100) / 100
+        : (disc.value || 0);
+    }
+    const netRevenue = Math.max(0, t.totalRevenue - discAmount);
+    const netMargin = canSeeMargin && netRevenue ? ((netRevenue - t.totalCost) / netRevenue) : 0;
+    rev.totalRevenue = netRevenue;
+    rev.grossRevenue = t.totalRevenue;
+    rev.discountAmount = discAmount;
     rev.totalCost = t.totalCost;
-    rev.margin = t.margin;
+    rev.margin = netMargin;
     const el = document.getElementById('qb-totals');
     el.innerHTML = `
-      <div class="cell">Revenue<strong>${PCG.money(t.totalRevenue)}</strong></div>
+      <div class="cell">Gross<strong>${PCG.money(t.totalRevenue)}</strong></div>
+      <div class="cell" style="min-width:140px;">Discount
+        <strong style="color:${disc?'var(--status-amber)':'var(--text-tertiary)'};">
+          ${disc ? '-'+PCG.money(discAmount)+(disc.type==='percent'?` (${Math.round(disc.value*100)}%)`:'') : '—'}
+        </strong>
+        ${editableByMe ? `<button class="btn sm ghost" onclick="openDiscountModal()" style="font-size:10px; padding:2px 6px; margin-top:3px;">${disc?'Edit':'＋ Add'}</button>${disc?`<button class="btn sm ghost" onclick="clearDiscount()" style="font-size:10px; padding:2px 6px; margin-top:3px; margin-left:3px;">✕</button>`:''}` : ''}
+      </div>
+      <div class="cell">Net<strong>${PCG.money(netRevenue)}</strong></div>
       ${canSeeMargin ? `<div class="cell">Cost<strong>${PCG.money(t.totalCost)}</strong></div>
-      <div class="cell">Margin<strong>${PCG.pct(t.margin)}</strong></div>` : ''}
+      <div class="cell">Margin<strong>${PCG.pct(netMargin)}</strong></div>` : ''}
       <div class="cell">Lines<strong>${(rev.lines||[]).length}</strong></div>
       <div class="cell">Revision<strong>v${rev.revisionNumber}</strong></div>
     `;
     renderMarginWarnings();
+  };
+
+  // ---- Discount modal ----
+  window.openDiscountModal = () => {
+    const existing = rev.discount || { type:'percent', value:0, reason:'' };
+    const client = quote && quote.clientId ? PCG.api.getClient(quote.clientId) : null;
+    const suggestedPct = client && client.discountPct ? Math.round(client.discountPct*100) : 0;
+    const suggestion = suggestedPct ? `\n\n💡 ${client.name} partner tier (${client.partnerTier||'—'}) suggests ${suggestedPct}% — ${client.discountReason||''}` : '';
+    const type = prompt(`Discount type: "percent" or "amount"${suggestion}`, existing.type);
+    if(!type) return;
+    if(type !== 'percent' && type !== 'amount'){ alert('Type must be "percent" or "amount".'); return; }
+    const rawVal = prompt(type==='percent' ? 'Discount percent (e.g. 10 for 10%):' : 'Discount amount in dollars:', type==='percent' ? (existing.value*100) : existing.value);
+    if(rawVal === null) return;
+    const num = parseFloat(rawVal);
+    if(isNaN(num) || num < 0){ alert('Enter a non-negative number.'); return; }
+    const value = type==='percent' ? num/100 : num;
+    const reason = prompt('Reason (required — audit log):', existing.reason || (client&&client.discountReason) || '');
+    if(!reason){ alert('Reason required.'); return; }
+    try {
+      PCG.api.setRevisionDiscount(rev.id, { type, value, reason, level:'total' });
+      renderTotals();
+    } catch(e){ alert('Discount failed: '+e.message); }
+  };
+  window.clearDiscount = () => {
+    if(!confirm('Remove the discount?')) return;
+    try {
+      PCG.api.setRevisionDiscount(rev.id, { type:'percent', value:0, reason:'Cleared', level:'total' });
+      rev.discount = null;
+      renderTotals();
+    } catch(e){ alert(e.message); }
   };
 
   // -------- Guards + Revisions + Corrections --------
@@ -495,6 +617,120 @@
     ? (rev.corrections||[]).map(c=>`<div class="change-ribbon"><div class="when">${PCG.fmtShort(c.at)}</div><div>${PCG.escapeHtml(c.summary||'Correction')}<div class="meta">by ${PCG.escapeHtml(PCG.findPerson(c.by)?.name||c.by)}</div></div></div>`).join('')
     : PCG.states.empty('None.');
 
+  // -------- Options + Revision bar --------
+  function renderOptionsBar(){
+    const bar = document.getElementById('quote-options-bar');
+    if(!bar) return;
+    const opts = rev.options || [];
+    const allRevs = (PCG.quoteRevisions||[]).filter(r => r.quoteId === quote.id).sort((a,b) => (a.revisionNumber||0) - (b.revisionNumber||0));
+
+    const revPicker = allRevs.length > 1 ? `
+      <div style="display:flex; align-items:center; gap:6px; margin-right:var(--sp-3);">
+        <span class="muted" style="font-size:10px; letter-spacing:0.08em; text-transform:uppercase;">Revision</span>
+        <select onchange="switchRevision(this.value)" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 8px; border-radius:var(--r-sm); font-size:var(--fs-sm);">
+          ${allRevs.map(r => `<option value="${r.id}" ${r.id===rev.id?'selected':''}>v${r.revisionNumber} · ${r.status}${r.id===quote.activeRevisionId?' · ACTIVE':''}</option>`).join('')}
+        </select>
+      </div>` : '';
+
+    const optionsHtml = opts.length ? `
+      <div style="display:flex; gap:var(--sp-2); flex-wrap:wrap; flex:1;">
+        ${opts.map(o => {
+          const total = PCG.api.computeOptionTotal(rev.id, o.id);
+          const netStr = total ? PCG.money(total.net) : '—';
+          const delta = o.priceDelta === 0 ? 'Included'
+                      : o.priceOverride != null ? 'Override '+PCG.money(o.priceOverride)
+                      : o.priceDelta > 0 ? '+'+PCG.money(o.priceDelta)
+                      : PCG.money(o.priceDelta);
+          return `<div style="min-width:180px; padding:10px 14px; background: ${o.recommended?'rgba(1,153,253,0.08)':'var(--surface-1)'}; border:1px solid ${o.recommended?'var(--pcg-bright-blue)':'var(--border)'}; border-radius:var(--r-md); position:relative;">
+            ${o.recommended ? '<span style="position:absolute; top:-8px; right:8px; background:var(--pcg-bright-blue); color:white; padding:1px 8px; border-radius:10px; font-size:9px; font-family:var(--font-display); letter-spacing:0.1em;">RECOMMENDED</span>':''}
+            ${o.clientSelected ? '<span style="position:absolute; top:-8px; left:8px; background:var(--status-green); color:white; padding:1px 8px; border-radius:10px; font-size:9px; font-family:var(--font-display); letter-spacing:0.1em;">CLIENT PICK</span>':''}
+            <div style="font-family:var(--font-display); font-size:13px; font-weight:600;">${PCG.escapeHtml(o.label)}</div>
+            <div class="muted" style="font-size:10px; margin-top:2px;">${PCG.escapeHtml(o.description||'').slice(0,60)}${(o.description||'').length>60?'…':''}</div>
+            <div class="mono" style="margin-top:6px; font-size:13px; color:var(--pcg-bright-blue); font-weight:600;">${netStr}</div>
+            <div class="muted" style="font-size:10px;">${delta}</div>
+            ${editableByMe ? `<div style="margin-top:6px; display:flex; gap:4px;">
+              <button class="btn sm ghost" onclick="editOption('${o.id}')" style="font-size:10px; padding:2px 6px;">Edit</button>
+              ${!o.recommended ? `<button class="btn sm ghost" onclick="setRecommended('${o.id}')" style="font-size:10px; padding:2px 6px;">★</button>` : ''}
+              <button class="btn sm ghost" onclick="removeOption('${o.id}')" style="font-size:10px; padding:2px 6px;">✕</button>
+            </div>`:''}
+          </div>`;
+        }).join('')}
+      </div>` : `<div class="muted" style="font-size:var(--fs-sm); flex:1;">No options yet. Add 2–3 scenarios (e.g. "Good / Better / Best") and let the client pick.</div>`;
+
+    bar.innerHTML = `
+      <div class="card" style="padding:var(--sp-3); display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap;">
+        <div style="font-family:var(--font-display); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-secondary);">Scenario Options</div>
+        ${revPicker}
+        ${optionsHtml}
+        ${editableByMe ? `<div style="display:flex; gap:var(--sp-2); margin-left:auto;">
+          <button class="btn sm" onclick="addOption()">＋ Option</button>
+          <button class="btn sm ghost" onclick="newRevision()">＋ New Revision</button>
+        </div>`:''}
+      </div>`;
+  }
+
+  // Option handlers
+  window.addOption = () => {
+    const label = prompt('Option label (e.g. "Good", "Better", "Best" or "Standard", "Premium"):');
+    if(!label) return;
+    const description = prompt('Short description shown to client (optional):', '');
+    const deltaStr = prompt('Price adjustment vs base revision (e.g. 0 for included, 8500 for +$8,500, -3000 for discount):', '0');
+    const priceDelta = parseFloat(deltaStr) || 0;
+    try {
+      PCG.api.addQuoteOption(rev.id, { label, description, priceDelta, inclusions:[], recommended: (rev.options||[]).length === 0 });
+      renderOptionsBar();
+    } catch(e){ alert(e.message); }
+  };
+  window.editOption = (id) => {
+    const o = (rev.options||[]).find(x => x.id === id);
+    if(!o) return;
+    const label = prompt('Option label:', o.label);
+    if(label === null) return;
+    const description = prompt('Description:', o.description||'');
+    if(description === null) return;
+    const deltaStr = prompt('Price delta vs base ($). Leave "override" blank.', o.priceOverride != null ? '' : String(o.priceDelta||0));
+    const overrideStr = prompt('OR price override (absolute $) — leave blank to use delta:', o.priceOverride != null ? String(o.priceOverride) : '');
+    try {
+      const patch = { label, description };
+      if(overrideStr && overrideStr.trim() !== ''){
+        patch.priceOverride = parseFloat(overrideStr);
+        patch.priceDelta = 0;
+      } else {
+        patch.priceOverride = null;
+        patch.priceDelta = parseFloat(deltaStr)||0;
+      }
+      PCG.api.updateQuoteOption(rev.id, id, patch);
+      renderOptionsBar();
+    } catch(e){ alert(e.message); }
+  };
+  window.setRecommended = (id) => {
+    try {
+      PCG.api.updateQuoteOption(rev.id, id, { recommended: true });
+      renderOptionsBar();
+    } catch(e){ alert(e.message); }
+  };
+  window.removeOption = (id) => {
+    if(!confirm('Remove this option?')) return;
+    try {
+      PCG.api.removeQuoteOption(rev.id, id);
+      renderOptionsBar();
+    } catch(e){ alert(e.message); }
+  };
+
+  window.newRevision = () => {
+    if(!confirm(`Create a new revision cloned from v${rev.revisionNumber}?\n\nThe new revision becomes active (Draft). Prior revisions stay read-only in history.\n\nUse this for scope changes after Awarded, or for side-by-side alternatives.`)) return;
+    try {
+      const res = PCG.api.createQuoteRevision(quote.id, { fromRevId: rev.id, makeActive: true });
+      if(!res.ok){ alert('Failed: '+res.reason); return; }
+      alert(`✓ Revision v${res.revision.revisionNumber} created. Reloading…`);
+      location.href = 'quote.html?id=' + quote.id;
+    } catch(e){ alert(e.message); }
+  };
+
+  window.switchRevision = (revId) => {
+    location.href = 'quote.html?id=' + quote.id + '&rev=' + revId;
+  };
+
   // -------- View switcher --------
   const render = (view)=>{
     document.getElementById('view-body').innerHTML = V[view]();
@@ -504,6 +740,7 @@
     if(view==='warehouse') renderWarehouse();
     if(view==='labor')   renderLabor();
     renderTotals();
+    renderOptionsBar();
   };
   render('working');
 
@@ -1089,16 +1326,73 @@
   };
 
   // --------------------------------------------------------------------
-  // Client Portal Preview (opens magic-link from most recent issue)
+  // Client Portal Preview (opens magic-link — auto-generates preview invite if none exists)
   // --------------------------------------------------------------------
   document.getElementById('btn-client-preview').addEventListener('click', () => {
-    const invites = PCG.api.getClientInvites({ quoteId: quote.id });
+    let invites = PCG.api.getClientInvites({ quoteId: quote.id });
     if(invites.length === 0){
-      alert('No client invite yet — click "Issue Proposal" first to generate the magic link.');
-      return;
+      if(!confirm('No client magic-link yet. Generate a preview link now?\n\n(This creates a preview invite that you can open. Use "Issue Proposal" for the real client-facing workflow.)')) return;
+      try {
+        const res = PCG.api.issueQuoteToClient(quote.id);
+        if(!res.ok){ alert('Could not create preview link: '+res.reason); return; }
+        invites = [res.invite];
+      } catch(e){ alert('Could not create preview link: '+e.message); return; }
     }
     window.open('client/index.html?token=' + invites[0].token, '_blank', 'noopener');
   });
+
+  // --------------------------------------------------------------------
+  // Quote Status dropdown
+  // --------------------------------------------------------------------
+  (function wireStatus(){
+    const sel = document.getElementById('quote-status');
+    if(!sel) return;
+    sel.value = quote.status || 'Draft';
+    sel.addEventListener('change', () => {
+      const newStatus = sel.value;
+      if(newStatus === quote.status) return;
+      let reason = '';
+      if(newStatus === 'Cancelled' || newStatus === 'Lost' || newStatus === 'OnHold'){
+        reason = prompt(`Reason for moving to "${newStatus}" (required for audit):`);
+        if(!reason){ sel.value = quote.status; return; }
+      } else {
+        if(!confirm(`Change quote status: ${quote.status} → ${newStatus}?`)){ sel.value = quote.status; return; }
+      }
+      try {
+        PCG.api.updateQuoteStatus(quote.id, newStatus, reason);
+        alert(`✓ Status updated to ${newStatus}.`);
+        if(newStatus === 'Awarded'){
+          if(confirm('Awarded quotes can now be converted to pull sheets. Convert now?')){
+            doConvertToPullSheets();
+          }
+        }
+      } catch(e){
+        alert('Status change failed: '+e.message);
+        sel.value = quote.status;
+      }
+    });
+  })();
+
+  // --------------------------------------------------------------------
+  // Convert quote → per-department pull sheets (replaces GO-Order)
+  // --------------------------------------------------------------------
+  function doConvertToPullSheets(){
+    if(!confirm(`Generate pull sheets from this quote?\n\nOne PullSheet will be created per department (Audio, Video, Lighting, etc.). TSMs lock each dept's gear on pull-sheet.html.\n\nThis replaces the legacy GO-Order process.`)) return;
+    try {
+      const res = PCG.api.convertQuoteToPullSheets(quote.id);
+      if(!res.ok){ alert('Conversion blocked: '+res.reason); return; }
+      const lines = res.created.map(c => {
+        if(c.skipped) return `  • ${c.dept}: skipped (${c.reason})`;
+        if(c.merged)  return `  • ${c.dept}: merged ${c.added} line(s) into existing ${c.id}`;
+        return `  • ${c.dept}: created ${c.id} (${c.lines} lines)`;
+      });
+      const openFirst = res.created.find(c => c.created || c.merged);
+      if(confirm(`✓ Pull sheets generated:\n\n${lines.join('\n')}\n\nOpen the first pull sheet now for TSM dept-lock?`) && openFirst){
+        location.href = 'pull-sheet.html?id=' + openFirst.id;
+      }
+    } catch(e){ alert('Convert failed: '+e.message); }
+  }
+  document.getElementById('btn-convert-ps').addEventListener('click', doConvertToPullSheets);
 
   function showIssueBanner(invite) {
     const url = 'client/index.html?token=' + invite.token;

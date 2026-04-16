@@ -1271,15 +1271,18 @@
       primaryContactId:null, aeId:'p.jspringer', priorProjectCodes:['LCE-2025','LCE-2024'],
       revenueYTD: 1250000, status:'Active',
       preferences:['Deliver decks Wed noon','Kevin Adams is content lead — not decision-maker'],
+      partnerTier:'Platinum', discountPct:0.15, discountReason:'PCG Partner · 3+ year account · §EE',
       doNotUse:[] },
     { id:'c.sae',        name:'SAE International',        industry:'Professional Association',
       billingAddress:'400 Commonwealth Dr, Warrendale, PA 15096',
       aeId:'p.jspringer', priorProjectCodes:['SAE-WCX-2025','SAE-WCX-2024'],
-      revenueYTD: 512000, status:'Active', preferences:[], doNotUse:[] },
+      revenueYTD: 512000, status:'Active', preferences:[], doNotUse:[],
+      partnerTier:'Gold', discountPct:0.10, discountReason:'Repeat WCX client · multi-year master agreement' },
     { id:'c.globex',     name:'Globex Corporation',       industry:'Conglomerate',
       billingAddress:'1701 Market St, Philadelphia, PA 19103',
       aeId:'p.jspringer', priorProjectCodes:['GLBX-2025','GLBX-2024'],
-      revenueYTD: 890000, status:'Active', preferences:[], doNotUse:[] },
+      revenueYTD: 890000, status:'Active', preferences:[], doNotUse:[],
+      partnerTier:'Gold', discountPct:0.08, discountReason:'Multi-show annual commitment' },
     { id:'c.woc',        name:'Women of Color Magazine',  industry:'Media',
       billingAddress:'Fairfax, VA', aeId:'p.jspringer', priorProjectCodes:[], revenueYTD:210000, status:'Active' },
     { id:'c.stellantis', name:'Stellantis Marketing',     industry:'Automotive',
@@ -2091,6 +2094,14 @@
      Multi-city automotive activation. Real event folder + real rosters.
      ================================================================= */
 
+  // Ensure tour-level collections exist (later Lincoln block also seeds into them)
+  PCG.tours                 = PCG.tours                 || [];
+  PCG.tourStops             = PCG.tourStops             || [];
+  PCG.tourRoutes            = PCG.tourRoutes            || [];
+  PCG.tourInventoryPackages = PCG.tourInventoryPackages || [];
+  PCG.tourCrewPackages      = PCG.tourCrewPackages      || [];
+  PCG.tourLogisticsPlans    = PCG.tourLogisticsPlans    || [];
+
   // Client: MVP Collaborative (automotive experiential agency — Stellantis account)
   if(!(PCG.clients||[]).find(c=>c.id==='c.mvp-collab')){
     PCG.clients.push({
@@ -2428,7 +2439,8 @@
   });
 
   /* ----- The Tour itself ----- */
-  PCG.tours = [{
+  PCG.tours = PCG.tours || [];
+  PCG.tours.push({
     id:'tour.lincoln-navigator-26',
     name:'Lincoln Navigator 2027 National Launch Tour',
     clientId:'c.lincoln',
@@ -2451,10 +2463,11 @@
     },
     notes:'Client traveling with tour: Marcus McNeil (Field Marketing). Brand ambassador on-site each city. Custom dealer kit activation in each regional hub — local hire expected at 6-8 crew per stop.',
     clientContactId:'cc.lin.hsolis'
-  }];
+  });
 
   /* ----- Tour Stops ----- */
-  PCG.tourStops = tourProjects.map((t, i) => ({
+  PCG.tourStops = PCG.tourStops || [];
+  PCG.tourStops.push(...tourProjects.map((t, i) => ({
     id:'tstop.lincoln-'+t.code.split('-')[1].toLowerCase(),
     tourId:'tour.lincoln-navigator-26',
     stopNumber: i+1,
@@ -2481,23 +2494,25 @@
     stopBudgetOverride: null,
     issues: i===2 ? [{ id:'is.atl.1', at:'2026-05-24T11:20', summary:'Confidence monitor SDI drop on LED processor — swapped to spare.', severity:'minor' }] : [],
     notes: i===2 ? 'Live now — monitoring.' : ''
-  }));
+  })));
 
   /* ----- Tour Route (legs between stops) ----- */
-  PCG.tourRoutes = [{
+  PCG.tourRoutes = PCG.tourRoutes || [];
+  PCG.tourRoutes.push({
     id:'tr.lincoln',
     tourId:'tour.lincoln-navigator-26',
-    orderedStops: PCG.tourStops.map(s=>s.id),
+    orderedStops: PCG.tourStops.filter(s=>s.tourId==='tour.lincoln-navigator-26').map(s=>s.id),
     legs: [
       { id:'trl.nyc-chi',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-nyc', toStopId:'tstop.lincoln-chi', departureDate:'2026-05-09', estimatedArrivalDate:'2026-05-11', distanceMiles:790,  estimatedDriveHours:13, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes','drv.mhahn'], trackingNumber:null, notes:'Straight shot on I-80. One overnight.' },
       { id:'trl.chi-atl',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-chi', toStopId:'tstop.lincoln-atl', departureDate:'2026-05-18', estimatedArrivalDate:'2026-05-20', distanceMiles:715,  estimatedDriveHours:11, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes','drv.mhahn'], trackingNumber:null, notes:'I-65 S via Indianapolis, Louisville.' },
       { id:'trl.atl-dfw',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-atl', toStopId:'tstop.lincoln-dfw', departureDate:'2026-05-27', estimatedArrivalDate:'2026-05-30', distanceMiles:780,  estimatedDriveHours:12, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes'],            trackingNumber:null, notes:'Two overnight layovers. Montgomery, then Little Rock.' },
       { id:'trl.dfw-lax',  tourRouteId:'tr.lincoln', fromStopId:'tstop.lincoln-dfw', toStopId:'tstop.lincoln-lax', departureDate:'2026-06-05', estimatedArrivalDate:'2026-06-08', distanceMiles:1435, estimatedDriveHours:22, freightType:'OwnTruck', vehicleIds:['veh.t1','veh.t2','veh.t3'], driverIds:['drv.jreyes','drv.mhahn'], trackingNumber:null, notes:'Longest leg. 3-day buffer. Phoenix overnight recommended.' }
     ]
-  }];
+  });
 
   /* ----- Tour Inventory Package (gear that travels the whole tour) ----- */
-  PCG.tourInventoryPackages = [{
+  PCG.tourInventoryPackages = PCG.tourInventoryPackages || [];
+  PCG.tourInventoryPackages.push({
     id:'tpk.lincoln.inv.core',
     tourId:'tour.lincoln-navigator-26',
     name:'Lincoln Tour Core Package',
@@ -2516,10 +2531,11 @@
       { id:'tii.axd',    packageId:'tpk.lincoln.inv.core', modelId:'inv.shure-axd',  qty:4,  serialIds:['AXD-001','AXD-002','AXD-003','AXD-004'], role:'MainSystem', damageNotes:[], replacedAtStopIds:[], currentCondition:'Excellent' },
       { id:'tii.mon50',  packageId:'tpk.lincoln.inv.core', modelId:'inv.mon-50dual', qty:8,  serialIds:[], role:'Support', damageNotes:[], replacedAtStopIds:[], currentCondition:'Good' }
     ]
-  }];
+  });
 
   /* ----- Tour Crew Package ----- */
-  PCG.tourCrewPackages = [{
+  PCG.tourCrewPackages = PCG.tourCrewPackages || [];
+  PCG.tourCrewPackages.push({
     id:'tpk.lincoln.crew.core',
     tourId:'tour.lincoln-navigator-26',
     name:'Lincoln Tour Core Crew',
@@ -2533,10 +2549,11 @@
       { id:'tcm.6', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.arachilla',positionId:'pos.v1',    role:'PartialTour', startStopId:'tstop.lincoln-nyc', endStopId:'tstop.lincoln-atl', travelArrangement:'WithTour', confirmationStatus:'Confirmed', replacedByCrewMemberId:'p.rbenoit', replacedAtStopId:'tstop.lincoln-dfw' },
       { id:'tcm.7', packageId:'tpk.lincoln.crew.core', crewMemberId:'p.rbenoit', positionId:'pos.v1',     role:'PartialTour', startStopId:'tstop.lincoln-dfw', endStopId:'tstop.lincoln-lax', travelArrangement:'FlyIn',    confirmationStatus:'Confirmed' }
     ]
-  }];
+  });
 
   /* ----- Tour Logistics Plan ----- */
-  PCG.tourLogisticsPlans = [{
+  PCG.tourLogisticsPlans = PCG.tourLogisticsPlans || [];
+  PCG.tourLogisticsPlans.push({
     id:'tlp.lincoln',
     tourId:'tour.lincoln-navigator-26',
     primaryWarehouseId:'wh.troy',
@@ -2550,7 +2567,7 @@
     freightInsuranceValue: 892000,
     freightInsurancePolicyRef:'TRV-2026-LINC-892K',
     notes:'Refuel in Toledo + Nashville on long legs. Climate crate monitors log every 4h — Tour PM gets alert on >85F interior.'
-  }];
+  });
 
   /* ----- Tour Day Types (per day, across full tour window) ----- */
   PCG.tourDayTypes = [
@@ -2603,6 +2620,20 @@
   /* -----------------------------------------------------------------
      Augment existing actionQueue with explicit roles
   ----------------------------------------------------------------- */
+  /* ---------- Normalize client IDs across projects (§EE pricing integrity) ---------- */
+  // Some seed paths use variant client IDs (e.g. 'c.littlecaes' vs 'c.littlecae').
+  // Normalize project.clientId to match a real client record so discount lookups work.
+  const _clientById = new Set((PCG.clients||[]).map(c => c.id));
+  const _clientByPrefix = {};
+  (PCG.clients||[]).forEach(c => { _clientByPrefix[c.id.toLowerCase().replace(/s+$/,'')] = c.id; });
+  (PCG.projects||[]).forEach(p => {
+    if(p.clientId && !_clientById.has(p.clientId)){
+      const normalized = p.clientId.toLowerCase().replace(/s+$/,'');
+      const match = _clientByPrefix[normalized] || _clientByPrefix[normalized.replace(/s+$/,'')];
+      if(match) p.clientId = match;
+    }
+  });
+
   (PCG.actionQueue||[]).forEach(q=>{
     if(!q.roles){
       if(q.kind==='approval') q.roles = [PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.AE];
