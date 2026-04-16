@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Union Labor Call</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  @media print {
+    .no-print, #app-shell { display:none !important; }
+    body { background: white !important; color: black !important; }
+    .uc-sheet { box-shadow: none; border: 0; padding: 0; }
+    .uc-sheet * { color: black !important; }
+    .uc-header { border-bottom: 2px solid black !important; }
+    .uc-line-row { border-bottom: 1px solid #999; }
+  }
+  .uc-sheet {
+    background: var(--surface-1); border:1px solid var(--border);
+    border-radius: var(--r-md); padding: var(--sp-6); margin: var(--sp-4) 0;
+    max-width: 1100px;
+  }
+  .uc-header { border-bottom: 2px solid var(--text-primary); padding-bottom:var(--sp-3); margin-bottom:var(--sp-4); display:grid; grid-template-columns: 1fr auto; gap:var(--sp-4); align-items:end; }
+  .uc-header h1 { margin:0; font-size:28px; letter-spacing:0.02em; }
+  .uc-header .sub { font-size:var(--fs-sm); color:var(--text-secondary); }
+  .uc-header .rate-card { font-family:var(--font-mono); font-size:12px; padding:8px 14px; background:var(--surface-2); border-radius:var(--r-sm); border:1px solid var(--border); }
+  .uc-meta { display:grid; grid-template-columns: repeat(2, 1fr); gap:var(--sp-4); margin-bottom:var(--sp-4); font-size:var(--fs-sm); }
+  .uc-meta dl { margin:0; display:grid; grid-template-columns: 140px 1fr; gap:4px 12px; }
+  .uc-meta dt { font-family:var(--font-display); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary); }
+  .uc-meta dd { margin:0; }
+  .uc-table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); margin-top:var(--sp-3); }
+  .uc-table th { background:var(--surface-2); font-family:var(--font-display); font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-tertiary); padding:8px 6px; text-align:left; border-bottom:1px solid var(--border); }
+  .uc-table td { padding:8px 6px; border-bottom:1px solid var(--border); }
+  .uc-table td.mono { font-family:var(--font-mono); }
+  .uc-line-row:hover { background: var(--surface-2); }
+  .uc-group-hdr td { background: rgba(1,153,253,0.08); font-family:var(--font-display); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; padding:8px; color:var(--pcg-bright-blue); }
+  .uc-terms { margin-top:var(--sp-5); padding-top:var(--sp-4); border-top:1px solid var(--border); font-size:11px; line-height:1.6; color:var(--text-secondary); }
+  .uc-tabs { display:flex; gap:6px; margin-bottom:var(--sp-3); }
+  .uc-tab { padding:8px 16px; border-radius:var(--r-pill); border:1px solid var(--border); background:var(--surface-1); color:var(--text-secondary); font-family:var(--font-display); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; }
+  .uc-tab.on { background: var(--pcg-bright-blue); color:#001a2a; border-color: var(--pcg-bright-blue); }
+  .uc-tab .count { margin-left:6px; font-family:var(--font-mono); opacity:0.7; }
+  .uc-sig { display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-4); margin-top:var(--sp-5); }
+  .uc-sig-block { padding-top:20px; border-top:1px solid var(--text-primary); font-size:11px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" class="no-print"></div>
+  <main class="main">
+    <div class="container">
+      <div class="no-print" style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Union Labor · Call Sheet</div>
+          <h1>Union Labor Call</h1>
+          <div class="muted" id="sub">—</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2); align-items:center; flex-wrap:wrap;">
+          <label class="muted" style="font-size:10px; letter-spacing:0.08em; text-transform:uppercase;">Project</label>
+          <select id="projSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:5px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm); min-width:220px;"></select>
+          <button class="btn sm" id="btn-print">🖨 Print</button>
+          <button class="btn sm" id="btn-csv">⇩ CSV</button>
+          <button class="btn sm primary" id="btn-submit">Submit to Union</button>
+        </div>
+      </div>
+
+      <div id="gate"></div>
+
+      <div class="no-print uc-tabs" id="unionTabs"></div>
+
+      <div id="sheet"></div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'crew', crumbs:[{label:'Crew & Labor'},{label:'Union Labor Call'}]});
+
+  let projectCode = PCG.qs('project') || (PCG.api.getProjects()[0]||{}).code;
+  let activeUnion = PCG.qs('union') || 'IATSE';
+
+  // Project selector — only show Detroit union venues
+  const allProjects = PCG.api.getProjects().filter(p => p.show);
+  const unionProjects = allProjects.filter(p => PCG.api.venueRequiresUnionCalls(p.code));
+  const projectsToShow = unionProjects.length ? unionProjects : allProjects;
+
+  const sel = document.getElementById('projSel');
+  sel.innerHTML = projectsToShow.map(p => {
+    const qualifies = PCG.api.venueRequiresUnionCalls(p.code);
+    return `<option value="${p.code}" ${p.code===projectCode?'selected':''} ${qualifies?'':'data-nonunion="1"'}>${PCG.escapeHtml(p.code)} — ${PCG.escapeHtml(p.name)}${qualifies?' ✓':' (non-union venue)'}</option>`;
+  }).join('');
+  sel.addEventListener('change', () => { projectCode = sel.value; render(); });
+
+  function render(){
+    const qualifies = PCG.api.venueRequiresUnionCalls(projectCode);
+    if(!qualifies){
+      document.getElementById('gate').innerHTML = `
+        <div class="attn-item amber" style="margin-bottom:var(--sp-4);">
+          <div>
+            <div class="ttl">⚠ This venue does not require union calls</div>
+            <div class="meta">Union Call sheets are only generated for <strong>union venues in Detroit</strong> (IATSE 38 / IBEW 58 / UBC 1102 / Teamsters 299 jurisdictions). Select a different project.</div>
+          </div>
+        </div>`;
+    } else {
+      document.getElementById('gate').innerHTML = '';
+    }
+
+    // Union tabs
+    const unions = PCG.api.getUnionJurisdictions();
+    document.getElementById('unionTabs').innerHTML = unions.map(u => {
+      let count = 0;
+      try { const cs = PCG.api.buildUnionCall(projectCode, u.id); count = cs.lines.length; } catch(e){}
+      return `<button class="uc-tab ${u.id===activeUnion?'on':''}" onclick="switchUnion('${u.id}')">${u.full}<span class="count">${count}</span></button>`;
+    }).join('');
+
+    if(!qualifies){ document.getElementById('sheet').innerHTML = ''; return; }
+
+    const callSheet = PCG.api.buildUnionCall(projectCode, activeUnion);
+    const u = callSheet.union;
+    const p = callSheet.project;
+    const v = callSheet.venue;
+
+    document.getElementById('sub').textContent = `${u.full} · ${p.code} — ${p.name}`;
+
+    const ratesStd = u.ratesStandard;
+    const ratesHS = u.ratesHighSteel;
+
+    // Group lines by date
+    const byDate = {};
+    callSheet.lines.forEach(l => { (byDate[l.date] = byDate[l.date] || []).push(l); });
+    const sortedDates = Object.keys(byDate).sort();
+
+    const ratesCard = `
+      <div class="rate-card">
+        <div style="font-family:var(--font-display); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:4px;">Billed Rates (11/01/25 – 10/31/26)</div>
+        ${Object.entries(ratesStd).map(([k,v]) => `<div>${k}: $${v.toFixed(2)}</div>`).join('')}
+        ${ratesHS ? `<div style="margin-top:4px; padding-top:4px; border-top:1px dashed var(--border);"><div style="color:var(--pcg-bright-blue);">High Steel Rigger</div>${Object.entries(ratesHS).map(([k,v]) => `<div>${k}: $${v.toFixed(2)}</div>`).join('')}</div>` : ''}
+      </div>`;
+
+    document.getElementById('sheet').innerHTML = `
+      <div class="uc-sheet">
+        <div class="uc-header">
+          <div>
+            <div class="eyebrow">PCG · Union Labor Order</div>
+            <h1>${PCG.escapeHtml(u.full)}</h1>
+            <div class="sub">Stagehand On-Line Labor Order · Event #${PCG.escapeHtml(callSheet.eventNumber)}</div>
+          </div>
+          ${ratesCard}
+        </div>
+
+        <div class="uc-meta">
+          <dl>
+            <dt>Event</dt>      <dd>${PCG.escapeHtml(p.name)}</dd>
+            <dt>Client</dt>     <dd>${PCG.escapeHtml(p.client || (PCG.api.getClient(p.clientId)||{}).name || '—')}</dd>
+            <dt>Venue</dt>      <dd>${PCG.escapeHtml(v ? v.name : p.venueName || '—')}</dd>
+            <dt>City</dt>       <dd>${PCG.escapeHtml(v && v.city ? v.city : 'Detroit, MI')}</dd>
+            <dt>Dates</dt>      <dd class="mono">${callSheet.summary.dates.length ? PCG.fmtShort(callSheet.summary.dates[0])+' – '+PCG.fmtShort(callSheet.summary.dates[callSheet.summary.dates.length-1]) : '—'}</dd>
+          </dl>
+          <dl>
+            <dt>Send To</dt>    <dd class="mono">${PCG.escapeHtml(u.contactTo)}</dd>
+            <dt>Account Contact</dt><dd>${PCG.escapeHtml((PCG.findPerson(p.aeId)||{}).name || '—')}</dd>
+            <dt>Technical Contact</dt><dd>${PCG.escapeHtml((PCG.findPerson(p.pmId)||{}).name || '—')}</dd>
+            <dt>Lead Days Req</dt><dd>${u.leadDays} business days</dd>
+            <dt>Generated</dt>  <dd class="mono">${PCG.fmtDate(callSheet.generatedAt, {time:true})}</dd>
+          </dl>
+        </div>
+
+        ${sortedDates.length ? `
+        <table class="uc-table">
+          <thead>
+            <tr><th style="width:80px;">QTY</th><th>Labor Classification</th><th style="width:100px;">Start</th><th style="width:100px;">End (Est)</th><th style="width:100px;">Call Location</th><th>Linked Positions / Notes</th></tr>
+          </thead>
+          <tbody>
+            ${sortedDates.map(d => {
+              const rows = byDate[d];
+              return `
+                <tr class="uc-group-hdr"><td colspan="6">📅 ${PCG.fmtShort(d)} — ${new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'long'})}</td></tr>
+                ${rows.map(l => `
+                  <tr class="uc-line-row">
+                    <td class="mono" style="text-align:right; padding-right:20px;">${l.qty}</td>
+                    <td>${PCG.escapeHtml(l.labor)}${l.highSteel ? ' <span class="pill red plain" style="font-size:9px; margin-left:4px;">HSR</span>' : ''}</td>
+                    <td class="mono">${PCG.escapeHtml(l.startTime)}</td>
+                    <td class="mono" style="color:var(--text-tertiary);">${l.endTime || '+ 10h'}</td>
+                    <td style="font-size:11px;">${PCG.escapeHtml(v ? v.name.split('(')[0].trim() : '')}</td>
+                    <td style="font-size:11px; color:var(--text-secondary);">${PCG.escapeHtml((l._positions || []).slice(0,3).join(' · '))}${l.notes ? ' · '+PCG.escapeHtml(l.notes) : ''}</td>
+                  </tr>`).join('')}`;
+            }).join('')}
+          </tbody>
+        </table>` : `<div style="padding: var(--sp-5); text-align:center; color:var(--text-secondary);">No ${u.full} positions scheduled for this project.<br>Crew assignments must be made in Scheduling before generating a union call.</div>`}
+
+        <div class="uc-terms">
+          <strong>Order Terms:</strong>
+          All calls are ${u.minCallHours}-hour minimums. Labor is ordered and billed in whole hour increments.
+          Orders are due ${u.leadDays} business days in advance between 9am-5pm (Mon-Fri, excluding holidays).
+          Late orders not guaranteed. Cancellations/reductions require 24-hour written notice before 3pm weekdays; changes within 24 hours incur a 4-hour minimum fee per stagehand.
+          Meal break required every 3-5 hours or meal penalty applies. 2-hour minimum after meal breaks.
+          150% deposit due 10 business days before move-in. Orders ≥$50k require bank wire/ACH. Credit card payments incur 3.5% non-refundable fee.
+          ${u.id === 'IATSE' ? 'Only IATSE Local 38 Stagehands may install, operate, and dismantle lighting, audio, video, projection, staging, rigging, drapes, and Marley floors.' : ''}
+        </div>
+
+        <div class="uc-sig">
+          <div class="uc-sig-block">
+            <div style="font-family:var(--font-display); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary);">PCG — Authorized Signature</div>
+            <div style="font-family:var(--font-mono); margin-top:4px;">${PCG.escapeHtml(PCG.user.name || 'PCG Rep')} · ${PCG.fmtDate(new Date().toISOString())}</div>
+          </div>
+          <div class="uc-sig-block">
+            <div style="font-family:var(--font-display); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary);">${PCG.escapeHtml(u.full)} — Dispatch Received By</div>
+            <div class="muted" style="font-family:var(--font-mono); margin-top:4px;">__________________________</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  window.switchUnion = (id) => {
+    activeUnion = id;
+    const url = new URL(location.href);
+    url.searchParams.set('union', id);
+    url.searchParams.set('project', projectCode);
+    history.replaceState({}, '', url);
+    render();
+  };
+
+  document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+  document.getElementById('btn-csv').addEventListener('click', () => {
+    const cs = PCG.api.buildUnionCall(projectCode, activeUnion);
+    const rows = [
+      ['Event#', cs.eventNumber],
+      ['Project', cs.project.code + ' — ' + cs.project.name],
+      ['Venue', (cs.venue && cs.venue.name) || cs.project.venueName || ''],
+      ['Union', cs.union.full],
+      ['Generated', cs.generatedAt],
+      [],
+      ['Date','QTY','Labor Classification','Start','End','Call Location','Positions','Notes']
+    ];
+    cs.lines.forEach(l => rows.push([
+      l.date, l.qty, l.labor, l.startTime, l.endTime||'', (cs.venue&&cs.venue.name)||'', (l._positions||[]).join('; '), l.notes||''
+    ]));
+    const csv = rows.map(r => r.map(c => {
+      const s = String(c==null?'':c); return /[,"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }).join(',')).join('\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `UnionCall-${activeUnion}-${projectCode}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  });
+
+  document.getElementById('btn-submit').addEventListener('click', () => {
+    if(!PCG.api.venueRequiresUnionCalls(projectCode)){ alert('Non-union venue — nothing to submit.'); return; }
+    const cs = PCG.api.buildUnionCall(projectCode, activeUnion);
+    if(!cs.lines.length){ alert('No lines to submit. Assign crew positions first.'); return; }
+    if(!confirm(`Submit ${cs.lines.length} line(s) to ${cs.union.full}?\n\nTo: ${cs.union.contactTo}\nLead days required: ${cs.union.leadDays} business days`)) return;
+    try {
+      const sent = PCG.api.submitUnionCall(projectCode, activeUnion, cs);
+      alert(`✓ Call sheet ${sent.id} submitted to ${cs.union.full}.\n\nDispatch will confirm receipt via email.`);
+    } catch(e){ alert('Submit failed: '+e.message); }
+  });
+
+  render();
+</script>
+</body>
+</html>

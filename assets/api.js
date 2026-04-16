@@ -1430,6 +1430,218 @@
     return { ok:true };
   };
 
+  // ==================================================================
+  // Union Labor Call Export (Detroit union venues)
+  //   IATSE Local 38 — stagehand, A/V, lighting, video, rigging
+  //   IBEW Local 58  — electricians (power service, distro)
+  //   UBC Local 1102 — carpenters / scenic
+  //   IBT Local 299  — teamsters / freight drivers / forklift
+  // Each union gets its own call sheet matching the Master Estimate
+  // Sheet format (Stagehand Labor Order).
+  // ==================================================================
+  const UNION_JURISDICTIONS = {
+    'IATSE': {
+      id:'IATSE', localDefault:'38', full:'IATSE Local 38',
+      contactTo:'labor@iatse38.com',
+      stagehandClassifications: [
+        'Hand - Audio','Hand - Lighting','Hand - Video','Hand - Scenic','Hand - General',
+        'Board - Audio','Board - Lighting','Board - Video Switch','Board - Playback/Record','Board - Teleprompter',
+        'Rigger - Up','Rigger - Down','Rigger - High Steel',
+        'Camera - Stick','Camera - HH','Camera - Robotics','Camera - Jib',
+        'Key - Meeting Room Technician','Key - Projectionist','Key - Cable Page',
+        'Steward'
+      ],
+      ratesStandard: { ST:92.90, OT:139.35, PT:176.50 },
+      ratesHighSteel: { ST:100.80, OT:151.25, PT:191.50 },
+      leadDays:10, minCallHours:4,
+      deptsCovered:['Audio','Video','Lighting','Rigging','Scenic','Video/LED','Production']
+    },
+    'IBEW': {
+      id:'IBEW', localDefault:'58', full:'IBEW Local 58',
+      contactTo:'dispatch@ibew58.org',
+      stagehandClassifications: [
+        'Journeyman Wireman','Apprentice Wireman','Working Foreman','General Foreman'
+      ],
+      ratesStandard: { ST:84.00, OT:126.00, DT:168.00 },
+      leadDays:5, minCallHours:4,
+      deptsCovered:['Power','Electrical','Distro']
+    },
+    'UBC': {
+      id:'UBC', localDefault:'1102', full:'UBC Carpenters Local 1102',
+      contactTo:'dispatch@ubc1102.org',
+      stagehandClassifications: [
+        'Journeyman Carpenter','Apprentice Carpenter','Foreman','Scenic Carpenter'
+      ],
+      ratesStandard: { ST:68.00, OT:102.00, DT:136.00 },
+      leadDays:5, minCallHours:4,
+      deptsCovered:['Scenic','Staging','Carpentry']
+    },
+    'IBT': {
+      id:'IBT', localDefault:'299', full:'IBT Teamsters Local 299',
+      contactTo:'dispatch@teamsters299.org',
+      stagehandClassifications: [
+        'Driver (CDL-A)','Driver (CDL-B)','Forklift Operator','Loader / Freight Handler','Warehouse Foreman'
+      ],
+      ratesStandard: { ST:62.00, OT:93.00, DT:124.00 },
+      leadDays:5, minCallHours:4,
+      deptsCovered:['Freight','Transport','Loading']
+    }
+  };
+  PCG.api.getUnionJurisdictions = () => Object.values(UNION_JURISDICTIONS);
+  PCG.api.getUnionJurisdiction = (id) => UNION_JURISDICTIONS[id] || null;
+
+  // Gate: only show if project's venue is in Detroit AND union
+  PCG.api.venueRequiresUnionCalls = (projectCode) => {
+    const p = (PCG.projects||[]).find(x => x.code === projectCode);
+    if(!p) return false;
+    const v = p.venueId ? (PCG.venues||[]).find(x => x.id === p.venueId) : null;
+    if(!v) return false;
+    const isDetroit = (v.city || '').toLowerCase().includes('detroit')
+                   || (v.address || '').toLowerCase().includes('detroit');
+    const isUnion = v.union === true || (v.union && v.union.required === true);
+    return isDetroit && isUnion;
+  };
+
+  // Build a per-union call list for a project. Pulls shift assignments for the
+  // project that match the union's deptsCovered and groups by classification +
+  // date range.
+  PCG.api.buildUnionCall = (projectCode, unionId, opts) => {
+    const u = UNION_JURISDICTIONS[unionId];
+    if(!u) throw new Error('Unknown union: '+unionId);
+    const p = (PCG.projects||[]).find(x => x.code === projectCode);
+    if(!p) throw new Error('Project not found');
+    const v = p.venueId ? (PCG.venues||[]).find(x => x.id === p.venueId) : null;
+
+    // Pull shift assignments for this project
+    const allShifts = (PCG.shiftAssignments||[]).filter(sa => sa.showId === projectCode);
+
+    // Map position → union jurisdiction by department (for IATSE use unionLocal if set)
+    const linesByDate = {};
+    allShifts.forEach(sa => {
+      const pos = (PCG.crewPositions||[]).find(x => x.id === sa.positionId);
+      if(!pos) return;
+      // Determine if this position belongs to this union
+      const posUnion = pos.union || null;
+      const classifies = (unionId === 'IATSE') ? (posUnion === 'IATSE' || u.deptsCovered.includes(pos.department))
+                       : u.deptsCovered.includes(pos.department);
+      if(!classifies) return;
+      (sa.dates||[]).forEach(d => {
+        linesByDate[d] = linesByDate[d] || [];
+        // Map to the union's classification label (best match)
+        const classification = _mapPositionToUnionClassification(pos, u);
+        linesByDate[d].push({
+          date: d,
+          labor: classification,
+          qty: 1,
+          positionId: pos.id,
+          positionName: pos.displayName || pos.name,
+          startTime: sa.callTime || '06:00',
+          endTime: '', // estimated end — stops at 14h default call
+          notes: sa.notes || '',
+          highSteel: classification.toLowerCase().includes('high steel'),
+          sourceShiftId: sa.id
+        });
+      });
+    });
+
+    // Flatten + sort
+    const lines = Object.values(linesByDate).flat().sort((a,b) =>
+      (a.date+a.labor).localeCompare(b.date+b.labor));
+
+    // Aggregate quantities (merge identical labor×date×startTime)
+    const agg = {};
+    lines.forEach(l => {
+      const key = `${l.date}|${l.labor}|${l.startTime}|${l.highSteel}`;
+      if(agg[key]){ agg[key].qty += l.qty; agg[key]._positions = (agg[key]._positions||[]).concat(l.positionName); }
+      else { agg[key] = Object.assign({}, l, { _positions: [l.positionName] }); }
+    });
+    const aggregated = Object.values(agg);
+
+    return {
+      project: p,
+      venue: v,
+      union: u,
+      lines: aggregated,
+      summary: {
+        totalLines: aggregated.length,
+        totalQty: aggregated.reduce((s,l) => s+l.qty, 0),
+        dates: [...new Set(aggregated.map(l => l.date))].sort(),
+        earliestDate: aggregated.length ? aggregated[0].date : null,
+        leadDaysRequired: u.leadDays
+      },
+      generatedAt: new Date().toISOString(),
+      generatedById: PCG.user.id,
+      eventNumber: p.eventFolderNumber || 'E'+(p.code||'').replace(/[^A-Z0-9]/gi,''),
+      contactTo: u.contactTo
+    };
+  };
+
+  function _mapPositionToUnionClassification(pos, u){
+    const name = (pos.displayName || pos.name || '').toLowerCase();
+    const dept = (pos.department || '').toLowerCase();
+    // IATSE mappings
+    if(u.id === 'IATSE'){
+      if(name.includes('high steel') || name.includes('high-steel')) return 'Rigger - High Steel';
+      if(name.includes('rigger') && name.includes('up')) return 'Rigger - Up';
+      if(name.includes('rigger') && name.includes('down')) return 'Rigger - Down';
+      if(name.includes('rigger')) return 'Rigger - Up';
+      if(name.includes('cam') && name.includes('hh')) return 'Camera - HH';
+      if(name.includes('cam') && name.includes('robot')) return 'Camera - Robotics';
+      if(name.includes('cam') && name.includes('jib')) return 'Camera - Jib';
+      if(name.includes('camera')) return 'Camera - Stick';
+      if(name.includes('projection')) return 'Key - Projectionist';
+      if(name.includes('cable')) return 'Key - Cable Page';
+      if(name.includes('meeting room')) return 'Key - Meeting Room Technician';
+      if(name.includes('steward')) return 'Steward';
+      if(name.includes('a1') || name.includes('audio') && name.includes('tech')) return 'Board - Audio';
+      if(name.includes('v1') || name.includes('switcher')) return 'Board - Video Switch';
+      if(name.includes('playback') || name.includes('record')) return 'Board - Playback/Record';
+      if(name.includes('teleprompt')) return 'Board - Teleprompter';
+      if(name.includes('lighting') && (name.includes('director') || name.includes('ld'))) return 'Board - Lighting';
+      if(dept === 'audio')    return 'Hand - Audio';
+      if(dept === 'lighting') return 'Hand - Lighting';
+      if(dept === 'video' || dept === 'video/led') return 'Hand - Video';
+      if(dept === 'scenic')   return 'Hand - Scenic';
+      return 'Hand - General';
+    }
+    if(u.id === 'IBEW'){
+      if(name.includes('foreman')) return 'General Foreman';
+      if(name.includes('apprentice')) return 'Apprentice Wireman';
+      return 'Journeyman Wireman';
+    }
+    if(u.id === 'UBC'){
+      if(name.includes('foreman')) return 'Foreman';
+      if(name.includes('scenic')) return 'Scenic Carpenter';
+      if(name.includes('apprentice')) return 'Apprentice Carpenter';
+      return 'Journeyman Carpenter';
+    }
+    if(u.id === 'IBT'){
+      if(name.includes('foreman')) return 'Warehouse Foreman';
+      if(name.includes('forklift')) return 'Forklift Operator';
+      if(name.includes('cdl-a') || name.includes('driver-a')) return 'Driver (CDL-A)';
+      if(name.includes('driver')) return 'Driver (CDL-B)';
+      return 'Loader / Freight Handler';
+    }
+    return 'Hand - General';
+  }
+
+  PCG.api.submitUnionCall = (projectCode, unionId, callSheet) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS);
+    const sent = {
+      id: 'uc.'+Math.random().toString(36).slice(2,8),
+      projectCode, unionId,
+      lines: callSheet.lines,
+      submittedAt: new Date().toISOString(),
+      submittedById: PCG.user.id,
+      status: 'Submitted'
+    };
+    PCG.unionCalls = PCG.unionCalls || [];
+    PCG.unionCalls.push(sent);
+    PCG.auditLog.push({ at:sent.submittedAt, actor:PCG.user.id, action:'unionCall.submit', entityId:sent.id, detail:`${unionId} · ${projectCode} · ${callSheet.lines.length} lines` });
+    PCG.engines.notify.emit('UnionCallSubmitted', { unionId, projectCode, lineCount:callSheet.lines.length });
+    return sent;
+  };
+
   PCG.api.acknowledgeAddOrder = (aoNumber) => {
     PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.DIRECTORS);
     const ao = (PCG.addOrders||[]).find(a => a.aoNumber === aoNumber || a.id === aoNumber);

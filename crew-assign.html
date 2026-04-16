@@ -124,11 +124,15 @@
           <select id="showSel" style="background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:6px 12px; border-radius:var(--r-sm); font-size:var(--fs-sm);"></select>
           <button class="btn sm" id="cloneBtn">Clone Prior Roster</button>
           <button class="btn sm" id="lettersBtn">Generate Crew Letters</button>
+          <button class="btn sm" id="unionBtn" style="display:none;">⚡ Union Calls</button>
         </div>
       </div>
 
       <!-- Readiness stripe -->
       <div class="stripe" id="stripe"></div>
+
+      <!-- Conditional Union Call bar (Detroit union venue) -->
+      <div id="unionBar"></div>
 
       <div class="staff-shell">
         <!-- LEFT — Position list -->
@@ -236,6 +240,31 @@
     function render(){
       const p = PCG.api.getProject(state.showCode);
       document.getElementById('hdr').textContent = `${p.code} — ${p.name}`;
+
+      // Conditional Union Call Exports (Detroit union venues only)
+      const unionBtn = document.getElementById('unionBtn');
+      const unionBar = document.getElementById('unionBar');
+      if(PCG.api.venueRequiresUnionCalls && PCG.api.venueRequiresUnionCalls(p.code)){
+        unionBtn.style.display = '';
+        unionBtn.onclick = () => { location.href = 'union-call.html?project=' + p.code + '&union=IATSE'; };
+        const unions = PCG.api.getUnionJurisdictions();
+        unionBar.innerHTML = `
+          <div class="card" style="margin-bottom:var(--sp-4); padding:var(--sp-3); border-left:3px solid var(--status-red); display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap;">
+            <div style="font-family:var(--font-display); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--status-red);">⚡ Detroit Union Venue</div>
+            <div style="font-size:var(--fs-sm);">Generate per-union labor call sheets:</div>
+            <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
+              ${unions.map(u => {
+                let count = 0;
+                try { count = PCG.api.buildUnionCall(p.code, u.id).lines.length; } catch(e){}
+                const shortName = u.id === 'IATSE' ? 'IATSE 38' : u.id === 'IBEW' ? 'IBEW 58' : u.id === 'UBC' ? 'Carpenters 1102' : 'Teamsters 299';
+                return `<a class="btn sm ghost" href="union-call.html?project=${p.code}&union=${u.id}" style="font-size:11px;">${shortName} (${count})</a>`;
+              }).join('')}
+            </div>
+          </div>`;
+      } else {
+        unionBtn.style.display = 'none';
+        unionBar.innerHTML = '';
+      }
 
       const assns = (PCG.shiftAssignments||[]).filter(s=>s.showId===state.showCode);
       const total = assns.length;

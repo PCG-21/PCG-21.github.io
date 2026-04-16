@@ -116,6 +116,7 @@
       { id:'travel',       label:'Travel & Per Diem', href:'travel.html',        icon:'✈', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ACCOUNTING] },
       { id:'timesheets',   label:'Timesheets',        href:'timesheets.html',    icon:'◱', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS] },
       { id:'timecard',     label:'My Timecard',       href:'timecard.html',      icon:'⏱', groups:'*' },
+      { id:'union-call',   label:'Union Labor Call',  href:'union-call.html?project=SAE-WCX-2026&union=IATSE', icon:'⚡', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS] },
       { id:'messages',     label:'Crew Messages',     href:'messages.html',      icon:'✉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM] }
     ]},
 
