@@ -1415,24 +1415,149 @@
 
   /* ---------- Timesheets §12.3 ---------- */
   PCG.payRules = [
-    { id:'pr.iatse720', name:'IATSE-720-Standard', employmentType:'IATSE', unionLocal:'720', market:'Las Vegas',
-      dailyOTThresholdHours:8, weeklyOTThresholdHours:40, dailyDTThresholdHours:12,
-      minimumCallMinutes:600, otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:2.5,
-      mealPenaltyAfterMinutes:360, mealPenaltyAmount:50,
-      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' },
-    { id:'pr.iatse38', name:'IATSE-38-Standard', employmentType:'IATSE', unionLocal:'38', market:'Detroit',
-      dailyOTThresholdHours:8, weeklyOTThresholdHours:40, dailyDTThresholdHours:12,
-      minimumCallMinutes:600, otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:2.5,
-      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' },
-    { id:'pr.w2std', name:'W2-Standard', employmentType:'W2', unionLocal:null, market:'*',
-      dailyOTThresholdHours:8, weeklyOTThresholdHours:40, dailyDTThresholdHours:12,
-      minimumCallMinutes:480, otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:2.0,
-      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' },
-    { id:'pr.1099', name:'1099-Standard', employmentType:'1099', unionLocal:null, market:'*',
-      dailyOTThresholdHours:10, weeklyOTThresholdHours:50, dailyDTThresholdHours:14,
-      minimumCallMinutes:480, otMultiplier:1.0, dtMultiplier:1.0, holidayMultiplier:1.0,
-      effectiveFrom:'2026-01-01', effectiveTo:'2026-12-31' }
+    // --------------------------------------------------------------
+    // Premier Non-Exempt Technician (W2, consecutive-hour engine)
+    // See PAY_RULES const + computeTimecardTotals in api.js
+    // --------------------------------------------------------------
+    { id:'pr.premier-nonexempt', name:'Premier Non-Exempt Technician',
+      engine:'consecutive-hour', employmentType:'W2', unionLocal:null, market:'*',
+      consecOTStart:10, consecDTStart:16,
+      weeklyOTThresholdHours:40,
+      dailyOTThresholdHours:null,
+      premiumStart:0, premiumEnd:6, premiumMultiplier:2.0,
+      otMultiplier:1.5, dtMultiplier:2.0, holidayMultiplier:1.0,
+      minimumCallHoursPerEvent:10, // 10hr minimum per event assignment
+      mealBreakUnderMin:30, // <30min = clock continues
+      outOfTownRadiusMi:60,
+      turnaroundBreakHr:8, continuousBreakHr:4,
+      source:'Premier Pay Rules — Non-Exempt Technician',
+      effectiveFrom:'2025-01-01', effectiveTo:'2026-12-31' },
+
+    // --------------------------------------------------------------
+    // Premier In-House Union (our 3 in-house union employees)
+    // Time-banded + day-of-week + Prevailing-Rate turnaround
+    // --------------------------------------------------------------
+    { id:'pr.premier-inhouse-union', name:'Premier In-House Union',
+      engine:'time-banded-inhouse', employmentType:'InHouseUnion', unionLocal:'Premier-InHouse', market:'Detroit',
+      // ST: Mon-Fri 6am-10pm
+      stWindow: { days:[1,2,3,4,5], startHr:6, endHr:22 },
+      // OT bands
+      otBands: [
+        { days:[1,2,3,4,5], startHr:22, endHr:24, note:'Mon-Fri 10p-12a' },
+        { days:[6],         startHr:0,  endHr:24, note:'All day Saturday' }
+      ],
+      // DT bands (also triggers on day-of-daily > 8h? Actually IN-HOUSE rule says OT after 8/day, DT is separate overnight window)
+      dtBands: [
+        { days:[1,2,3,4,5,6], startHr:0, endHr:6, note:'12a-6a Mon-Sat' },
+        { days:[0],           startHr:0, endHr:24, note:'All day Sunday' }
+      ],
+      holidayBucket:'DT',
+      dailyOTThresholdHours:8,    // after 8h in a day → OT
+      weeklyOTThresholdHours:40,
+      prevailingRateTurnaroundHrs:8,
+      minimumCallHours:4,
+      otMultiplier:1.5, dtMultiplier:2.0,
+      source:'Premier In-House Union Agreement',
+      effectiveFrom:'2025-11-01', effectiveTo:'2026-10-31' },
+
+    // --------------------------------------------------------------
+    // IATSE Local 38 (Stagehand, Detroit / Huntington Place)
+    // --------------------------------------------------------------
+    { id:'pr.iatse-38', name:'IATSE Local 38 Stagehand',
+      engine:'time-banded-iatse', employmentType:'IATSE', unionLocal:'38', market:'Detroit',
+      stWindow: { days:[1,2,3,4,5], startHr:6, endHr:22 },
+      otBands: [
+        { days:[1,2,3,4,5], startHr:22, endHr:24, note:'Mon-Fri 10p-12a' },
+        { days:[1,2,3,4,5], startHr:0,  endHr:6,  note:'Mon-Fri 12a-6a overnight' },
+        { days:[6],         startHr:0,  endHr:24, note:'All day Saturday' }
+      ],
+      ptBands: [
+        { days:[0], startHr:0, endHr:24, note:'All day Sunday' }
+      ],
+      holidayBucket:'PT',
+      dailyOTThresholdHours:8,
+      weeklyOTThresholdHours:null, // IATSE billed per-hour-worked to client
+      prevailingRateTurnaroundHrs:8,
+      minimumCallHours:4, // 4-hour minimum per shift
+      minimumAfterMealHours:2,
+      mealBreakEveryHoursMin:3, mealBreakEveryHoursMax:5,
+      billWholeHours:true, // e.g. 4.5h = 5h
+      ratesBilled: { ST:92.90, OT:139.35, PT:176.50 },
+      ptMultiplier:1.9, // 1.9× ST per user spec; PDF rate equals this
+      otMultiplier:1.5,
+      cancelationWindowHrs:24, changeFeeMinHours:4,
+      orderLeadBusinessDays:10, depositPct:1.5, achThresholdUSD:50000,
+      ccSurchargePct:0.035,
+      source:'IATSE Local 38 Stagehand Summary (Huntington Place)',
+      effectiveFrom:'2025-11-01', effectiveTo:'2026-10-31' },
+
+    // --------------------------------------------------------------
+    // IATSE High Steel Rigger — same rules, higher rates
+    // --------------------------------------------------------------
+    { id:'pr.iatse-highsteel', name:'IATSE High Steel Rigger',
+      engine:'time-banded-iatse', employmentType:'IATSE', unionLocal:'38-HighSteel', market:'Detroit',
+      stWindow: { days:[1,2,3,4,5], startHr:6, endHr:22 },
+      otBands: [
+        { days:[1,2,3,4,5], startHr:22, endHr:24 },
+        { days:[1,2,3,4,5], startHr:0,  endHr:6  },
+        { days:[6],         startHr:0,  endHr:24 }
+      ],
+      ptBands: [ { days:[0], startHr:0, endHr:24 } ],
+      holidayBucket:'PT',
+      dailyOTThresholdHours:8,
+      prevailingRateTurnaroundHrs:8,
+      minimumCallHours:4,
+      ratesBilled: { ST:100.80, OT:151.25, PT:191.50 },
+      ptMultiplier:1.9, otMultiplier:1.5,
+      source:'IATSE Local 38 Stagehand Summary — High Steel Rigger subsection',
+      effectiveFrom:'2025-11-01', effectiveTo:'2026-10-31' },
+
+    // --------------------------------------------------------------
+    // IATSE Local 720 (Las Vegas — kept for Caesars Forum work)
+    // --------------------------------------------------------------
+    { id:'pr.iatse-720', name:'IATSE Local 720 Stagehand',
+      engine:'time-banded-iatse', employmentType:'IATSE', unionLocal:'720', market:'Las Vegas',
+      stWindow: { days:[1,2,3,4,5], startHr:6, endHr:22 },
+      otBands: [
+        { days:[1,2,3,4,5], startHr:22, endHr:24 },
+        { days:[1,2,3,4,5], startHr:0,  endHr:6  },
+        { days:[6],         startHr:0,  endHr:24 }
+      ],
+      ptBands: [ { days:[0], startHr:0, endHr:24 } ],
+      holidayBucket:'PT',
+      dailyOTThresholdHours:8,
+      prevailingRateTurnaroundHrs:8,
+      minimumCallHours:10,
+      otMultiplier:1.5, ptMultiplier:1.9,
+      source:'IATSE Local 720 (Las Vegas)',
+      effectiveFrom:'2025-11-01', effectiveTo:'2026-10-31' },
+
+    // --------------------------------------------------------------
+    // 1099 Contractor (no OT multiplier, flat rate)
+    // --------------------------------------------------------------
+    { id:'pr.1099', name:'1099 Contractor',
+      engine:'flat-hourly', employmentType:'1099', unionLocal:null, market:'*',
+      otMultiplier:1.0, dtMultiplier:1.0, ptMultiplier:1.0,
+      minimumCallHours:0,
+      source:'Standard 1099 contractor terms',
+      effectiveFrom:'2025-01-01', effectiveTo:'2026-12-31' }
   ];
+
+  // Assign classifications to existing crew members
+  PCG.crewMembers.forEach(m => {
+    // 3 in-house union
+    if(['p.pshah','p.eliott','p.rbenoit'].includes(m.id)){
+      m.payRuleId = 'pr.premier-inhouse-union';
+      m.employmentType = 'InHouseUnion';
+      m.classification = 'Premier In-House Union';
+    } else if(m.employmentType === '1099' || ['p.mchen'].includes(m.id)){
+      m.payRuleId = 'pr.1099';
+      m.classification = '1099 Contractor';
+    } else {
+      m.payRuleId = 'pr.premier-nonexempt';
+      m.classification = 'Premier Non-Exempt (W2)';
+    }
+  });
 
   PCG.timesheets = [
     { id:'ts.001', shiftAssignmentId:'sa.glbx.td', crewMemberId:'p.ctaylor', showId:'GLBX-GSK26',

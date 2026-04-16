@@ -183,6 +183,7 @@
   let weekStart = PCG.api.getTimecardWeekStart(new Date().toISOString().slice(0,10));
 
   const CATS = PCG.api.getTimecardCategories();
+  // No direct use of getPayRules in timecard.html — rules live in the engine.
 
   function fmtDate(iso){
     const d = new Date(iso+'T12:00:00');
@@ -200,6 +201,16 @@
     document.getElementById('weekLabel').textContent = fmtWeekRange(weekStart);
     const crew = (PCG.crewMembers||[]).find(m => m.id === activeCrewId) || { name: activeCrewId };
     document.getElementById('hdr').textContent = `${crew.name}'s Timecard`;
+    // Surface classification + pay rule
+    const payRule = crew.payRuleId ? (PCG.payRules||[]).find(p => p.id === crew.payRuleId) : null;
+    const clsLabel = crew.classification || 'Premier Non-Exempt (W2)';
+    const clsColor = crew.employmentType === 'InHouseUnion' ? 'purple'
+                   : crew.employmentType === 'IATSE' ? 'red'
+                   : crew.employmentType === '1099' ? 'amber' : 'blue';
+    document.getElementById('subhdr').innerHTML = `
+      <span class="pill ${clsColor} plain" style="font-size:10px; margin-right:6px;">${PCG.escapeHtml(clsLabel)}</span>
+      ${payRule ? `Rule: <span class="mono">${PCG.escapeHtml(payRule.name)}</span> · ` : ''}
+      Jobs auto-populate from your scheduled shifts. Add manual rows for shop work, prep, meetings, travel, or PTO.`;
 
     const week = PCG.api.getTimecardWeek(activeCrewId, weekStart);
     const table = document.getElementById('tcTable');
@@ -249,10 +260,15 @@
 
     document.getElementById('rowCount').textContent = `${week.rows.length} row${week.rows.length===1?'':'s'} this week`;
 
-    const totals = PCG.api.computeTimecardTotals(week.rows);
+    // Use classification-aware dispatcher (routes W2 → consecutive-hour,
+    // InHouseUnion/IATSE → time-banded with day-of-week + prevailing rate)
+    const totals = PCG.api.computeTimecardTotalsByClassification(week.rows);
     const holidayCells = totals.holidayHours > 0 ? `<div class="cell"><div class="lbl">Holiday (8hr)</div><div class="val">${totals.holidayHours.toFixed(2)}</div></div>` : '';
     const minCallCell = totals.minCallBonusHours > 0 ? `<div class="cell"><div class="lbl">10hr-Min Bonus</div><div class="val">${totals.minCallBonusHours.toFixed(2)}</div></div>` : '';
-    const premiumCell = totals.premiumHours > 0 ? `<div class="cell ot"><div class="lbl">Premium 12-6a</div><div class="val">${totals.premiumHours.toFixed(2)}</div></div>` : '';
+    // PT = union premium time (Sundays / Holidays for IATSE); falls back to Premium 12-6a for W2
+    const ptLabel = (totals.pt || 0) > 0 ? 'PT (×1.9)' : 'Premium 12-6a';
+    const ptVal = (totals.pt || totals.premiumHours || 0);
+    const premiumCell = ptVal > 0 ? `<div class="cell ot"><div class="lbl">${ptLabel}</div><div class="val">${ptVal.toFixed(2)}</div></div>` : '';
     document.getElementById('tcSummary').innerHTML = `
       <div class="cell"><div class="lbl">Straight Hrs</div><div class="val">${totals.regHours.toFixed(2)}</div></div>
       <div class="cell ot"><div class="lbl">OT Hrs (×1.5)</div><div class="val">${totals.otHours.toFixed(2)}</div></div>

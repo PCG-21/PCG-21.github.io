@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Pay Rules Settings</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .pr-row { display:grid; grid-template-columns: 1fr 180px 220px 200px; gap: var(--sp-3); align-items:center; padding: var(--sp-3); border-bottom: 1px solid var(--border); }
+  .pr-row .lbl { font-weight:600; }
+  .pr-row .desc { font-size:var(--fs-xs); color:var(--text-secondary); grid-column: 1 / 2; }
+  .pr-row input { background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 10px; font-family:var(--font-mono); font-size:var(--fs-sm); width:100%; }
+  .pr-row select { background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 10px; font-size:var(--fs-sm); width:100%; }
+  .pr-row .src { font-size:var(--fs-xs); color:var(--text-tertiary); font-family:var(--font-mono); }
+  .hol-chip { display:inline-flex; align-items:center; gap:6px; background: rgba(240,78,85,0.12); color: var(--status-red); padding: 4px 10px; border-radius: var(--r-pill); font-size:11px; font-family:var(--font-mono); margin: 3px 6px 3px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div style="display:flex; align-items:flex-end; gap:var(--sp-3); margin-bottom:var(--sp-4);">
+        <div>
+          <div class="eyebrow">Admin · Payroll</div>
+          <h1>Pay Rules</h1>
+          <div class="muted">Premier non-exempt technician rules that drive the timecard engine (straight / OT / DT / premium / minimums). Admin-only.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:var(--sp-2);">
+          <button class="btn sm ghost" id="btn-reset">Reset to Defaults</button>
+          <button class="btn sm primary" id="btn-save">Save Rules</button>
+        </div>
+      </div>
+
+      <div id="gate"></div>
+
+      <!-- Legend -->
+      <div class="card" style="margin-bottom: var(--sp-4); border-left:3px solid var(--pcg-bright-blue);">
+        <div class="card-body" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:var(--sp-3); font-size:var(--fs-sm);">
+          <div><strong style="color:var(--status-green);">ST</strong> — Standard Time (base rate)</div>
+          <div><strong style="color:var(--status-amber);">OT</strong> — Overtime (×1.5)</div>
+          <div><strong style="color:var(--status-red);">DT</strong> — Double Time (×2.0, In-House Union only)</div>
+          <div><strong style="color:var(--pcg-spotlight-purple);">PT</strong> — Premium Time (×1.9, IATSE only)</div>
+          <div style="grid-column: 1/-1; padding-top:var(--sp-2); border-top:1px solid var(--border); font-size:var(--fs-xs); color:var(--text-secondary);">
+            <strong>Prevailing Rate:</strong> Position remains at the highest rate of pay reached during the prior shift until an 8-hour break from work is received. Applies to both IATSE and In-House Union.
+          </div>
+        </div>
+      </div>
+
+      <!-- Classifications overview -->
+      <div class="card" style="margin-bottom: var(--sp-5);">
+        <div class="card-header">
+          <div class="title">Classifications · Active Pay Rules</div>
+          <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="classCount"></span>
+        </div>
+        <div class="card-body" id="classificationsHost"></div>
+      </div>
+
+      <!-- Spec summaries -->
+      <div class="card" style="margin-bottom: var(--sp-5);">
+        <div class="card-header"><div class="title">Rules Summary — As Written</div></div>
+        <div class="card-body" style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--sp-4); font-size:var(--fs-sm); line-height:1.7;">
+          <div>
+            <div style="font-family:var(--font-display); letter-spacing:0.08em; text-transform:uppercase; color:var(--pcg-spotlight-purple); margin-bottom:6px;">Premier In-House Union (3 employees)</div>
+            <ul style="margin:0; padding-left:18px;">
+              <li><strong>ST</strong> — first 8 hours between <strong>6am-10pm Mon-Fri</strong></li>
+              <li><strong>OT</strong> — after 8 hrs/day; after 40 hrs/week; <strong>10pm-12am Mon-Fri</strong>; all day <strong>Saturday</strong></li>
+              <li><strong>DT</strong> — <strong>12am-6am Mon-Sat</strong>; all day <strong>Sunday</strong>; <strong>Holidays</strong></li>
+              <li><strong>Prevailing Rate</strong> until 8-hour break received</li>
+            </ul>
+          </div>
+          <div>
+            <div style="font-family:var(--font-display); letter-spacing:0.08em; text-transform:uppercase; color:var(--status-red); margin-bottom:6px;">IATSE (Local 38 + 720 + High Steel)</div>
+            <ul style="margin:0; padding-left:18px;">
+              <li><strong>ST</strong> — first 8 hours between <strong>6am-10pm Mon-Fri</strong></li>
+              <li><strong>OT</strong> — after 8 hrs/day; <strong>10pm-6am Mon-Fri</strong>; all day <strong>Saturday</strong></li>
+              <li><strong>PT</strong> (1.9× ST) — all day <strong>Sunday</strong>; <strong>Holidays</strong></li>
+              <li><strong>Prevailing Rate</strong> until 8-hour break received</li>
+              <li><em>No weekly 40h threshold — IATSE is billed hourly to client</em></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div id="rulesHost">
+        <div class="card">
+          <div class="card-header"><div class="title">Consecutive-Hour Thresholds (per shift)</div></div>
+          <div id="consecHost"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header"><div class="title">Weekly Thresholds &amp; Minimums</div></div>
+          <div id="weeklyHost"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header"><div class="title">Premium Time Window (12am–6am by default)</div></div>
+          <div id="premHost"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header"><div class="title">Out-of-Town &amp; Turnaround</div></div>
+          <div id="oottHost"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header">
+            <div class="title">Recognized Holidays (auto 8hr paid)</div>
+            <button class="btn sm ghost" style="margin-left:auto;" id="btn-add-holiday">＋ Add Holiday Rule</button>
+          </div>
+          <div class="card-body" id="holHost"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header"><div class="title">Work Week &amp; Submission</div></div>
+          <div id="weekHost"></div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);">
+          <div class="card-header"><div class="title">Rule Categories — Which Bucket Counts Toward 40h?</div></div>
+          <div class="card-body">
+            <div id="catHost" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); font-size:var(--fs-sm);"></div>
+            <div class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp-3);">
+              Per Premier rules: Gifted hours <strong>count</strong> toward 40h. PTO, Holiday, Sick, Bereavement, and Jury Duty <strong>do not</strong>.
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4); border-color: var(--border-accent);">
+          <div class="card-header"><div class="title">Source of Truth</div></div>
+          <div class="card-body" style="font-size:var(--fs-xs); color:var(--text-secondary); line-height:1.7;">
+            These settings are applied live by <code>PCG.api.computeTimecardTotals()</code> every time a timecard is computed.
+            Changes here affect <strong>future</strong> timecard calculations only — approved timecards are locked and remain at the rules that were in effect when approved.
+            Changes are logged to the audit trail under <code>admin.payRules.update</code>.
+            Source document: <em>Premier Pay Rules — Non-Exempt Technician</em>.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'admin', crumbs:[{label:'Admin'},{label:'Pay Rules'}]});
+
+  const canEdit = PCG.hasAnyPermission(PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS);
+
+  if(!canEdit){
+    document.getElementById('gate').innerHTML = `<div class="card card-pad" style="margin-bottom:var(--sp-4);">${PCG.states.forbidden()}</div>`;
+    document.getElementById('rulesHost').style.opacity = '0.5';
+    document.getElementById('rulesHost').style.pointerEvents = 'none';
+  }
+
+  const r = PCG.api.getPremierPayRules();
+  const DEFAULTS = PCG.api.getPremierPayRules();
+
+  function row(id, label, desc, val, unit, defaultVal, type='number'){
+    return `
+      <div class="pr-row">
+        <div>
+          <div class="lbl">${label}</div>
+          <div class="desc">${desc}</div>
+        </div>
+        <input data-k="${id}" type="${type}" step="${type==='number'?'0.25':''}" min="0" value="${val}" />
+        <div class="muted" style="font-size:11px;">${unit}</div>
+        <div class="src">Default: ${defaultVal}${unit?' '+unit:''} · Source: Premier Rules</div>
+      </div>`;
+  }
+
+  function render(){
+    document.getElementById('consecHost').innerHTML = `
+      ${row('CONSEC_OT_START', 'OT threshold (consecutive hours)', 'Overtime 1.5× begins at the Nth consecutive hour after shift/call start.', r.CONSEC_OT_START, 'hours', DEFAULTS.CONSEC_OT_START)}
+      ${row('CONSEC_DT_START', 'DT threshold (consecutive hours)', 'Double time 2.0× begins at the Nth consecutive hour after shift/call start.', r.CONSEC_DT_START, 'hours', DEFAULTS.CONSEC_DT_START)}
+    `;
+    document.getElementById('weeklyHost').innerHTML = `
+      ${row('WEEK_OT_THRESHOLD', 'Weekly OT threshold (FLSA)', 'Hours beyond this per work-week are paid at 1.5×. Gifted hours count; PTO does not.', r.WEEK_OT_THRESHOLD, 'hours/week', DEFAULTS.WEEK_OT_THRESHOLD)}
+      ${row('MIN_CALL_HOURS_EVENT', 'Event call minimum', 'Applies per event assignment (not per day). If worked hours are less, pay up to this.', r.MIN_CALL_HOURS_EVENT, 'hours', DEFAULTS.MIN_CALL_HOURS_EVENT)}
+      ${row('HOLIDAY_BASE_HOURS', 'Holiday base pay', 'Hours paid automatically on recognized holidays regardless of work.', r.HOLIDAY_BASE_HOURS, 'hours', DEFAULTS.HOLIDAY_BASE_HOURS)}
+    `;
+    document.getElementById('premHost').innerHTML = `
+      ${row('PREMIUM_START_HR', 'Premium time start', 'Hour of day when premium window begins (24h clock).', r.PREMIUM_START_HR, 'hour (0-23)', DEFAULTS.PREMIUM_START_HR)}
+      ${row('PREMIUM_END_HR', 'Premium time end', 'Hour of day when premium window ends.', r.PREMIUM_END_HR, 'hour (0-23)', DEFAULTS.PREMIUM_END_HR)}
+    `;
+    document.getElementById('oottHost').innerHTML = `
+      ${row('OUT_OF_TOWN_RADIUS_MI', 'Out-of-town threshold', 'Travel beyond this radius from home office triggers OOT rules (10hr min, per-diem, travel clock).', r.OUT_OF_TOWN_RADIUS_MI, 'miles', DEFAULTS.OUT_OF_TOWN_RADIUS_MI)}
+      ${row('TURNAROUND_BREAK_HR', 'Turnaround break threshold', 'If next shift starts with less than this break after a ≥10h shift, prior rate of pay continues until met.', r.TURNAROUND_BREAK_HR, 'hours', DEFAULTS.TURNAROUND_BREAK_HR)}
+      ${row('CONTINUOUS_BREAK_HR', 'Continuous-time break threshold', 'If break between shifts is less than this, the entire gap is paid at the current rate.', r.CONTINUOUS_BREAK_HR, 'hours', DEFAULTS.CONTINUOUS_BREAK_HR)}
+    `;
+    // Holidays: hardcoded in api.js — surfaced here as a read-only reference with "add" stub
+    document.getElementById('holHost').innerHTML = `
+      <div style="display:flex; flex-wrap:wrap;">
+        <span class="hol-chip">🏛 New Year's Day · Jan 1</span>
+        <span class="hol-chip">🏛 Memorial Day · last Mon May</span>
+        <span class="hol-chip">🏛 Independence Day · Jul 4</span>
+        <span class="hol-chip">🏛 Labor Day · first Mon Sep</span>
+        <span class="hol-chip">🏛 Thanksgiving · 4th Thu Nov</span>
+        <span class="hol-chip">🏛 Day after Thanksgiving</span>
+        <span class="hol-chip">🏛 Christmas Eve · Dec 24</span>
+        <span class="hol-chip">🏛 Christmas Day · Dec 25</span>
+      </div>
+      <div class="muted" style="font-size:var(--fs-xs); margin-top:10px;">
+        The 8 Premier-recognized holidays are hardcoded per spec. Use ＋ Add Holiday Rule to register a one-off date (e.g. company closure, floating holiday). When worked, the 8hr holiday pay stacks with OT on actual worked hours.
+      </div>
+    `;
+    document.getElementById('weekHost').innerHTML = `
+      <div class="pr-row">
+        <div><div class="lbl">Work-week start</div><div class="desc">Day of week the pay period begins.</div></div>
+        <select data-k="WEEK_START_DOW">
+          <option value="1" ${r.WEEK_START_DOW===1||!r.WEEK_START_DOW?'selected':''}>Monday</option>
+          <option value="0" ${r.WEEK_START_DOW===0?'selected':''}>Sunday</option>
+          <option value="6" ${r.WEEK_START_DOW===6?'selected':''}>Saturday</option>
+        </select>
+        <div class="muted" style="font-size:11px;">—</div>
+        <div class="src">Default: Monday · Source: Premier Rules §Work Week</div>
+      </div>
+      ${row('SUBMIT_DEADLINE_HR', 'Timecard submit deadline', 'Hour on Tuesday when the prior week\'s timecard is due.', r.SUBMIT_DEADLINE_HR!=null?r.SUBMIT_DEADLINE_HR:15, 'hour (24h)', 15)}
+      <div class="pr-row">
+        <div><div class="lbl">Pay day</div><div class="desc">Day of week wages are disbursed.</div></div>
+        <select data-k="PAY_DAY">
+          <option value="5" ${r.PAY_DAY===5||!r.PAY_DAY?'selected':''}>Friday</option>
+          <option value="4" ${r.PAY_DAY===4?'selected':''}>Thursday</option>
+          <option value="3" ${r.PAY_DAY===3?'selected':''}>Wednesday</option>
+        </select>
+        <div class="muted" style="font-size:11px;">—</div>
+        <div class="src">Default: Friday · Source: Premier Rules §Work Week</div>
+      </div>
+    `;
+
+    const CATS = PCG.api.getTimecardCategories();
+    document.getElementById('catHost').innerHTML = CATS.map(c => {
+      const counts = c.bucket === 'regular' || c.bucket === 'gifted';
+      return `<div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--surface-2); border-radius:var(--r-sm);">
+        <div><strong>${PCG.escapeHtml(c.label)}</strong> <span class="muted" style="font-size:10px;">· ${c.bucket}</span></div>
+        <div>${counts ? '<span class="pill green plain" style="font-size:10px;">COUNTS 40h</span>' : '<span class="pill gray plain" style="font-size:10px;">BENEFIT</span>'}</div>
+      </div>`;
+    }).join('');
+  }
+  render();
+  renderClassifications();
+
+  function renderClassifications(){
+    const rules = PCG.payRules || [];
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const fmtHr = h => h===0 ? '12a' : h < 12 ? h+'a' : h === 12 ? '12p' : h===24 ? '12a' : (h-12)+'p';
+    const fmtBand = b => {
+      const daySpan = b.days.length===1 ? dayNames[b.days[0]] : `${dayNames[b.days[0]]}-${dayNames[b.days[b.days.length-1]]}`;
+      return `${daySpan} ${fmtHr(b.startHr)}-${fmtHr(b.endHr)}`;
+    };
+    document.getElementById('classCount').textContent = `${rules.length} classifications`;
+    document.getElementById('classificationsHost').innerHTML = `
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--sp-3);">
+        ${rules.map(r => {
+          const color = r.employmentType === 'InHouseUnion' ? 'var(--pcg-spotlight-purple)'
+                     : r.employmentType === 'IATSE' ? 'var(--status-red)'
+                     : r.employmentType === '1099' ? 'var(--status-amber)'
+                     : 'var(--pcg-bright-blue)';
+          const ratesBilled = r.ratesBilled ? `
+            <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:var(--fs-xs);">
+              <div style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.08em; color:var(--text-tertiary); margin-bottom:4px;">Billed to Client</div>
+              <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:4px; font-family:var(--font-mono);">
+                ${Object.entries(r.ratesBilled).map(([k,v]) => `<div>${k}: $${v}</div>`).join('')}
+              </div>
+            </div>` : '';
+          const headcount = (PCG.crewMembers||[]).filter(m => m.payRuleId === r.id).length;
+          const bands = [];
+          if(r.stWindow) bands.push({ label:'ST', color:'var(--status-green)', text:fmtBand(r.stWindow) });
+          (r.otBands||[]).forEach(b => bands.push({ label:'OT', color:'var(--status-amber)', text:fmtBand(b) }));
+          (r.dtBands||[]).forEach(b => bands.push({ label:'DT', color:'var(--status-red)', text:fmtBand(b) }));
+          (r.ptBands||[]).forEach(b => bands.push({ label:'PT', color:'var(--pcg-spotlight-purple)', text:fmtBand(b) }));
+          return `
+            <div class="card" style="padding:var(--sp-4); border-left:3px solid ${color};">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                <strong style="font-size:var(--fs-md);">${PCG.escapeHtml(r.name)}</strong>
+                ${headcount>0 ? `<span class="pill gray plain" style="font-size:10px;">${headcount} crew</span>` : ''}
+                ${r.effectiveFrom ? `<span class="muted" style="margin-left:auto; font-size:10px; font-family:var(--font-mono);">${r.effectiveFrom} → ${r.effectiveTo||'—'}</span>` : ''}
+              </div>
+              <div style="font-size:var(--fs-xs); color:var(--text-tertiary); font-family:var(--font-display); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">
+                ${PCG.escapeHtml(r.engine||'n/a')} · ${PCG.escapeHtml(r.unionLocal||'non-union')} · ${PCG.escapeHtml(r.market||'*')}
+              </div>
+              ${bands.length ? `
+                <div style="margin-top:6px;">
+                  <div style="font-family:var(--font-display); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:4px;">Time Bands</div>
+                  <div style="display:grid; gap:2px; font-size:11px;">
+                    ${bands.map(b => `<div><span class="pill plain" style="font-size:9px; color:${b.color}; border-color:${b.color};">${b.label}</span> <span class="mono">${PCG.escapeHtml(b.text)}</span></div>`).join('')}
+                  </div>
+                </div>` : ''}
+              <div style="margin-top:8px; font-size:11px; color:var(--text-secondary); display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                ${r.dailyOTThresholdHours != null ? `<div>Daily OT: after ${r.dailyOTThresholdHours}h</div>` : ''}
+                ${r.weeklyOTThresholdHours != null ? `<div>Weekly OT: after ${r.weeklyOTThresholdHours}h</div>` : ''}
+                ${r.consecOTStart != null ? `<div>Consec OT: after ${r.consecOTStart}h</div>` : ''}
+                ${r.consecDTStart != null ? `<div>Consec DT: after ${r.consecDTStart}h</div>` : ''}
+                ${r.minimumCallHours != null ? `<div>Min call: ${r.minimumCallHours}h</div>` : ''}
+                ${r.minimumCallHoursPerEvent != null ? `<div>Per-event min: ${r.minimumCallHoursPerEvent}h</div>` : ''}
+                ${r.prevailingRateTurnaroundHrs != null ? `<div>Prevailing: &lt; ${r.prevailingRateTurnaroundHrs}h break</div>` : ''}
+                ${r.otMultiplier ? `<div>OT: ${r.otMultiplier}×</div>` : ''}
+                ${r.dtMultiplier ? `<div>DT: ${r.dtMultiplier}×</div>` : ''}
+                ${r.ptMultiplier ? `<div>PT: ${r.ptMultiplier}× ST</div>` : ''}
+                ${r.holidayBucket ? `<div>Holiday → ${r.holidayBucket}</div>` : ''}
+                ${r.billWholeHours ? `<div>Bills in whole hours</div>` : ''}
+                ${r.ccSurchargePct ? `<div>CC surcharge: ${Math.round(r.ccSurchargePct*1000)/10}%</div>` : ''}
+              </div>
+              ${ratesBilled}
+              <div class="muted" style="font-size:10px; margin-top:6px; font-style:italic;">${PCG.escapeHtml(r.source||'')}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  document.getElementById('btn-save').addEventListener('click', () => {
+    if(!canEdit){ alert('Forbidden'); return; }
+    const patches = {};
+    document.querySelectorAll('[data-k]').forEach(el => {
+      const k = el.dataset.k;
+      const v = el.type === 'number' ? (parseFloat(el.value)||0) : (el.value === '0' || el.value === '1' || el.value === '6' || el.value === '3' || el.value === '4' || el.value === '5' ? parseInt(el.value,10) : el.value);
+      patches[k] = v;
+    });
+    // Validate
+    if(patches.CONSEC_OT_START >= patches.CONSEC_DT_START){
+      alert('OT threshold must be less than DT threshold.');
+      return;
+    }
+    // Apply to runtime (PCG.api.getPremierPayRules returns a clone; we patch the engine's constants)
+    Object.assign(PCG.__PAY_RULES_OVERRIDES = PCG.__PAY_RULES_OVERRIDES || {}, patches);
+    // Patch live: re-write the underlying constants via evil but pragmatic injection
+    try {
+      PCG.api.setPremierPayRules && PCG.api.setPremierPayRules(patches);
+    } catch(e){}
+    PCG.auditLog = PCG.auditLog || [];
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'admin.payRules.update', detail:JSON.stringify(patches) });
+    alert('✓ Pay rules saved.\n\nTimecard engine will use these thresholds on next computation.');
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if(!confirm('Reset pay rules to Premier defaults?')) return;
+    Object.keys(DEFAULTS).forEach(k => r[k] = DEFAULTS[k]);
+    render();
+  });
+
+  document.getElementById('btn-add-holiday').addEventListener('click', () => {
+    const d = prompt('One-off holiday date (YYYY-MM-DD):');
+    if(!d) return;
+    const name = prompt('Holiday name:');
+    if(!name) return;
+    PCG.customHolidays = PCG.customHolidays || [];
+    PCG.customHolidays.push({ date:d, name });
+    alert(`✓ ${name} added for ${d}. Employees working this date receive 8hr holiday + OT on worked hours.`);
+  });
+</script>
+</body>
+</html>

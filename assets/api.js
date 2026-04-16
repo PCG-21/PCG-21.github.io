@@ -1003,7 +1003,17 @@
     TURNAROUND_BREAK_HR: 8,
     CONTINUOUS_BREAK_HR: 4
   };
-  PCG.api.getPayRules = () => Object.assign({}, PAY_RULES);
+  // Premier's non-exempt technician thresholds (object, not union rule rows)
+  PCG.api.getPremierPayRules = () => Object.assign({}, PAY_RULES, PCG.__payRuleOverrides || {});
+  PCG.api.setPremierPayRules = (patch) => {
+    PCG.requireAny(PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS);
+    PCG.__payRuleOverrides = Object.assign({}, PCG.__payRuleOverrides || {}, patch || {});
+    Object.keys(patch||{}).forEach(k => { if(k in PAY_RULES) PAY_RULES[k] = patch[k]; });
+    PCG.auditLog.push({ at:new Date().toISOString(), actor:PCG.user.id, action:'admin.premierPayRules.set', detail:JSON.stringify(patch) });
+    return PCG.api.getPremierPayRules();
+  };
+  // Back-compat alias for timecard engine (avoid collision with union getPayRules returning an array)
+  PCG.api.getPremierRulesObject = PCG.api.getPremierPayRules;
 
   // Observe Premier recognized holidays (§pay-rules)
   PCG.api.isPremierHoliday = (dateISO) => {
@@ -1039,6 +1049,199 @@
       if(t >= PAY_RULES.PREMIUM_START_HR && t < PAY_RULES.PREMIUM_END_HR) prem += 0.25;
     }
     return Math.min(prem, hoursWorked);
+  }
+
+  // ==================================================================
+  // Classification-aware dispatcher. Routes each row to the correct
+  // engine based on crew member's payRuleId:
+  //   • consecutive-hour       → Premier Non-Exempt Technician (W2)
+  //   • time-banded-inhouse    → Premier In-House Union (3 employees)
+  //   • time-banded-iatse      → IATSE Local 38 / 720 / High Steel
+  //   • flat-hourly            → 1099 contractors
+  // Each engine returns per-row buckets; totals sum across all rows.
+  // ==================================================================
+  PCG.api.computeTimecardTotalsByClassification = (rows) => {
+    const grouped = { W2:[], InHouseUnion:[], IATSE:[], IATSE_HighSteel:[], IATSE_720:[], '1099':[] };
+    (rows||[]).forEach(r => {
+      const m = (PCG.crewMembers||[]).find(x => x.id === r.crewMemberId);
+      const pr = m && m.payRuleId ? (PCG.payRules||[]).find(p => p.id === m.payRuleId) : null;
+      const engine = pr ? pr.engine : 'consecutive-hour';
+      const bucket = engine === 'time-banded-inhouse' ? 'InHouseUnion'
+                   : engine === 'time-banded-iatse' ? (pr.unionLocal === '38-HighSteel' ? 'IATSE_HighSteel' : pr.unionLocal === '720' ? 'IATSE_720' : 'IATSE')
+                   : engine === 'flat-hourly' ? '1099'
+                   : 'W2';
+      grouped[bucket] = grouped[bucket] || [];
+      grouped[bucket].push({ row:r, rule:pr, engine });
+    });
+    // Dispatch to each engine and merge
+    const combined = { st:0, ot:0, dt:0, pt:0, premium:0, gifted:0, holiday:0, minBonus:0, total:0, wageST:0, wageOT:0, wageDT:0, wagePT:0, wageHoliday:0, wageMinBonus:0, totalWage:0, breakdown:[] };
+    Object.entries(grouped).forEach(([bucket, entries]) => {
+      if(!entries.length) return;
+      const sub = _computeBucket(bucket, entries);
+      combined.st += sub.st; combined.ot += sub.ot; combined.dt += sub.dt; combined.pt += sub.pt;
+      combined.premium += sub.premium; combined.gifted += sub.gifted; combined.holiday += sub.holiday; combined.minBonus += sub.minBonus;
+      combined.wageST += sub.wageST; combined.wageOT += sub.wageOT; combined.wageDT += sub.wageDT; combined.wagePT += sub.wagePT;
+      combined.wageHoliday += sub.wageHoliday; combined.wageMinBonus += sub.wageMinBonus;
+      combined.breakdown = combined.breakdown.concat(sub.breakdown || []);
+    });
+    combined.total = combined.st + combined.ot + combined.dt + combined.pt + combined.gifted + combined.holiday + combined.minBonus;
+    combined.totalWage = combined.wageST + combined.wageOT + combined.wageDT + combined.wagePT + combined.wageHoliday + combined.wageMinBonus;
+    // Legacy field aliases for existing consumers
+    combined.regHours = combined.st;
+    combined.otHours = combined.ot;
+    combined.dtHours = combined.dt;
+    combined.premiumHours = combined.pt || combined.premium;
+    combined.giftedHours = combined.gifted;
+    combined.holidayHours = combined.holiday;
+    combined.minCallBonusHours = combined.minBonus;
+    combined.totalHours = combined.total;
+    combined.regWage = combined.wageST;
+    combined.otWage = combined.wageOT;
+    combined.dtWage = combined.wageDT;
+    combined.premWage = combined.wagePT;
+    combined.holidayWage = combined.wageHoliday;
+    combined.minCallBonusWage = combined.wageMinBonus;
+    return combined;
+  };
+
+  function _computeBucket(bucket, entries){
+    if(bucket === 'W2'){
+      // Use the existing consecutive-hour engine (wrapped)
+      const rows = entries.map(e => e.row);
+      const r = PCG.api.computeTimecardTotals(rows);
+      return {
+        st:r.regHours, ot:r.otHours, dt:r.dtHours, pt:0, premium:r.premiumHours,
+        gifted:r.giftedHours, holiday:r.holidayHours, minBonus:r.minCallBonusHours,
+        wageST:r.regWage, wageOT:r.otWage, wageDT:r.dtWage, wagePT:r.premWage,
+        wageHoliday:r.holidayWage, wageMinBonus:r.minCallBonusWage,
+        breakdown:r.breakdown || []
+      };
+    }
+    if(bucket === '1099'){
+      let st=0, wage=0;
+      entries.forEach(e => { const h = Number(e.row.hoursWorked)||0; const rate = Number(e.row.payRate)||0; st += h; wage += h*rate; });
+      return { st, ot:0, dt:0, pt:0, premium:0, gifted:0, holiday:0, minBonus:0, wageST:wage, wageOT:0, wageDT:0, wagePT:0, wageHoliday:0, wageMinBonus:0, breakdown:[] };
+    }
+    // Union time-banded (InHouseUnion / IATSE)
+    return _computeTimeBanded(entries);
+  }
+
+  // Walks each row's worked minutes and classifies each 15-minute slice
+  // into ST / OT / DT / PT based on day-of-week × hour-of-day × classification rules.
+  // Then applies dailyOTThresholdHours and prevailing-rate turnaround.
+  function _computeTimeBanded(entries){
+    const sorted = entries.slice().sort((a,b) => {
+      const d = (a.row.date||'').localeCompare(b.row.date||'');
+      if(d) return d;
+      return (a.row.clockIn||'').localeCompare(b.row.clockIn||'');
+    });
+    let st=0, ot=0, dt=0, pt=0, holiday=0, minBonus=0;
+    let wageST=0, wageOT=0, wageDT=0, wagePT=0, wageHoliday=0, wageMinBonus=0;
+    const breakdown = [];
+    let prevailingBucket = null; // 'ST' | 'OT' | 'DT' | 'PT' | null
+    let lastShiftEnd = null;      // ISO string
+    let weekDailyHours = {};      // date -> hours-worked (for dailyOTAfter8)
+
+    sorted.forEach(e => {
+      const r = e.row; const rule = e.rule || {};
+      const rate = Number(r.payRate) || 0;
+      const raw = Number(r.hoursWorked) || 0;
+      if(!raw){
+        breakdown.push({ rowId:r.id, date:r.date, worked:0 });
+        return;
+      }
+
+      // Build start time
+      const inHr = _parseClockHr(r.clockIn || '8:00a');
+      if(isNaN(inHr)) return;
+      const startMs = new Date(r.date + 'T00:00:00').getTime() + inHr * 3600000;
+
+      // Check turnaround (prevailing rate): gap between lastShiftEnd and this shift start
+      const prevailingActive = prevailingBucket && lastShiftEnd != null
+        && (startMs - lastShiftEnd) / 3600000 < (rule.prevailingRateTurnaroundHrs || 8);
+
+      const holidayName = PCG.api.isPremierHoliday(r.date);
+      const isHoliday = !!holidayName;
+
+      // Per-day cumulative for dailyOTAfter8
+      const dailyAlready = weekDailyHours[r.date] || 0;
+      const dailyThreshold = rule.dailyOTThresholdHours != null ? rule.dailyOTThresholdHours : Infinity;
+
+      // Walk in 15-minute slices
+      const slices = Math.ceil(raw * 4);
+      let shiftMs = startMs;
+      let workedSoFar = 0;
+      const sliceBuckets = { ST:0, OT:0, DT:0, PT:0, HOL:0 };
+
+      for(let i = 0; i < slices; i++){
+        const sliceHrs = 0.25;
+        const tod = (new Date(shiftMs).getHours() + new Date(shiftMs).getMinutes()/60);
+        const dow = new Date(shiftMs).getDay(); // 0=Sun
+        let bucket;
+        if(isHoliday){ bucket = rule.holidayBucket || 'DT'; }
+        else if(prevailingActive){ bucket = prevailingBucket; }
+        else {
+          bucket = _classifySlice(dow, tod, rule);
+          // Daily-after-8h uplift
+          if(bucket === 'ST' && (dailyAlready + workedSoFar) >= dailyThreshold){
+            bucket = 'OT';
+          }
+        }
+        sliceBuckets[bucket] = (sliceBuckets[bucket] || 0) + sliceHrs;
+        workedSoFar += sliceHrs;
+        shiftMs += sliceHrs * 3600000;
+      }
+      // Minimum call (per-event)
+      const appliesMin = rule.minimumCallHours && r.showId && r.category === 'ShowWork';
+      if(appliesMin && raw < rule.minimumCallHours){
+        minBonus += (rule.minimumCallHours - raw);
+        wageMinBonus += (rule.minimumCallHours - raw) * rate;
+      }
+
+      st += sliceBuckets.ST; wageST += sliceBuckets.ST * rate;
+      ot += sliceBuckets.OT; wageOT += sliceBuckets.OT * rate * (rule.otMultiplier || 1.5);
+      dt += sliceBuckets.DT; wageDT += sliceBuckets.DT * rate * (rule.dtMultiplier || 2.0);
+      pt += sliceBuckets.PT; wagePT += sliceBuckets.PT * rate * (rule.ptMultiplier || 1.9);
+      holiday += sliceBuckets.HOL; wageHoliday += sliceBuckets.HOL * rate * (rule.holidayMultiplier || 2.0);
+
+      weekDailyHours[r.date] = dailyAlready + raw;
+      // Determine new prevailing bucket for this shift = highest bucket reached
+      const reached = sliceBuckets.DT > 0 ? 'DT' : sliceBuckets.PT > 0 ? 'PT' : sliceBuckets.OT > 0 ? 'OT' : 'ST';
+      prevailingBucket = reached === 'ST' ? null : reached;
+      lastShiftEnd = shiftMs;
+
+      breakdown.push({ rowId:r.id, date:r.date, worked:raw, st:sliceBuckets.ST, ot:sliceBuckets.OT, dt:sliceBuckets.DT, pt:sliceBuckets.PT, prevailing: prevailingActive, holiday:holidayName, engine:rule.engine });
+    });
+
+    return { st, ot, dt, pt, premium:pt, gifted:0, holiday, minBonus,
+             wageST, wageOT, wageDT, wagePT, wageHoliday, wageMinBonus,
+             breakdown };
+  }
+
+  function _classifySlice(dow, tod, rule){
+    // Check ptBands first (most specific for IATSE Sundays)
+    if(rule.ptBands){
+      for(const b of rule.ptBands){
+        if(b.days.includes(dow) && tod >= b.startHr && tod < b.endHr) return 'PT';
+      }
+    }
+    // DT bands (in-house union overnight + Sunday)
+    if(rule.dtBands){
+      for(const b of rule.dtBands){
+        if(b.days.includes(dow) && tod >= b.startHr && tod < b.endHr) return 'DT';
+      }
+    }
+    // OT bands
+    if(rule.otBands){
+      for(const b of rule.otBands){
+        if(b.days.includes(dow) && tod >= b.startHr && tod < b.endHr) return 'OT';
+      }
+    }
+    // ST window
+    if(rule.stWindow && rule.stWindow.days.includes(dow) && tod >= rule.stWindow.startHr && tod < rule.stWindow.endHr){
+      return 'ST';
+    }
+    return 'ST'; // default
   }
 
   // Compute pay-period totals honoring Premier rules.

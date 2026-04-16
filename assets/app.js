@@ -156,7 +156,8 @@
     { label:'Leadership', items:[
       { id:'reports', label:'Reports',            href:'reports.html', icon:'📊', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.AE] },
       { id:'audit',   label:'Audit Trail',        href:'audit.html',   icon:'◻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING] },
-      { id:'admin',   label:'Admin · Governance', href:'admin.html',   icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS] }
+      { id:'admin',      label:'Admin · Governance', href:'admin.html',     icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS] },
+      { id:'pay-rules',  label:'Pay Rules Settings', href:'pay-rules.html', icon:'⌘', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS] }
     ]},
     { label:'Field Surfaces', items:[
       { id:'qc',       label:'QC Scan',         href:'qc-scan.html?pullSheet=ps.sae.breakout', icon:'◆', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
