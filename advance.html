@@ -267,6 +267,7 @@
       <!-- PRE-LOAD VENUE CONDITION (new · external-facing baseline record) -->
       <div class="adv-section">
         <h2>Pre-Load Venue Condition</h2>
+        <div id="adv-field-nudge" style="display:none; margin-bottom: 12px; padding: 10px 14px; border-radius: 8px; background: linear-gradient(90deg, rgba(1,153,253,0.12), transparent 70%); border: 1px solid rgba(1,153,253,0.4); border-left: 3px solid var(--pcg-bright-blue); font-size: 13px; color: var(--text-primary);"></div>
         <div class="adv-notes" style="border-left: 3px solid #9564d8;">
           <strong style="color: #9564d8;">Captured before PCG load-in — baseline record for damage verification and venue history.</strong><br><br>
           Site walk-through conducted <strong>Apr 9, 14:12</strong> by J. Sharp + C. Taylor with venue operations present. Photos and notes archived to the Caesars Forum venue record for future shows. The items below are <em>pre-existing</em> conditions PCG observed prior to touching the space:
@@ -336,6 +337,23 @@
   // from live data at the moment of viewing. The wow-moment micro-detail.
   document.getElementById('generated-stamp').textContent =
     `Generated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · live from STAGE`;
+
+  // Field capture → Advance echo. If onsite field captures exist for
+  // this project, surface a "⚡ This updated your Advance" banner with
+  // captured items counted so the tie-back is unambiguous.
+  (function advanceFieldEcho(){
+    const raw = JSON.parse(sessionStorage.getItem(`pcg_field_${proj.code}`) || '[]');
+    const venue = raw.filter(r => r.kind === 'venue');
+    if(!venue.length) return;
+    const nudge = document.getElementById('adv-field-nudge');
+    if(!nudge) return;
+    nudge.style.display = 'block';
+    nudge.innerHTML = `
+      <strong style="color: var(--pcg-bright-blue);">⚡ ${venue.length} field-captured item${venue.length===1?'':'s'} now appear on this advance.</strong>
+      <div style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+        Captured onsite via Field Capture · most recent: ${PCG.escapeHtml((venue[0].body||'').slice(0,90))}${venue[0].body && venue[0].body.length > 90 ? '…' : ''}
+      </div>`;
+  })();
 </script>
 </body>
 </html>

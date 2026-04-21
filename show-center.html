@@ -246,6 +246,61 @@
   .health-top .hti.warn .hti-ico  { color: var(--status-amber); }
   .health-top .hti.good           { color: var(--status-green); font-size: 12px; padding: 4px 0; }
 
+  /* "What will break this show" — the hard-stop bar under Top Issues. */
+  .break-show {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(231,76,60,0.4);
+    background: linear-gradient(90deg, rgba(231,76,60,0.1), transparent 70%);
+    padding: 10px 12px; margin-left: -4px; margin-right: -4px; border-radius: var(--r-sm);
+    border: 1px solid rgba(231,76,60,0.3);
+  }
+  .break-show .lbl {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--status-red); margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .break-show .lbl::before { content: "⛔"; font-size: 12px; }
+  .break-show .body { font-size: 12.5px; color: var(--text-primary); line-height: 1.5; }
+  .break-show.clear { border-color: rgba(61,220,132,0.3); background: linear-gradient(90deg, rgba(61,220,132,0.08), transparent 70%); }
+  .break-show.clear .lbl { color: var(--status-green); }
+  .break-show.clear .lbl::before { content: "✓"; }
+
+  /* Decision Required cards */
+  .dec-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 820px) { .dec-grid { grid-template-columns: 1fr 1fr; } }
+  .dec-card {
+    padding: 16px 18px; border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(245,176,65,0.08), transparent 70%), var(--surface-1);
+    border: 1px solid rgba(245,176,65,0.35); border-left: 3px solid var(--status-amber);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .dec-card.urgent {
+    background: linear-gradient(135deg, rgba(231,76,60,0.1), transparent 70%), var(--surface-1);
+    border-color: rgba(231,76,60,0.4); border-left-color: var(--status-red);
+  }
+  .dec-card.resolved {
+    background: linear-gradient(135deg, rgba(61,220,132,0.08), transparent 70%), var(--surface-1);
+    border-color: rgba(61,220,132,0.35); border-left-color: var(--status-green);
+    opacity: 0.82;
+  }
+  .dec-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .dec-head .t { font-family: var(--font-display); font-size: 14.5px; color: var(--text-primary); font-weight: 600; }
+  .dec-head .tag {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700;
+  }
+  .dec-card .tag         { color: var(--status-amber); background: rgba(245,176,65,0.18); }
+  .dec-card.urgent .tag  { color: var(--status-red);   background: rgba(231,76,60,0.18); }
+  .dec-card.resolved .tag{ color: var(--status-green); background: rgba(61,220,132,0.18); }
+  .dec-card .why { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .dec-card .meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); display: flex; gap: 10px; flex-wrap: wrap; }
+  .dec-card .touches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .dec-card .touches .chip {
+    font-size: 10px; padding: 2px 8px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary);
+  }
+  .dec-card .dec-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .dec-card .dec-btns .btn { padding: 6px 12px; font-size: 11.5px; }
+
   /* -------- Lifecycle / phase indicator -------- */
   .lc-strip {
     display: flex; align-items: stretch; gap: 0;
@@ -462,6 +517,20 @@
           <div class="card">
             <div class="card-header"><div class="title">Today on this show</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Daily work experience · replaces the spreadsheet</span></div>
             <div class="card-body"><div class="daily-strip" id="daily-strip"></div></div>
+          </div>
+        </section>
+
+        <!-- DECISIONS REQUIRED — the heart of the decision layer. Each
+             card represents a call a PM/TD has to make; making it
+             writes to the Production Log and visibly affects Risk /
+             Scope / Timeline. -->
+        <section class="scc-section" id="sec-decisions">
+          <div class="card">
+            <div class="card-header">
+              <div class="title">🧭 Decisions Required</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Each decision writes to the Production Log and updates Risk / Scope / Timeline.</span>
+            </div>
+            <div class="card-body"><div class="dec-grid" id="decisions"></div></div>
           </div>
         </section>
 
@@ -693,6 +762,7 @@
   const tabs = [
     ['health',   '❤ Health'],
     ['daily',    '◎ Today'],
+    ['decisions','🧭 Decisions'],
     ['comm',     '💬 Comms'],
     ['tasks',    '☑ Tasks'],
     ['scope',    '🎛 Scope'],
@@ -1239,7 +1309,14 @@
   const fieldHref = `field-capture.html?project=${encodeURIComponent(proj.code)}`;
   const visitHref = `site-visit.html?project=${encodeURIComponent(proj.code)}`;
 
-  document.getElementById('preload').innerHTML = `
+  const fieldCapturedCount = venueConditionItems.filter(i => i.fromField).length;
+  const fieldNudge = fieldCapturedCount ? `
+    <div style="margin-bottom: 10px; padding: 10px 14px; border-radius: var(--r-sm); background: linear-gradient(90deg, rgba(1,153,253,0.14), transparent 70%); border: 1px solid rgba(1,153,253,0.35); border-left: 3px solid var(--pcg-bright-blue); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <span class="sys-nudge">⚡ ${fieldCapturedCount} field capture${fieldCapturedCount===1?'':'s'} synced</span>
+      <span style="font-size: 12px; color: var(--text-primary);">New venue condition record${fieldCapturedCount===1?'':'s'} captured onsite · <strong>this updated your Advance</strong> · <strong>saved to the venue record</strong>.</span>
+    </div>` : '';
+
+  document.getElementById('preload').innerHTML = fieldNudge + `
     <div class="adv-notes" style="margin-bottom:var(--sp-3); border-left: 3px solid var(--pcg-spotlight-purple); background: linear-gradient(135deg, rgba(149,100,216,0.08), rgba(10,18,32,0) 70%), var(--surface-1);">
       <strong style="color: var(--pcg-spotlight-purple); font-size: 13px;">🏛 Captured before PCG load-in — used for damage verification and venue history.</strong>
       <div style="margin-top: 6px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6;">
@@ -1260,20 +1337,67 @@
       <span style="margin-left:auto; font-size: 11px; color: var(--text-tertiary);">Click any tile to toggle advance inclusion.</span>
     </div>`;
 
+  // Field captures with kind === 'issue' automatically surface as
+  // virtual risks. This is the bridge between field onsite capture and
+  // the Risk Register — captured from a phone, visible at HQ instantly.
+  (function mergeFieldIssues(){
+    const raw = JSON.parse(sessionStorage.getItem(`pcg_field_${proj.code}`) || '[]');
+    const issues = raw.filter(r => r.kind === 'issue');
+    if(!issues.length) return;
+    proj.risks = (proj.risks || []).slice();
+    issues.forEach(i => {
+      proj.risks.unshift({
+        title: i.body,
+        sev: 'medium',
+        owner: proj.primaryPM || 'p.jspringer',
+        status: 'open',
+        mitigation: `Captured onsite from Field Capture · ${PCG.ago(i.t)}.`
+      });
+    });
+  })();
+
+  // Merge any field-captured venue items into the pre-load tiles so
+  // the Show Command Center visibly reflects what was captured onsite.
+  (function mergeFieldCaptures(){
+    const raw = JSON.parse(sessionStorage.getItem(`pcg_field_${proj.code}`) || '[]');
+    const venue = raw.filter(r => r.kind === 'venue');
+    venue.forEach(v => {
+      const loc = (v.locs && v.locs[0]) || 'Ballroom';
+      venueConditionItems.push({
+        cap: (v.body || 'Field capture').split(' — ')[0].slice(0, 40),
+        note: v.body || '',
+        loc,
+        save: true,
+        inAdvance: true,
+        fromField: true,
+        capturedBy: (PCG.user?.name || 'Field user'),
+        capturedAt: v.t
+      });
+    });
+  })();
+
   function renderPreloadTiles(){
     document.getElementById('preload-tiles').innerHTML = venueConditionItems.map((item, idx) => {
       const tone = locColor[item.loc] || '#888';
+      const fieldBadge = item.fromField
+        ? '<span title="Captured from Field Capture" style="padding: 3px 6px; background: rgba(1,153,253,0.3); color: #fff; border-radius: var(--r-pill); font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; font-weight: 700;">📱 FIELD</span>'
+        : '';
+      const fieldMeta = item.fromField && item.capturedAt
+        ? `<span style="display:block; font-size: 10px; opacity: 0.75; margin-top: 2px; font-family: var(--font-mono);">Captured ${PCG.ago(item.capturedAt)} by ${PCG.escapeHtml(item.capturedBy || 'field user')}</span>`
+        : '';
       return `
-        <div class="photo-tile" data-i="${idx}" title="${PCG.escapeHtml(item.note)}" style="border: 1px solid var(--border); border-radius: var(--r-sm); cursor: pointer;">
+        <div class="photo-tile" data-i="${idx}" title="${PCG.escapeHtml(item.note)}" style="border: 1px solid ${item.fromField?'rgba(1,153,253,0.45)':'var(--border)'}; border-radius: var(--r-sm); cursor: pointer;">
           🏛
           <span style="position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: var(--r-pill); background: ${tone}22; color: ${tone}; border: 1px solid ${tone}66; font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;">📍 ${item.loc}</span>
           <span style="position: absolute; top: 8px; right: 8px; display:flex; gap: 4px;">
+            ${fieldBadge}
             ${item.save      ? '<span title="Saved to venue record" style="padding: 3px 6px; background: rgba(149,100,216,0.22); color: #fff; border-radius: var(--r-pill); font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; font-weight: 700;">VENUE</span>' : ''}
             ${item.inAdvance ? '<span title="Included on Advance"     style="padding: 3px 6px; background: rgba(1,153,253,0.25);  color: #fff; border-radius: var(--r-pill); font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; font-weight: 700;">ADVANCE</span>' : ''}
           </span>
           <div class="ph-caption" style="background: linear-gradient(0deg, rgba(0,0,0,0.88), transparent);">
             <strong style="display:block; margin-bottom: 2px;">${PCG.escapeHtml(item.cap)}</strong>
             <span style="font-weight: 400; opacity: 0.88; font-size: 10.5px;">${PCG.escapeHtml(item.note)}</span>
+            ${fieldMeta}
           </div>
         </div>`;
     }).join('');
@@ -1507,12 +1631,33 @@
         <div class="health-top-label">Top issues</div>
         <div class="hti good">● No critical issues · on track</div>
       </div>`;
+
+    // "What will break this show" — one sentence, no hedging.
+    // Pick the single most severe signal. If nothing is severe, say so.
+    let breakText = null;
+    if(highRisks.length){
+      const r = highRisks[0];
+      breakText = `<strong>${PCG.escapeHtml(r.title)}</strong> is open and unresolved — if it isn't closed before ${PCG.fmtShort(proj.dates?.loadIn)}, it likely blocks the show.`;
+    } else if(overdueTasks.length >= 3){
+      breakText = `<strong>${overdueTasks.length} tasks are overdue</strong> heading into load-in. Without a catch-up push today, key handoffs won't happen in time.`;
+    } else if(scopeGaps.length >= 2){
+      breakText = `<strong>${scopeGaps.length} scope items still need change orders.</strong> Execute now or the invoice will close with unbilled work.`;
+    } else if(pendingApprovals.some(a => /change\s*order/i.test(a.title))){
+      const a = pendingApprovals.find(a => /change\s*order/i.test(a.title));
+      breakText = `<strong>${PCG.escapeHtml(a.title)}</strong> is waiting for approval. If it doesn't land today, the build window for that scope is gone.`;
+    } else if(issueMarks){
+      breakText = `<strong>${issueMarks} chat-flagged issue${issueMarks===1?'':'s'}</strong> still open — triage and close them before the noise becomes a blocker.`;
+    }
+    const breakHtml = breakText
+      ? `<div class="break-show"><div class="lbl">What will break this show</div><div class="body">${breakText}</div></div>`
+      : `<div class="break-show clear"><div class="lbl">Nothing is actively breaking this show</div><div class="body">No high-severity risks, runaway task debt, or stalled approvals. Stay on the daily cadence.</div></div>`;
     document.getElementById('health').innerHTML = `
       <div class="health-card ${tone}">
         <div>
           <div class="health-score">${score}</div>
           <div class="health-state ${tone}">Show Health<b>${state}</b></div>
           ${topIssuesHtml}
+          ${breakHtml}
         </div>
         <div class="health-metrics">
           <div class="health-metric ${openRisks.length?'bad':'good'}">
@@ -1662,14 +1807,49 @@
       });
     }
 
+    // ---------- Recommendations (insights, not data) ----------
+    // Upgrade each signal into an actionable "do X" sentence.
+    const recs = cards.map(c => {
+      if(c.badge === 'VENUE HISTORY') {
+        const priorCode = (c.href||'').match(/project=([^&#]+)/)?.[1] || '';
+        return {
+          tone: c.tone, title: `💡 Based on your last show at this venue`,
+          badge: 'RECOMMENDATION',
+          sub: c.sub,
+          body: `Last time at <strong>${PCG.escapeHtml(c.sub.split(' · ')[0])}</strong> (${PCG.escapeHtml(priorCode)}), the load-in hit the same dock-share window with hotel catering. <strong>Push your truck call 30 min earlier</strong> and you'll skip the conflict entirely.<br><br>Reuse: venue dock notes · rigging plot (verified within 4") · power one-line.`,
+          href: c.href, hrefLabel: 'Open venue record + reuse notes →'
+        };
+      }
+      if(c.badge === 'CREW CONFLICT') {
+        return {
+          tone: 'warn', title: `⚠ Staffing conflict · act now`,
+          badge: 'RECOMMENDATION',
+          sub: c.sub,
+          body: `${c.body}<br><br><strong>Suggested action:</strong> open Scheduling, confirm who covers this show, and notify the conflicting show's PM before the next rehearsal.`,
+          href: c.href, hrefLabel: 'Open conflicting show →'
+        };
+      }
+      if(c.badge === 'CLIENT HISTORY') {
+        return {
+          tone: 'info', title: `💡 Previous client history available`,
+          badge: 'RECOMMENDATION',
+          sub: c.sub,
+          body: `${c.body}<br><br><strong>Suggested action:</strong> review prior crew lineup and reuse what worked. Starting points are faster than first-time builds.`,
+          href: c.href, hrefLabel: 'Open prior show →'
+        };
+      }
+      return c;
+    });
+
     document.getElementById('xshow').innerHTML = `
-      <div style="grid-column: 1/-1; padding: 10px 14px; border: 1px dashed var(--pcg-spotlight-purple); border-radius: var(--r-sm); margin-bottom: 10px; background: rgba(149,100,216,0.04);">
-        <span class="eyebrow" style="color: var(--pcg-spotlight-purple); font-size: 10px;">🧠 The system is thinking ahead</span>
-        <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px;">
-          Signals below are computed live from the rest of the portfolio — venue reuse, crew conflicts, and client history. Each one saves a call, a walkthrough, or an email.
+      <div style="grid-column: 1/-1; padding: 12px 16px; border-radius: var(--r-sm); margin-bottom: 10px; background: linear-gradient(135deg, rgba(149,100,216,0.1), rgba(1,153,253,0.05)); border: 1px solid rgba(149,100,216,0.3); border-left: 3px solid var(--pcg-spotlight-purple);">
+        <span class="eyebrow" style="color: var(--pcg-spotlight-purple); font-size: 10px; letter-spacing: 0.14em;">🧠 Recommendations · based on portfolio history</span>
+        <div style="font-size: 13px; color: var(--text-primary); margin-top: 6px; font-weight: 500;">
+          The system has ${recs.length} suggestion${recs.length===1?'':'s'} for this show based on venue reuse, crew patterns, and prior client engagements.
         </div>
+        <div style="font-size: 11.5px; color: var(--text-tertiary); margin-top: 4px;">Each is a specific action, not a raw data match.</div>
       </div>
-    ` + cards.map(c => `
+    ` + recs.map(c => `
       <div class="xshow-card ${c.tone}">
         <h4>${c.title}${c.badge ? `<span class="pill plain ${c.tone==='strong'?'purple':(c.tone==='warn'?'amber':'blue')}">${c.badge}</span>` : ''}</h4>
         <div class="sub">${PCG.escapeHtml(c.sub)}</div>
@@ -1750,10 +1930,128 @@
     renderDaily();
   }
 
+  // =================================================================
+  // DECISIONS REQUIRED — first-class decision layer.
+  // Each card is a real call the PM has to make. Resolving a card:
+  //   · writes a Decision into the Production Log
+  //   · optionally closes a related Risk
+  //   · optionally clears a Scope gap
+  //   · optionally adjusts the Timeline state
+  // State persists in sessionStorage so the demo shows immediate
+  // consequences across Risk / Scope / Timeline sections.
+  // =================================================================
+  const DEC_KEY = `pcg_decisions_${proj.code}`;
+  const decSeed = [
+    { id:'d1', urgent:true, tag:'Commercial', title:'Approve Change Order #3 · Awards ready room',
+      why:'+$18,400 add. Without approval today, the ready-room build can\'t start and the Day-4 event slips.',
+      owner:'Brandon White (approver)', due:'2026-04-16',
+      touches:['Risk: ready-room unknown','Scope: 2 items tagged Needs CO','Timeline: Day-4 readiness'],
+      accept:{ logTitle:'CO #3 APPROVED · Awards ready room', logBody:'Added to quote. Scope locked. Crew scope lock updated to reflect ready-room package.', risk:/ready room/i, scope:'co' },
+      defer:{ logTitle:'CO #3 DEFERRED · Awards ready room', logBody:'Pushed to next commercial review. Day-4 readiness at risk until resolved.' }
+    },
+    { id:'d2', urgent:true, tag:'Vendor', title:'Commit sub-rental: 2× d&b JSub (Solotech)',
+      why:'Sub deadline 4/15 16:00 PT. Missing this window means we arrive at Caesars without enough sub capacity for the J-Series package.',
+      owner:'Scott Vance', due:'2026-04-15T16:00',
+      touches:['Risk: JSub sub-rental unconfirmed (HIGH)','Scope: Audio main system'],
+      accept:{ logTitle:'Sub-rental committed · 2× JSub via Solotech', logBody:'PO authorized. Solotech confirmed delivery 4/9 to warehouse staging.', risk:/jsub/i },
+      defer:{ logTitle:'Sub-rental DEFERRED · 2× JSub', logBody:'Holding the decision — high risk. Secondary vendor on standby.' }
+    },
+    { id:'d3', urgent:false, tag:'Staffing', title:'Lock A1 reassignment · Priya Shah',
+      why:'Mike Chen double-booked against SAE WCX 4/14. Priya Shah has been offered; awaiting confirmation from her camp and IATSE desk.',
+      owner:'Jeff Springer', due:'2026-04-13',
+      touches:['Risk: A1 double-book (HIGH)','Crew Plan: audio lead'],
+      accept:{ logTitle:'A1 LOCKED · Priya Shah confirmed', logBody:'Mike Chen released to SAE only. Priya Shah confirmed. Shift mirror propagated.', risk:/double-book/i },
+      defer:{ logTitle:'A1 reassignment DEFERRED', logBody:'Holding on Priya Shah confirmation. Conflict remains live against SAE WCX.' }
+    },
+    { id:'d4', urgent:false, tag:'Creative', title:'Lock sponsor loop content cutoff',
+      why:'Client files landed 4/15 — 25 assets. Team needs a hard cutoff to ship V1. Without it we carry content risk into rehearsals.',
+      owner:'Kevin Oliver', due:'2026-04-16T17:00',
+      touches:['Scope: Creative · sponsor loop','Timeline: Day-1 rehearsal'],
+      accept:{ logTitle:'Sponsor loop cutoff LOCKED · 4/16 17:00', logBody:'No new assets after cutoff. V1 built, placeholder swap-points stay.' },
+      defer:{ logTitle:'Sponsor loop cutoff DEFERRED', logBody:'Client holding for final logo. Creative flagged day-of risk.' }
+    }
+  ];
+  const decisions = JSON.parse(sessionStorage.getItem(DEC_KEY) || 'null') || decSeed.map(d => ({ ...d, state:'open' }));
+  // Ensure dec entries carry their spec (in case of older cache)
+  decisions.forEach((d, i) => { if(!d.accept && decSeed[i]) { decisions[i] = { ...decSeed[i], state: d.state || 'open' }; } });
+
+  function renderDecisions(){
+    const wrap = document.getElementById('decisions');
+    if(!wrap) return;
+    const ordered = decisions.slice().sort((a,b) => (a.state==='open'?0:1) - (b.state==='open'?0:1) || (a.urgent?0:1) - (b.urgent?0:1));
+    wrap.innerHTML = ordered.map(d => {
+      const resolved = d.state !== 'open';
+      const cls = resolved ? 'resolved' : (d.urgent ? 'urgent' : '');
+      const tagLabel = resolved ? (d.state === 'accepted' ? 'DECIDED' : 'DEFERRED') : (d.urgent ? 'DECIDE TODAY' : 'DECIDE');
+      return `
+        <div class="dec-card ${cls}" data-id="${d.id}">
+          <div class="dec-head">
+            <span class="t">${PCG.escapeHtml(d.title)}</span>
+            <span class="tag">${tagLabel}</span>
+            <span class="muted" style="font-size: 10.5px; margin-left: auto; font-family: var(--font-mono);">${PCG.escapeHtml(d.tag)}</span>
+          </div>
+          <div class="why">${PCG.escapeHtml(d.why)}</div>
+          <div class="meta">
+            <span>Owner: ${PCG.escapeHtml(d.owner)}</span>
+            <span>Due: ${PCG.fmtShort(d.due)}</span>
+          </div>
+          <div class="touches">
+            ${(d.touches||[]).map(t => `<span class="chip">${PCG.escapeHtml(t)}</span>`).join('')}
+          </div>
+          ${resolved
+            ? `<div class="muted" style="font-size: 11px; margin-top: 6px; font-family: var(--font-mono);">✓ ${d.state === 'accepted' ? 'Decided' : 'Deferred'} · logged to Production Log</div>`
+            : `<div class="dec-btns">
+                 <button class="btn primary sm" data-act="accept" data-id="${d.id}">✓ Approve / Decide</button>
+                 <button class="btn ghost sm"   data-act="defer"  data-id="${d.id}">Defer</button>
+               </div>`}
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => {
+      const d = decisions.find(x => x.id === btn.dataset.id); if(!d) return;
+      const act = btn.dataset.act;
+      d.state = (act === 'accept') ? 'accepted' : 'deferred';
+      d.decidedAt = new Date().toISOString();
+      d.decidedBy = PCG.user?.name || 'You';
+      const spec = (act === 'accept') ? d.accept : d.defer;
+      if(spec){
+        // Write to Production Log
+        prodLogSeed.unshift({ ts: d.decidedAt, title: `Decision · ${spec.logTitle}`, body: `${spec.logBody} Decided by ${d.decidedBy}.` });
+        // Close a matching risk if the decision spec wants it
+        if(act === 'accept' && spec.risk){
+          (proj.risks || []).forEach(r => { if(r.status === 'open' && spec.risk.test(r.title)) r.status = 'closed'; });
+        }
+        // Clear a scope gap if the decision targets 'co'
+        if(act === 'accept' && spec.scope === 'co'){
+          scopeDomains.forEach(dom => dom.items.forEach(it => {
+            if((it.tags||[]).includes('co')){
+              it.tags = it.tags.filter(t => t !== 'co');
+              if(!it.tags.includes('locked')) it.tags.push('locked');
+            }
+          }));
+        }
+      }
+      sessionStorage.setItem(DEC_KEY, JSON.stringify(decisions));
+      renderDecisions();
+      renderEchoes();
+      // Re-render the scope board to reflect tag changes
+      document.getElementById('scope').innerHTML = scopeDomains.map(dom => `
+        <div class="scope-col">
+          <h4>${dom.name}</h4>
+          <ul>${dom.items.map(i=>`
+            <li>
+              ${PCG.escapeHtml(i.t)}
+              ${i.tags && i.tags.length ? `<span class="s-tags">${i.tags.map(tg=>`<span class="s-tag ${tg==='co'?'new-co':tg}">${tagCopy[tg]||tg}</span>`).join('')}</span>` : ''}
+              ${i.note ? `<span class="muted" style="display:block; font-size:10.5px; margin-top:2px;">${PCG.escapeHtml(i.note)}</span>` : ''}
+            </li>`).join('')}</ul>
+        </div>`).join('');
+    }));
+  }
+
   renderHealth();
   renderDaily();
   renderXShow();
   renderEchoes();
+  renderDecisions();
 
   // Highlight active tab on scroll (intersection observer)
   const sections = tabs.map(([id]) => document.getElementById(`sec-${id}`));

@@ -268,6 +268,9 @@
   PCG.mountShell = (opts) => {
     const el = document.getElementById("app-shell");
     if(el) el.outerHTML = PCG.renderShell(opts);
+    // Demo Story Mode — renders a guided-flow strip just under the
+    // topbar on PM-first pages. Disabled via ?story=off or dismiss button.
+    try { PCG.renderStoryStrip && PCG.renderStoryStrip(opts); } catch(e){}
     // wire persona switcher
     const sel = document.getElementById("persona-sel");
     if(sel) sel.addEventListener('change', e => {
@@ -302,6 +305,92 @@
         const si = document.querySelector('.topbar .search input');
         if(si) si.focus();
       }
+    });
+  };
+
+  // =================================================================
+  // Demo Story Mode — PIF → Show → Fix Issue → Advance → Portal.
+  // Renders a compact guided-flow strip between the topbar and the
+  // page content. Steps auto-mark complete from sessionStorage flags
+  // and the active step is detected from the current page.
+  // =================================================================
+  PCG.renderStoryStrip = (opts) => {
+    if(new URL(location.href).searchParams.get('story') === 'off') return;
+    if(sessionStorage.getItem('pcg_story_hide') === '1') return;
+
+    const PAGE = (location.pathname.split('/').pop() || 'home.html');
+    const steps = [
+      { k:'pif',     lbl:'PIF',          ico:'◧', href:'pif.html',
+        match: p => p === 'pif.html',
+        done: () => {
+          const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+          return drafts.length > 0 || ['show-center.html','advance.html','site-visit.html','field-capture.html','client-portal.html','client-portal-config.html'].includes(PAGE);
+        }
+      },
+      { k:'show',    lbl:'Show Center',  ico:'◈', href:'show-center.html?project=LCE-2026',
+        match: p => p === 'show-center.html',
+        done: () => ['advance.html','site-visit.html','field-capture.html','client-portal.html','client-portal-config.html'].includes(PAGE)
+      },
+      { k:'fix',     lbl:'Fix Issue',    ico:'⚠', href:'show-center.html?project=LCE-2026#sec-decisions',
+        match: p => p === 'show-center.html' && location.hash === '#sec-decisions',
+        done: () => {
+          // Count marked-as-decision from any show's chat marks
+          const keys = Object.keys(sessionStorage).filter(k => k.startsWith('pcg_chat_marks_'));
+          return keys.some(k => { try { const m = JSON.parse(sessionStorage.getItem(k) || '{}'); return (m.decision || []).length > 0 || (m.issue || []).length > 0; } catch { return false; } });
+        }
+      },
+      { k:'field',   lbl:'Field / Visit', ico:'📱', href:'field-capture.html?project=LCE-2026',
+        match: p => p === 'field-capture.html' || p === 'site-visit.html',
+        done: () => {
+          return Object.keys(sessionStorage).some(k => k.startsWith('pcg_field_') && JSON.parse(sessionStorage.getItem(k) || '[]').length > 0)
+              || Object.keys(sessionStorage).some(k => k.startsWith('pcg_sv_'));
+        }
+      },
+      { k:'advance', lbl:'Advance',      ico:'⚡', href:'advance.html?project=LCE-2026',
+        match: p => p === 'advance.html',
+        done: () => PAGE === 'client-portal.html' || PAGE === 'client-portal-config.html'
+      },
+      { k:'portal',  lbl:'Client Portal', ico:'🔗', href:'client-portal.html?project=LCE-2026',
+        match: p => p === 'client-portal.html',
+        done: () => false
+      }
+    ];
+
+    let activeIdx = steps.findIndex(s => s.match(PAGE));
+    if(activeIdx < 0){
+      // Default: first not-done step
+      activeIdx = steps.findIndex(s => !s.done());
+      if(activeIdx < 0) activeIdx = steps.length - 1;
+    }
+
+    const strip = document.createElement('div');
+    strip.className = 'story-strip';
+    strip.innerHTML = `
+      <div class="story-inner">
+        <span class="story-tag">🎬 Demo Story · run it end-to-end</span>
+        <div class="story-steps">
+          ${steps.map((s, i) => {
+            const isDone = i < activeIdx || s.done();
+            const isOn   = i === activeIdx;
+            return `
+              <a class="story-step ${isOn?'on':''} ${isDone?'done':''}" href="${s.href}" data-k="${s.k}">
+                <span class="sn">${isDone && !isOn ? '✓' : (i + 1)}</span>
+                <span class="si">${s.ico}</span>
+                <span class="sl">${PCG.escapeHtml(s.lbl)}</span>
+              </a>
+              ${i < steps.length - 1 ? '<span class="story-arrow">→</span>' : ''}`;
+          }).join('')}
+        </div>
+        <button class="story-hide" title="Hide for this session">×</button>
+      </div>`;
+    // Insert right after the topbar (or fall back to body start)
+    const topbar = document.querySelector('.topbar');
+    if(topbar && topbar.parentNode) topbar.parentNode.insertBefore(strip, topbar.nextSibling);
+    else document.body.insertBefore(strip, document.body.firstChild);
+
+    strip.querySelector('.story-hide').addEventListener('click', () => {
+      sessionStorage.setItem('pcg_story_hide', '1');
+      strip.remove();
     });
   };
 

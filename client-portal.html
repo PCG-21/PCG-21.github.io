@@ -362,8 +362,23 @@
   <!-- HERO -->
   <div class="cv-hero" id="cv-hero"></div>
 
+  <!-- ON TRACK / NEEDS INPUT · single-sentence status callout -->
+  <div id="cv-pulse" style="margin-bottom: 18px;"></div>
+
   <!-- LATEST UPDATE -->
   <div class="cv-update" id="cv-update" style="display:none;"></div>
+
+  <!-- WHAT HAPPENS NEXT -->
+  <section class="cv-section">
+    <h2>What happens next<span class="count">Your three-step view</span></h2>
+    <div id="cv-next"></div>
+  </section>
+
+  <!-- YOUR SHOW PACKAGE -->
+  <section class="cv-section">
+    <h2>Your show package<span class="count">What PCG is delivering</span></h2>
+    <div id="cv-package"></div>
+  </section>
 
   <!-- WHAT YOU NEED TO DO -->
   <section class="cv-section">
@@ -407,6 +422,21 @@
         </label>
         <input type="file" id="cv-upload-in" style="display:none;" />
         <div class="cv-uploads" id="cv-uploads"></div>
+      </div>
+
+      <div class="cv-action-card">
+        <h3>⭐ Quick feedback to the PCG team</h3>
+        <div class="desc">Something we could do better? A quick note — goes straight to your producer.</div>
+        <div id="cv-fb-choice" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 10px;">
+          <button class="cv-btn" data-fb="great">🔥 This is great</button>
+          <button class="cv-btn" data-fb="ok">👍 All good</button>
+          <button class="cv-btn" data-fb="concern">⚠ I have a concern</button>
+        </div>
+        <div class="cv-comment-form">
+          <textarea id="cv-fb" placeholder="Optional note…"></textarea>
+          <div class="row"><button class="cv-btn primary" id="cv-fb-send">Send feedback</button></div>
+          <div id="cv-fb-log" style="margin-top: 12px;"></div>
+        </div>
       </div>
 
       <div class="cv-action-card">
@@ -509,6 +539,39 @@
     </div>
   `;
 
+  // ---------- ON TRACK / NEEDS INPUT pulse ----------
+  // Pulls from todos: if any urgent or awaiting-you todo is open,
+  // pulse amber/red. Otherwise pulse green "You're on track".
+  function renderPulse(){
+    const urgentOpen   = (sessionStorage.getItem(`pcg_cv_todos_${code}`) ? JSON.parse(sessionStorage.getItem(`pcg_cv_todos_${code}`)) : [])
+      .filter(t => !t.done && (t.status === 'urgent' || t.status === 'awaiting'));
+    const el = document.getElementById('cv-pulse');
+    if(urgentOpen.length){
+      const top = urgentOpen[0];
+      el.innerHTML = `
+        <div style="padding: 16px 20px; border-radius: 14px; background: linear-gradient(135deg, rgba(245,176,65,0.14), rgba(10,18,32,0.9)); border: 1px solid rgba(245,176,65,0.3); border-left: 3px solid var(--status-amber); display: flex; gap: 16px; align-items: center;">
+          <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(245,176,65,0.18); color: var(--status-amber); display: grid; place-items: center; font-size: 20px;">⚡</div>
+          <div style="flex: 1;">
+            <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--status-amber); margin-bottom: 3px;">We need your input</div>
+            <div style="color: #fff; font-size: 14.5px; font-weight: 500; line-height: 1.45;">
+              ${urgentOpen.length} item${urgentOpen.length===1?'':'s'} waiting on you — most pressing: <strong>${PCG.escapeHtml(top.title)}</strong>.
+            </div>
+          </div>
+          <a href="#" onclick="document.querySelector('.cv-todos').scrollIntoView({behavior:'smooth',block:'center'});return false;"
+             style="padding: 9px 14px; border-radius: var(--r-pill); background: var(--status-amber); color: #1a0c00; font-family: var(--font-display); font-size: 12px; letter-spacing: 0.04em; font-weight: 700; text-decoration: none;">Open list</a>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div style="padding: 16px 20px; border-radius: 14px; background: linear-gradient(135deg, rgba(61,220,132,0.14), rgba(10,18,32,0.9)); border: 1px solid rgba(61,220,132,0.3); border-left: 3px solid var(--status-green); display: flex; gap: 16px; align-items: center;">
+          <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(61,220,132,0.2); color: var(--status-green); display: grid; place-items: center; font-size: 20px;">✓</div>
+          <div>
+            <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--status-green); margin-bottom: 3px;">You're on track</div>
+            <div style="color: #fff; font-size: 14.5px; font-weight: 500;">Nothing needs you right now. PCG will post here as new items open.</div>
+          </div>
+        </div>`;
+    }
+  }
+
   // ---------- LATEST UPDATE ----------
   const latest = { ts:'2026-04-15T09:02', text:'Load-in confirmed for Apr 10 at 7 AM. Credentials available at venue ops from 6:30 AM. A final call sheet will be sent 24h prior.' };
   const upEl = document.getElementById('cv-update');
@@ -552,6 +615,87 @@
     }));
   }
   renderTodos();
+
+  // Re-render pulse whenever todos change.
+  const _rtOld = renderTodos;
+  window.renderTodos = function(){ _rtOld.apply(null, arguments); renderPulse(); };
+  renderPulse();
+
+  // ---------- WHAT HAPPENS NEXT (three-step client view) ----------
+  (function renderWhatsNext(){
+    const steps = [
+      { i: '1', lbl:'You review & respond',        nt:'Finish your open items above — these unblock the build.', when:'Today' },
+      { i: '2', lbl:'PCG finalizes the advance',    nt:'We lock final crew, power, rigging, and creative — confirmed to you in your portal.', when:'This week' },
+      { i: '3', lbl:'Load-in & show',                nt:'Load-in begins — your team arrives onsite for rehearsals + show day.',                when:PCG.fmtShort(proj.dates?.loadIn) || '—' }
+    ];
+    document.getElementById('cv-next').innerHTML = `
+      <div style="display:grid; grid-template-columns: 1fr; gap: 10px;">
+        ${steps.map((s) => `
+          <div style="padding: 16px 18px; border-radius: 14px; background: rgba(15,22,40,0.7); border: 1px solid rgba(255,255,255,0.07); display: grid; grid-template-columns: 42px 1fr auto; gap: 14px; align-items: center;">
+            <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue); font-family: var(--font-display); font-weight: 700; display: grid; place-items: center; font-size: 17px;">${s.i}</div>
+            <div>
+              <div style="color: #fff; font-weight: 600; font-size: 14.5px;">${PCG.escapeHtml(s.lbl)}</div>
+              <div style="color: rgba(255,255,255,0.65); font-size: 12.5px; margin-top: 3px; line-height: 1.5;">${PCG.escapeHtml(s.nt)}</div>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.55); white-space: nowrap;">${PCG.escapeHtml(s.when)}</div>
+          </div>`).join('')}
+      </div>`;
+  })();
+
+  // ---------- YOUR SHOW PACKAGE (what PCG is delivering) ----------
+  (function renderPackage(){
+    const pkg = [
+      { ico:'🎚', t:'Audio · d&b J-Series system',       nt:'4× flown arrays, 24× J8, 12× JSub · Axient Digital wireless (16ch)' },
+      { ico:'🎥', t:'Video · 4K screen management',       nt:'Barco E2 · 4× HD camera package · LED header + confidence monitors' },
+      { ico:'💡', t:'Lighting · full show rig',           nt:'ETC Ion XE · Mac Auras · Source Fours · Awards & cocktail packages' },
+      { ico:'⛓', t:'Rigging · J-Series + LED header',    nt:'4 dead-hang motors · LED header fly frame · IATSE 720 rigger call' },
+      { ico:'🎬', t:'Creative · Opener / Awards / Loop',  nt:'Opener, Awards, and Sponsor loop packages · lower-third templates' },
+      { ico:'👥', t:'Crew · Producer · TD · Show Caller', nt:'Full production crew across all 4 days + support ops' },
+      { ico:'📋', t:'Run of Show · Production Advance',   nt:'Master ROS · auto-generated advance · distributed in this portal' },
+      { ico:'🚚', t:'Logistics · Trucking + Warehouse',   nt:'Gear pulled, staged, trucked, returned — full chain of custody' }
+    ];
+    document.getElementById('cv-package').innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+        ${pkg.map(p => `
+          <div style="padding: 14px 16px; border-radius: 12px; background: rgba(15,22,40,0.55); border: 1px solid rgba(255,255,255,0.06); display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start;">
+            <div style="font-size: 22px; line-height: 1;">${p.ico}</div>
+            <div>
+              <div style="color: #fff; font-weight: 600; font-size: 13.5px;">${PCG.escapeHtml(p.t)}</div>
+              <div style="color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 2px; line-height: 1.5;">${PCG.escapeHtml(p.nt)}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  })();
+
+  // ---------- FEEDBACK block ----------
+  const FB_KEY = `pcg_cv_fb_${code}`;
+  const fbs = JSON.parse(sessionStorage.getItem(FB_KEY) || '[]');
+  let fbChoice = null;
+  document.querySelectorAll('[data-fb]').forEach(b => b.addEventListener('click', () => {
+    fbChoice = b.dataset.fb;
+    document.querySelectorAll('[data-fb]').forEach(x => x.classList.toggle('primary', x === b));
+  }));
+  function renderFb(){
+    document.getElementById('cv-fb-log').innerHTML = fbs.slice(0,4).map(f => `
+      <div class="cv-approve-row" style="grid-template-columns: 1fr;">
+        <div>
+          <div class="at">${f.choice==='great'?'🔥 Great':f.choice==='ok'?'👍 All good':'⚠ Concern'}${f.body?' — '+PCG.escapeHtml(f.body):''}</div>
+          <div class="am">${PCG.escapeHtml(f.who)} · ${PCG.ago(f.ts)}</div>
+        </div>
+      </div>`).join('');
+  }
+  renderFb();
+  document.getElementById('cv-fb-send').addEventListener('click', () => {
+    if(!fbChoice){ toast('Pick a quick sentiment first.'); return; }
+    const body = document.getElementById('cv-fb').value.trim();
+    fbs.unshift({ ts: new Date().toISOString(), who: proj.client || 'Client', choice: fbChoice, body });
+    sessionStorage.setItem(FB_KEY, JSON.stringify(fbs));
+    document.getElementById('cv-fb').value = '';
+    fbChoice = null;
+    document.querySelectorAll('[data-fb]').forEach(x => x.classList.remove('primary'));
+    renderFb();
+    toast('✓ Feedback sent to your producer.');
+  });
 
   // ---------- SHOW FLOW ----------
   // Client-appropriate, not the full PM timeline. Milestones only.

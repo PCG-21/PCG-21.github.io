@@ -187,6 +187,81 @@ img.badge { display: block; }
   padding-top: var(--sp-4);
 }
 
+/* =======================================================================
+   Demo Story Mode — PIF → Show → Fix Issue → Advance → Portal strip.
+   Sits right under the topbar on PM-first pages.
+   ======================================================================= */
+.story-strip {
+  background: linear-gradient(90deg, rgba(1,153,253,0.10), rgba(149,100,216,0.08));
+  border-bottom: 1px solid rgba(1,153,253,0.22);
+  padding: 10px var(--sp-4);
+  position: sticky; top: var(--topbar-h); z-index: 35;
+}
+.story-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.story-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: var(--r-pill);
+  background: var(--pcg-bright-blue); color: #001a2a;
+  font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; font-weight: 700;
+  white-space: nowrap;
+}
+.story-steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.story-step {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: var(--r-pill);
+  font-size: 12px; color: var(--text-secondary);
+  background: var(--surface-2); border: 1px solid var(--border);
+  text-decoration: none;
+}
+.story-step .sn {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--surface-3); color: var(--text-tertiary);
+  display: inline-grid; place-items: center;
+  font-size: 10px; font-family: var(--font-mono); font-weight: 700;
+}
+.story-step.done { color: var(--status-green); border-color: rgba(61,220,132,0.35); background: rgba(61,220,132,0.08); }
+.story-step.done .sn { background: var(--status-green); color: #000; }
+.story-step.on {
+  color: #fff; border-color: var(--pcg-bright-blue);
+  background: linear-gradient(90deg, rgba(1,153,253,0.25), rgba(149,100,216,0.2));
+  box-shadow: 0 0 0 2px rgba(1,153,253,0.15);
+}
+.story-step.on .sn { background: var(--pcg-bright-blue); color: #001a2a; }
+.story-step:hover { transform: translateY(-1px); }
+.story-arrow { color: var(--text-tertiary); font-size: 12px; }
+.story-hide {
+  margin-left: auto; background: transparent; border: 0;
+  color: var(--text-tertiary); cursor: pointer; font-size: 18px; line-height: 1;
+  padding: 2px 8px; border-radius: var(--r-sm);
+}
+.story-hide:hover { background: var(--surface-2); color: var(--text-primary); }
+
+@media (max-width: 720px) {
+  .story-strip { padding: 8px 12px; }
+  .story-step .sl { display: none; }
+  .story-arrow { display: none; }
+}
+
+/* =======================================================================
+   Global "system nudge" callout — used for Field→System echoes and
+   "This updated your Advance" chips. Reusable across pages.
+   ======================================================================= */
+.sys-nudge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue);
+  border: 1px solid rgba(1,153,253,0.35);
+  font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.06em;
+  text-transform: uppercase; font-weight: 700;
+}
+.sys-nudge.purple { background: rgba(149,100,216,0.14); color: var(--pcg-spotlight-purple); border-color: rgba(149,100,216,0.35); }
+.sys-nudge.amber  { background: rgba(245,176,65,0.15);  color: var(--status-amber);        border-color: rgba(245,176,65,0.35); }
+.sys-nudge.green  { background: rgba(61,220,132,0.14);  color: var(--status-green);        border-color: rgba(61,220,132,0.35); }
+
 .rail .nav-item {
   display: flex; align-items: center; gap: var(--sp-3);
   padding: 9px var(--sp-5);
