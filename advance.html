@@ -133,6 +133,15 @@
       </div>
     </div>
 
+    <div style="padding: 12px 40px; background: linear-gradient(90deg, rgba(1,153,253,0.08), rgba(149,100,216,0.06)); border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+      <span style="display:inline-flex; align-items:center; gap:6px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--pcg-bright-blue); color: #001a2a; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700;">⚡ Auto-generated from show data</span>
+      <span style="font-size: 12px; color: var(--text-secondary);">
+        Pulled live from the Show Command Center — contacts, schedule, power, rigging, staging, venue notes, responsibilities, and pre-load venue condition.
+        Edits made in STAGE flow back here automatically.
+      </span>
+      <span style="margin-left: auto; font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary);" id="generated-stamp"></span>
+    </div>
+
     <div class="adv-body">
 
       <!-- OVERVIEW -->
@@ -255,13 +264,29 @@
         </div>
       </div>
 
-      <!-- PRE-LOAD NOTES (new) -->
+      <!-- PRE-LOAD VENUE CONDITION (new · external-facing baseline record) -->
       <div class="adv-section">
-        <h2>Pre-Load Notes</h2>
+        <h2>Pre-Load Venue Condition</h2>
+        <div class="adv-notes" style="border-left: 3px solid #9564d8;">
+          <strong style="color: #9564d8;">Captured before PCG load-in — baseline record for damage verification and venue history.</strong><br><br>
+          Site walk-through conducted <strong>Apr 9, 14:12</strong> by J. Sharp + C. Taylor with venue operations present. Photos and notes archived to the Caesars Forum venue record for future shows. The items below are <em>pre-existing</em> conditions PCG observed prior to touching the space:
+          <ul style="margin: 10px 0 0; padding-left: 20px; font-size: var(--fs-sm);">
+            <li>Ballroom carpet — pre-existing ~18" stain near stage-left tormentor leg.</li>
+            <li>Dock 2 north wall — pre-existing forklift scrape (paint transfer).</li>
+            <li>Freight elevator cab — multiple scratches and a dent on back wall (pre-existing).</li>
+            <li>West hallway corner protection — missing on arrival; venue installing before crew.</li>
+            <li>BOH storage room — venue furniture in place on arrival; clearing before 7 AM load-in.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- WAREHOUSE PRE-LOAD (gear readiness, separate from venue) -->
+      <div class="adv-section">
+        <h2>Warehouse Pre-Load (Gear)</h2>
         <div class="adv-notes">
-          <strong>Warehouse pre-load walk-through:</strong> All d&b J-Series arrays visually inspected Apr 8. 1× JSub (s/n #A-2240) shows minor cabinet scuff — documented photo in condition log. All motors tested to 125% capacity; cert sheet in rigging packet. Axient Digital rack configured with 16-channel plan and locked.<br><br>
-          <strong>Quantities check:</strong> Pull-sheet reconciled against manifest — no shortages. Sub-rental for 2× JSub (Solotech) confirmed verbally; PO pending signature (ops to finalize before departure).<br><br>
-          <strong>Known in-flight items:</strong> Ready room distro (60A/50A) pending venue walkthrough — ship with spare spider box until spec locks.
+          <strong>All gear inspected and staged Apr 8.</strong> d&b J-Series arrays visually cleared; 1× JSub (s/n #A-2240) noted with a minor cabinet scuff — documented. All motors tested to 125% capacity with cert sheets attached to the rigging packet. Axient Digital rack configured with the 16-channel plan and locked.<br><br>
+          <strong>Quantities:</strong> Pull-sheet reconciled against manifest — no shortages. Sub-rental for 2× JSub (Solotech) confirmed verbally; PO pending signature before truck departure.<br><br>
+          <strong>In-flight items:</strong> Ready-room distro (60A/50A) pending the venue walkthrough — shipping with a spare spider box until spec locks.
         </div>
       </div>
 
@@ -306,6 +331,11 @@
       <div>This advance is auto-generated from the Show Command Center. Edits flow back to the source.</div>
     </div>
   `;
+
+  // "Generated" stamp at top — shows that this advance was assembled
+  // from live data at the moment of viewing. The wow-moment micro-detail.
+  document.getElementById('generated-stamp').textContent =
+    `Generated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · live from STAGE`;
 </script>
 </body>
 </html>

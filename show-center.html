@@ -227,6 +227,108 @@
   .health-chip.warn { color: var(--status-amber); border-color: rgba(245,176,65,0.4); background: rgba(245,176,65,0.08); }
   .health-chip.good { color: var(--status-green); border-color: rgba(61,220,132,0.4); background: rgba(61,220,132,0.08); }
 
+  /* Top Issues list — sits under the score so leadership reads
+     "here's exactly why it's yellow" in under 2 seconds. */
+  .health-top { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .health-top-label {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px;
+  }
+  .health-top ul { margin: 0; padding: 0; list-style: none; }
+  .health-top .hti {
+    display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start;
+    padding: 4px 0; font-size: 12.5px;
+  }
+  .health-top .hti-ico { font-family: var(--font-mono); font-size: 13px; line-height: 1.2; }
+  .health-top .hti-text { display: block; color: var(--text-primary); font-weight: 500; }
+  .health-top .hti-sub  { display: block; color: var(--text-tertiary); font-size: 11px; margin-top: 2px; }
+  .health-top .hti.high .hti-ico  { color: var(--status-red); }
+  .health-top .hti.warn .hti-ico  { color: var(--status-amber); }
+  .health-top .hti.good           { color: var(--status-green); font-size: 12px; padding: 4px 0; }
+
+  /* -------- Lifecycle / phase indicator -------- */
+  .lc-strip {
+    display: flex; align-items: stretch; gap: 0;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-sm); overflow: hidden;
+    margin-bottom: var(--sp-4);
+  }
+  .lc-step {
+    flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 2px;
+    position: relative; min-width: 0;
+    border-right: 1px solid var(--border);
+  }
+  .lc-step:last-child { border-right: 0; }
+  .lc-step .lc-ph {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .lc-step .lc-lbl { font-size: 13px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lc-step .lc-date { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; }
+  .lc-step.past {
+    background: linear-gradient(180deg, rgba(61,220,132,0.06), transparent);
+  }
+  .lc-step.past .lc-lbl::before { content:"✓ "; color: var(--status-green); }
+  .lc-step.now {
+    background: linear-gradient(180deg, rgba(1,153,253,0.14), rgba(149,100,216,0.05));
+    box-shadow: inset 0 -3px 0 var(--pcg-bright-blue);
+  }
+  .lc-step.now .lc-ph { color: var(--pcg-bright-blue); }
+  .lc-step.now .lc-lbl { color: var(--text-primary); font-weight: 600; }
+  .lc-step.future .lc-lbl { color: var(--text-tertiary); }
+  .lc-step.future { opacity: 0.6; }
+
+  /* -------- Venue requirements v2 (actionable) -------- */
+  .req-row {
+    display: grid; grid-template-columns: 32px 1fr 160px 120px 30px; gap: 12px;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    align-items: center; font-size: var(--fs-sm);
+  }
+  .req-row:last-child { border-bottom: 0; }
+  .req-row:hover { background: var(--surface-2); }
+  .req-row .ri { font-size: 18px; text-align: center; }
+  .req-row .rt { font-weight: 500; color: var(--text-primary); }
+  .req-row .rn { font-size: 11.5px; color: var(--text-tertiary); margin-top: 1px; }
+  .req-row .rowner { font-size: 11.5px; color: var(--text-secondary); }
+  .req-status {
+    font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 3px 10px; border-radius: var(--r-pill); text-align: center; font-weight: 700;
+  }
+  .req-status.conf   { background: rgba(61,220,132,0.18); color: var(--status-green); }
+  .req-status.pend   { background: rgba(245,176,65,0.18); color: var(--status-amber); }
+  .req-status.comp   { background: rgba(1,153,253,0.18);  color: var(--pcg-bright-blue); }
+  .req-status.block  { background: rgba(231,76,60,0.18);  color: var(--status-red); }
+  .req-check {
+    width: 18px; height: 18px; border: 1.5px solid var(--border-accent); border-radius: 50%;
+    display: inline-grid; place-items: center; font-size: 11px;
+  }
+  .req-check.yes { background: var(--status-green); border-color: var(--status-green); color: #000; }
+
+  /* Cross-show: stronger "system is thinking ahead" chrome */
+  .xshow-card.strong {
+    background: linear-gradient(135deg, rgba(149,100,216,0.08), rgba(10,18,32,0) 70%), var(--surface-1);
+    border: 1px solid rgba(149,100,216,0.3);
+    border-left: 3px solid var(--pcg-spotlight-purple);
+  }
+  .xshow-card h4 .pill { margin-left: auto; font-size: 9px; }
+
+  /* Chat: better day / channel context */
+  .chat-channel .ch-desc { display: block; font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+  .chat-ch-head {
+    padding: 8px 12px; margin-bottom: 8px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .chat-ch-head .hash { color: var(--pcg-bright-blue); font-family: var(--font-mono); font-weight: 700; }
+  .chat-ch-head .ch-name { font-weight: 600; color: var(--text-primary); }
+  .chat-ch-head .ch-topic { color: var(--text-tertiary); font-size: 11.5px; }
+  .chat-day {
+    text-align: left; position: sticky; top: 0;
+    font-size: 10px; font-family: var(--font-display); color: var(--text-tertiary);
+    margin: 14px 0 6px; letter-spacing: 0.12em; text-transform: uppercase;
+    border-bottom: 1px dashed var(--border); padding-bottom: 4px;
+  }
+
   /* -------- Daily attention strip -------- */
   .daily-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
   .daily-card {
@@ -342,6 +444,9 @@
         <!-- HEADER -->
         <div class="scc-header" id="scc-header"></div>
 
+        <!-- LIFECYCLE / PHASE — "where are we right now?" at a glance. -->
+        <div class="lc-strip" id="lifecycle"></div>
+
         <!-- TABS -->
         <div class="scc-tabs" id="scc-tabs"></div>
 
@@ -456,7 +561,10 @@
 
         <section class="scc-section" id="sec-preload">
           <div class="card">
-            <div class="card-header"><div class="title">📸 Pre-Load Condition Log</div></div>
+            <div class="card-header">
+              <div class="title">🏛 Pre-Load Venue Condition</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Venue / site baseline · damage protection</span>
+            </div>
             <div class="card-body" id="preload"></div>
           </div>
         </section>
@@ -546,6 +654,41 @@
       </div>
     </div>`;
 
+  // -------- LIFECYCLE / PHASE (where are we right now?) --------
+  // Lightweight timeline across canonical phases. Current phase is
+  // derived from today's date relative to the show's date markers.
+  (function renderLifecycle(){
+    const d = proj.dates || {};
+    const ref = (key) => d[key] ? new Date(d[key]) : null;
+    const phases = [
+      { k:'Planning',       label:'Planning',        date: null },
+      { k:'Pre-Production', label:'Pre-Production',  date: ref('prep') },
+      { k:'Load-In',        label:'Load-In',         date: ref('loadIn') },
+      { k:'Show',           label:'Show',            date: ref('showStart') },
+      { k:'Strike',         label:'Strike',          date: ref('loadOut') },
+      { k:'Closeout',       label:'Closeout',        date: ref('ret') }
+    ];
+    // Current phase: the last one whose date is ≤ today (and the one
+    // after if today is past the show start). Planning is default when
+    // there are no dates at all.
+    let currentIdx = 0;
+    const now = PCG.today.getTime();
+    for(let i = phases.length - 1; i >= 0; i--){
+      if(phases[i].date && phases[i].date.getTime() <= now + 86400000){ currentIdx = i; break; }
+    }
+    document.getElementById('lifecycle').innerHTML = phases.map((p, i) => {
+      const state = i < currentIdx ? 'past' : (i === currentIdx ? 'now' : 'future');
+      const dateLine = p.date ? `<div class="lc-date">${PCG.fmtShort(p.date)}</div>` : '';
+      const phText = state === 'now' ? 'Current phase' : (state === 'past' ? 'Complete' : 'Upcoming');
+      return `
+        <div class="lc-step ${state}">
+          <div class="lc-ph">${phText}</div>
+          <div class="lc-lbl">${PCG.escapeHtml(p.label)}</div>
+          ${dateLine}
+        </div>`;
+    }).join('');
+  })();
+
   // -------- TABS --------
   const tabs = [
     ['health',   '❤ Health'],
@@ -560,7 +703,7 @@
     ['site',     '📷 Site Visit'],
     ['venue',    '🏛 Venue'],
     ['reqs',     '🍽 Reqs'],
-    ['preload',  '📸 Pre-Load'],
+    ['preload',  '🏛 Venue Condition'],
     ['domain',   '🧭 Domains'],
     ['creative', '🎨 Creative'],
     ['xshow',    '🔭 Cross-Show'],
@@ -628,6 +771,12 @@
     ],
   };
   const chat = JSON.parse(sessionStorage.getItem(CHAT_KEY) || 'null') || seedChat;
+  const channelTopics = {
+    general:  'Production-wide · all PMs, TDs, producers',
+    client:   'Client-facing messages · mirror to account team',
+    rigging:  'Riggers + TD · plot / motors / IATSE call',
+    power:    'Power + distro · engineer + venue electrician'
+  };
   let activeChannel = 'general';
   function renderChannels(){
     document.getElementById('chat-channels').innerHTML = Object.keys(seedChat).map(ch=>`
@@ -645,12 +794,24 @@
   // meaningful, not just a side conversation.
   const MARK_KEY = `pcg_chat_marks_${proj.code}`;
   const markEchoes = JSON.parse(sessionStorage.getItem(MARK_KEY) || '{"decision":[],"issue":[],"action":[]}');
+  function humanDay(d){
+    const diff = Math.floor((new Date(PCG.today.toDateString()) - new Date(d.toDateString())) / 86400000);
+    if(diff === 0)  return 'Today';
+    if(diff === 1)  return 'Yesterday';
+    if(diff > 1 && diff < 7) return d.toLocaleDateString('en-US',{weekday:'long'});
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
   function renderThread(){
     const msgs = (chat[activeChannel]||[]);
     let last = '';
-    document.getElementById('chat-thread').innerHTML = msgs.map((m, idx)=>{
+    const head = `
+      <div class="chat-ch-head">
+        <span class="hash">#</span><span class="ch-name">${activeChannel}</span>
+        <span class="ch-topic">· ${PCG.escapeHtml(channelTopics[activeChannel] || 'Show-scoped channel')}</span>
+      </div>`;
+    const body = msgs.map((m, idx)=>{
       const d = new Date(m.t); const day = d.toDateString();
-      const dayMark = day !== last ? `<div class="chat-day">${day}</div>` : '';
+      const dayMark = day !== last ? `<div class="chat-day">${humanDay(d)}</div>` : '';
       last = day;
       const initials = m.who.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
       const msgKey = `${activeChannel}:${idx}`;
@@ -672,7 +833,8 @@
             </div>
           </div>
         </div>`;
-    }).join('') || '<div class="empty">No messages yet.</div>';
+    }).join('');
+    document.getElementById('chat-thread').innerHTML = head + (body || '<div class="empty">No messages yet.</div>');
 
     // Wire mark buttons
     document.querySelectorAll('.chat-actions button').forEach(btn => {
@@ -902,17 +1064,69 @@
     renderDiary();
   });
 
-  // -------- SITE VISIT --------
-  document.getElementById('sitevisit').innerHTML = `
+  // -------- SITE VISIT (venue intelligence, structured) --------
+  // Visit findings grouped by operational sub-area. Each finding feeds
+  // the venue record so future shows at this venue start smarter.
+  const siteSections = [
+    { key:'dock',   title:'🚚 Dock Access',           findings:[
+      'Dock 2 is primary for our 48\' trucks (ballroom-level, 10\'6" door).',
+      'Dock 4 shared with hotel kitchen / catering traffic after 3 PM — unusable for load-in PM.',
+      'Key-card required after 10 PM — request from venue ops day-of.'
+    ]},
+    { key:'power',  title:'⚡ Power',                 findings:[
+      '200A tie-in at FOH dock panel.',
+      'Power tie-in REQUIRES venue engineer approval + 24h notice.',
+      'House power on an isolated feed — do NOT share with show distro.'
+    ]},
+    { key:'rig',    title:'⛓ Rigging',               findings:[
+      '24 dead-hang points on ballroom grid, 4,500 lb beam capacity.',
+      'House chandelier rigging points OVER CENTER are NOT available to show motors.',
+      'No dynamic rigging after 10 PM (venue contract).'
+    ]},
+    { key:'rooms',  title:'🏛 Rooms / Ballroom',      findings:[
+      'Ballroom centerline verified against rigging plot within 4".',
+      'BOH room holds venue furniture during load-in AM — venue clearing before 7 AM.',
+      'Awards ready room location confirmed stage-right pre-function.'
+    ]},
+    { key:'access', title:'🛗 Access / Logistics',    findings:[
+      'Freight elevator: 10\' × 6\' × 5,000 lb limit · key-card after 10 PM.',
+      'Ballroom access BLOCKED during afternoon turnover (12–2 PM Day 1) — schedule around.',
+      'Crew meals staged in BOH breakroom; venue handles catering delivery.'
+    ]},
+    { key:'watch',  title:'⚠ Restrictions / Watch-Outs', findings:[
+      'Dock shared with hotel kitchen after 3 PM — plan truck moves before then.',
+      'Power tie-in requires engineer approval — 24h notice mandatory.',
+      'Ballroom access blocked during afternoon turnover — no rigger climbs 12–2 PM Day 1.',
+      'Rigging points limited directly over center chandeliers.',
+      'Hallway corner protection missing — venue adding, confirm on arrival.'
+    ], highlight:true }
+  ];
+  const siteHeader = `
     <div style="display:flex; gap: 12px; margin-bottom: var(--sp-3); flex-wrap:wrap;">
       <div class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Visit · 2026-04-11 · J. Sharp + C. Taylor</div>
-      <div class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Duration: 2h 40m</div>
+      <div class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Duration · 2h 40m</div>
+      <div class="v-chip" style="padding:4px 10px; background:rgba(1,153,253,0.12); border:1px solid rgba(1,153,253,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px; color: var(--pcg-bright-blue);">✓ Saved to Venue Record · Caesars Forum</div>
+      <div class="v-chip" style="padding:4px 10px; background:rgba(61,220,132,0.12); border:1px solid rgba(61,220,132,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px; color: var(--status-green);">↻ Reused on future shows</div>
     </div>
-    <div class="log-body" style="margin-bottom: var(--sp-3);">Walked the full load-in path with venue ops lead. Ballroom centerline verified, dock assignments finalized, and ceiling obstructions photographed. Rigging dead-hang points align with plot within 4". Caterer load window confirmed 5pm→7pm on dock 4 which pushes us to dock 2 for the 7am rigger call.</div>
-    <div class="photo-grid">
-      ${['Dock 2 approach','Ballroom stage-left','Ceiling rigging points','Power tie-in (FOH)','Ready room location','Venue ops office'].map((cap,i)=>`
-        <div class="photo-tile">📷<div class="ph-caption">${cap}</div></div>`).join('')}
+    <div class="log-body" style="margin-bottom: var(--sp-3); font-size:12.5px;">
+      Walked the full load-in path with venue ops. Structured findings below — each section feeds the venue intelligence record so the next PM at Caesars Forum starts with this knowledge, not a blank page.
     </div>`;
+  const siteBody = siteSections.map(s => `
+    <div class="dom-card" style="margin-bottom: 10px; ${s.highlight ? 'border-left: 3px solid var(--status-amber); background: rgba(245,176,65,0.04);' : ''}">
+      <h4>${s.title}</h4>
+      <ul style="margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--text-secondary); line-height: 1.7;">
+        ${s.findings.map(f => `<li style="padding: 3px 0; display: flex; gap: 8px;"><span style="color: ${s.highlight?'var(--status-amber)':'var(--text-tertiary)'}; flex: none;">${s.highlight?'⚠':'•'}</span><span>${PCG.escapeHtml(f)}</span></li>`).join('')}
+      </ul>
+    </div>`).join('');
+  const sitePhotos = `
+    <div style="margin-top: var(--sp-3);">
+      <div class="eyebrow" style="margin-bottom: 6px;">Visit photos</div>
+      <div class="photo-grid">
+        ${['Dock 2 approach','Ballroom stage-left','Ceiling rigging points','Power tie-in (FOH)','Ready room location','Hallway corner protection'].map(cap=>`
+          <div class="photo-tile">📷<div class="ph-caption">${cap}</div></div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('sitevisit').innerHTML = siteHeader + siteBody + sitePhotos;
 
   // -------- VENUE INTELLIGENCE --------
   document.getElementById('venueIntel').innerHTML = `
@@ -935,33 +1149,105 @@
       </div>
     </div>`;
 
-  // -------- VENUE REQUIREMENTS --------
-  const reqs = [
-    { ico:'🪑', lbl:'Tables',   val:'12x 6ft, 4x rounds (sponsor reception)' },
-    { ico:'🍴', lbl:'Catering', val:'Crew meals: L+D Days 1–3. Vegan + GF counts sent.' },
-    { ico:'🗑', lbl:'Trash',    val:'Strike day: 4x bins near dock 2. Hauling at 10pm.' },
-    { ico:'🕒', lbl:'Access',   val:'Load-in 7am. Soft access from 5am with venue ops.' },
-    { ico:'🧹', lbl:'Cleaning', val:'Nightly sweep by venue. Final clean after strike.' },
-    { ico:'🔌', lbl:'Wi-Fi',    val:'Show SSID: LCE26-PROD · 500 Mbps dedicated VLAN' },
-    { ico:'🚪', lbl:'Badging',  val:'Crew badges pre-printed · TD picks up at ops 4/10' },
-    { ico:'🚻', lbl:'Restrooms',val:'Nearest crew RR on stage-right pre-function' },
+  // -------- VENUE REQUIREMENTS v2 (actionable · status + owner + state) --------
+  // Items persist toggles in sessionStorage so the demo shows how the
+  // PM/TD can work through this list and the status changes in real
+  // time. Each row has: icon · item + note · owner (who delivers it)
+  // · state (Pending / Confirmed / Complete / Blocked) · check toggle.
+  const REQS_KEY = `pcg_reqs_${proj.code}`;
+  const reqSeed = [
+    { id:'r1', ico:'🧹', lbl:'Ballroom cleared & ready',  note:'Carpet shampooed · chairs removed', owner:'Venue · Event Ops',     state:'conf'  },
+    { id:'r2', ico:'⚡',  lbl:'Power tie-in installed',    note:'200A service at FOH dock panel',   owner:'Venue · Electrician',    state:'pend'  },
+    { id:'r3', ico:'🪑', lbl:'Tables dropped in BOH',      note:'12× 6ft, 4× rounds (sponsor rec)',  owner:'Venue · Setup crew',     state:'pend'  },
+    { id:'r4', ico:'🚚', lbl:'Dock 2 access opened',       note:'Keycard + bollards removed · 6 AM', owner:'Venue · Security',       state:'conf'  },
+    { id:'r5', ico:'🍴', lbl:'Catering count confirmed',   note:'Crew meals L+D Days 1–3 · 62 ppl',  owner:'Client · Kevin Adams',   state:'conf'  },
+    { id:'r6', ico:'🗑', lbl:'Trash removal scheduled',    note:'4× bins staged · 10 PM haul',       owner:'Venue · Janitorial',     state:'pend'  },
+    { id:'r7', ico:'🚪', lbl:'Crew badges pre-printed',    note:'TD pickup at ops desk · 6:30 AM',   owner:'Venue · Security',       state:'conf'  },
+    { id:'r8', ico:'🏛', lbl:'Awards ready room available',note:'Spec + access walkthrough pending', owner:'Venue · Event Ops',      state:'block' },
+    { id:'r9', ico:'🧹', lbl:'Nightly clean + final clean',note:'Venue housekeeping contracted',     owner:'Venue · Janitorial',     state:'conf'  },
+    { id:'rA', ico:'🎛', lbl:'Staging delivered by venue', note:'Risers + skirting · 32×24×48"',     owner:'Venue · Scenic',         state:'comp'  },
+    { id:'rB', ico:'📶', lbl:'Production Wi-Fi · LCE26-PROD', note:'500 Mbps VLAN · password at ops',owner:'Venue · IT',             state:'conf'  },
   ];
-  document.getElementById('venueReqs').innerHTML = reqs.map(r=>`
-    <div class="req-card">
-      <span class="ico">${r.ico}</span>
-      <div class="lbl">${r.lbl}</div>
-      <div class="val">${PCG.escapeHtml(r.val)}</div>
-    </div>`).join('');
+  const reqs = JSON.parse(sessionStorage.getItem(REQS_KEY) || 'null') || reqSeed;
+  const stateCopy = { pend:'Pending', conf:'Confirmed', comp:'Complete', block:'Blocked' };
+  function renderReqs(){
+    const counts = reqs.reduce((a,r)=>((a[r.state]=(a[r.state]||0)+1), a), {});
+    const summary = `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: var(--sp-3); font-size: 11px;">
+        <span class="req-status comp">${counts.comp||0} Complete</span>
+        <span class="req-status conf">${counts.conf||0} Confirmed</span>
+        <span class="req-status pend">${counts.pend||0} Pending</span>
+        <span class="req-status block">${counts.block||0} Blocked</span>
+        <span class="muted" style="margin-left:auto; font-size: 11.5px;">Click a row to advance its state — demos how PMs clear this list daily.</span>
+      </div>`;
+    const rows = reqs.map(r => `
+      <div class="req-row" data-id="${r.id}">
+        <span class="ri">${r.ico}</span>
+        <div>
+          <div class="rt">${PCG.escapeHtml(r.lbl)}</div>
+          <div class="rn">${PCG.escapeHtml(r.note)}</div>
+        </div>
+        <span class="rowner">${PCG.escapeHtml(r.owner)}</span>
+        <span class="req-status ${r.state}">${stateCopy[r.state]}</span>
+        <span class="req-check ${r.state==='comp'?'yes':''}" title="Cycle state">${r.state==='comp'?'✓':''}</span>
+      </div>`).join('');
+    document.getElementById('venueReqs').innerHTML = summary + `<div style="border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden;">${rows}</div>`;
+    document.querySelectorAll('#venueReqs .req-row').forEach(el => {
+      el.addEventListener('click', () => {
+        const r = reqs.find(x => x.id === el.dataset.id);
+        if(!r) return;
+        // Cycle forward: pend → conf → comp → pend (Blocked stays put
+        // until someone explicitly cycles it)
+        r.state = r.state === 'pend' ? 'conf'
+                : r.state === 'conf' ? 'comp'
+                : r.state === 'comp' ? 'pend'
+                : 'pend';
+        sessionStorage.setItem(REQS_KEY, JSON.stringify(reqs));
+        renderReqs();
+      });
+    });
+  }
+  // Replace the grid wrapper with a flat list container — easier to
+  // style as a dense actionable checklist.
+  document.getElementById('venueReqs').classList.remove('req-grid');
+  renderReqs();
 
-  // -------- PRE-LOAD --------
+  // -------- PRE-LOAD VENUE CONDITION (site/venue baseline, NOT gear) --------
+  // This is a legal / operational protection record captured at the
+  // venue BEFORE PCG touches anything — so post-show damage disputes
+  // have a verifiable baseline and so venue quirks feed the venue
+  // intelligence record for future shows.
+  const venueConditionItems = [
+    { cap:'Ballroom carpet · SL',     note:'Pre-existing stain ~18" near stage-left tormentor leg' },
+    { cap:'Dock wall · north side',   note:'Prior forklift scrape along north interior wall (pre-existing)' },
+    { cap:'Service elevator · cab',   note:'Multiple scratches and dent on back wall of freight cab (pre-existing)' },
+    { cap:'Hallway corner · west',    note:'Corner protection MISSING at elbow before ballroom — venue to install before crew arrives' },
+    { cap:'BOH storage room',         note:'Venue furniture still staged in BOH room — venue clearing before 7 AM load-in' },
+    { cap:'Ballroom ceiling · CL',    note:'House chandelier rigging points inaccessible to our motors — confirmed before plot' }
+  ];
   document.getElementById('preload').innerHTML = `
-    <div class="muted" style="font-size:var(--fs-sm); margin-bottom:var(--sp-3);">Photos + notes captured before gear leaves the warehouse. Reference for condition disputes + insurance.</div>
-    <div class="photo-grid">
-      ${['J-Series arrays · pre-load','JSub stack · 12 units','Amp world · serial docs','LED header · panel audit','Motor cert · signed','Truck 1 · manifest'].map((cap,i)=>`
-        <div class="photo-tile">📸<div class="ph-caption">${cap}</div></div>`).join('')}
+    <div class="adv-notes" style="margin-bottom:var(--sp-3); border-left-color: var(--pcg-spotlight-purple);">
+      <strong style="color: var(--pcg-spotlight-purple);">Captured before PCG load-in — used for damage verification and venue history.</strong>
+      <div style="margin-top: 6px; font-size: 12.5px; color: var(--text-secondary);">
+        Photos and notes document ballroom, dock, elevator, hallway, floor, wall, and door condition <em>before</em> any PCG gear arrives.
+        Each record shows what was pre-existing so the venue can't attribute it to our crew — and each finding feeds the venue's long-term
+        operational record.
+      </div>
     </div>
-    <div style="margin-top: var(--sp-3); font-size:var(--fs-sm); color: var(--text-secondary);">
-      <strong>Notes:</strong> All d&b J-Series visually inspected. 1x JSub (s/n #A-2240) showed minor cabinet scuff — documented. All motors tested to 125% load; cert sheet attached to rigging packet.
+    <div class="photo-grid">
+      ${venueConditionItems.map(item => `
+        <div class="photo-tile" title="${PCG.escapeHtml(item.note)}">🏛
+          <div class="ph-caption" style="background: linear-gradient(0deg, rgba(0,0,0,0.88), transparent);">
+            <strong style="display:block; margin-bottom: 2px;">${PCG.escapeHtml(item.cap)}</strong>
+            <span style="font-weight: 400; opacity: 0.85; font-size: 10.5px;">${PCG.escapeHtml(item.note)}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top: var(--sp-3); display:flex; gap: 14px; flex-wrap:wrap; font-size: 11.5px;">
+      <span class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono);">Walked by · J. Sharp + C. Taylor</span>
+      <span class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono);">2026-04-09 · 14:12</span>
+      <span class="v-chip" style="padding:4px 10px; background:rgba(149,100,216,0.12); border:1px solid rgba(149,100,216,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); color: var(--pcg-spotlight-purple);">✓ Saved to venue record</span>
+      <span class="v-chip" style="padding:4px 10px; background:rgba(1,153,253,0.12); border:1px solid rgba(1,153,253,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); color: var(--pcg-bright-blue);">Copy included on Advance</span>
     </div>`;
 
   // -------- DOMAINS (upgraded · owner + constraints + key requirements + risks) --------
@@ -1132,11 +1418,64 @@
     if(issueMarks)             signals.push({ t:`${issueMarks} chat-flagged issue${issueMarks===1?'':'s'}`, cls:'warn' });
     if(!signals.length)        signals.push({ t:'No blockers', cls:'good' });
 
+    // Top Issues — an at-a-glance list for leadership. Specific sentences
+    // pulled from the live state, ordered by severity so the first line
+    // is the most important thing to know.
+    const topIssues = [];
+    highRisks.forEach(r => topIssues.push({
+      kind: 'high', icon: '⚠',
+      text: `HIGH RISK · ${r.title}`,
+      sub:  `Owner ${(PCG.findPerson(r.owner)?.name || r.owner)}${r.mitigation ? ' · mitigation in place' : ''}`
+    }));
+    if(overdueTasks.length){
+      const first = overdueTasks[0];
+      topIssues.push({
+        kind: 'high', icon: '⚠',
+        text: `${overdueTasks.length} task${overdueTasks.length===1?'':'s'} overdue`,
+        sub: `Oldest: ${first.title} · was due ${PCG.fmtShort(first.due)}`
+      });
+    }
+    openRisks.filter(r => r.sev !== 'high').slice(0, 2).forEach(r => topIssues.push({
+      kind: 'warn', icon: '●',
+      text: `${(r.sev||'').toUpperCase()} RISK · ${r.title}`,
+      sub:  `Owner ${(PCG.findPerson(r.owner)?.name || r.owner)}`
+    }));
+    pendingApprovals.slice(0, 2).forEach(a => topIssues.push({
+      kind: 'warn', icon: '⏳',
+      text: `Approval pending: ${a.title}`,
+      sub:  `Waiting on ${(PCG.findPerson(a.approver)?.name || a.approver)} since ${PCG.fmtShort(a.since)}`
+    }));
+    scopeGaps.slice(0, 2).forEach(g => topIssues.push({
+      kind: 'warn', icon: '§',
+      text: `Scope not on quote: ${g.t}`,
+      sub: g.note || 'Needs change order before invoice close.'
+    }));
+    const topList = topIssues.slice(0, 4);
+
+    const topIssuesHtml = topList.length ? `
+      <div class="health-top">
+        <div class="health-top-label">Top issues</div>
+        <ul>
+          ${topList.map(i => `
+            <li class="hti ${i.kind}">
+              <span class="hti-ico">${i.icon}</span>
+              <span class="hti-body">
+                <span class="hti-text">${PCG.escapeHtml(i.text)}</span>
+                <span class="hti-sub">${PCG.escapeHtml(i.sub)}</span>
+              </span>
+            </li>`).join('')}
+        </ul>
+      </div>` : `
+      <div class="health-top">
+        <div class="health-top-label">Top issues</div>
+        <div class="hti good">● No critical issues · on track</div>
+      </div>`;
     document.getElementById('health').innerHTML = `
       <div class="health-card ${tone}">
         <div>
           <div class="health-score">${score}</div>
           <div class="health-state ${tone}">Show Health<b>${state}</b></div>
+          ${topIssuesHtml}
         </div>
         <div class="health-metrics">
           <div class="health-metric ${openRisks.length?'bad':'good'}">
@@ -1225,22 +1564,42 @@
     });
 
     const cards = [];
+    // How recently the other show ran — phrase it the way a PM would
+    // say it out loud ("same venue used last week").
+    const howAgo = (iso) => {
+      if(!iso) return '';
+      const days = Math.round((PCG.today - new Date(iso)) / 86400000);
+      if(days < -30) return `next month · ${PCG.fmtShort(iso)}`;
+      if(days < -7)  return `in ${Math.ceil(-days / 7)} weeks · ${PCG.fmtShort(iso)}`;
+      if(days < -1)  return `in ${-days} days · ${PCG.fmtShort(iso)}`;
+      if(days ===-1) return `tomorrow · ${PCG.fmtShort(iso)}`;
+      if(days === 0) return `today · ${PCG.fmtShort(iso)}`;
+      if(days === 1) return `yesterday`;
+      if(days < 7)   return `${days} days ago`;
+      if(days < 14)  return `last week · ${PCG.fmtShort(iso)}`;
+      if(days < 30)  return `${Math.round(days / 7)} weeks ago`;
+      return `${PCG.fmtShort(iso)}`;
+    };
     sameVenue.slice(0, 3).forEach(v => {
       cards.push({
-        tone: 'info',
-        title: `🏛 Same venue used · ${v.code}`,
-        sub: `${v.client || ''} · ${PCG.fmtShort(v.dates?.showStart)}`,
-        body: `This venue was also used for <strong>${PCG.escapeHtml(v.name)}</strong>. Review prior-show notes for load-in quirks, dock timing, and power layout — saves a walkthrough.`,
-        href: `show-center.html?project=${encodeURIComponent(v.code)}`
+        tone: 'strong',
+        title: `🏛 Same venue used ${howAgo(v.dates?.showStart)}`,
+        badge: 'VENUE HISTORY',
+        sub: `${v.name} · ${v.client || ''}`,
+        body: `<strong>This venue's load-in quirks, dock timing, and power layout are already captured</strong> from <a href="show-center.html?project=${encodeURIComponent(v.code)}" style="color:var(--pcg-bright-blue);">${PCG.escapeHtml(v.code)}</a>. Skip the blind walkthrough — open the venue record and start smart.`,
+        href: `show-center.html?project=${encodeURIComponent(v.code)}#sec-venue`,
+        hrefLabel: 'View venue notes →'
       });
     });
     conflicts.slice(0, 3).forEach(c => {
       cards.push({
         tone: 'warn',
-        title: `⚠ Crew overlap · ${c.person.name}`,
-        sub: `Also on ${c.otherCode} · ${c.when}`,
-        body: `<strong>${PCG.escapeHtml(c.person.name)}</strong> is on this show's team and also on <strong>${PCG.escapeHtml(c.otherName)}</strong> in the same window. Confirm assignments with Scheduling.`,
-        href: `show-center.html?project=${encodeURIComponent(c.otherCode)}`
+        title: `⚠ Crew overlap detected · ${c.person.name}`,
+        badge: 'CREW CONFLICT',
+        sub: `Also staffed on ${c.otherCode} · ${c.when}`,
+        body: `<strong>${PCG.escapeHtml(c.person.name)}</strong> is on this show <em>and</em> <strong>${PCG.escapeHtml(c.otherName)}</strong> in the same window. Reconcile with Scheduling before it blocks a rehearsal.`,
+        href: `show-center.html?project=${encodeURIComponent(c.otherCode)}`,
+        hrefLabel: 'Open conflicting show →'
       });
     });
     // Prior show notes — pick one or two closed shows for the same client
@@ -1248,27 +1607,37 @@
     priorClient.forEach(p => {
       cards.push({
         tone: 'info',
-        title: `📎 Prior show · ${p.code}`,
-        sub: `${p.client} · ${PCG.fmtShort(p.dates?.showStart)}`,
-        body: `${PCG.escapeHtml(p.oneLiner || 'Previous show for the same client — open for learnings, crew list, and scope reuse.')}`,
-        href: `show-center.html?project=${encodeURIComponent(p.code)}`
+        title: `📎 Previous client history available`,
+        badge: 'CLIENT HISTORY',
+        sub: `${p.code} · ${PCG.fmtShort(p.dates?.showStart)}`,
+        body: `<strong>${PCG.escapeHtml(p.client)}</strong> ran <em>${PCG.escapeHtml(p.name)}</em> previously — learnings, crew list, and scope are one click away. Reuse what worked.`,
+        href: `show-center.html?project=${encodeURIComponent(p.code)}`,
+        hrefLabel: 'Open prior show →'
       });
     });
     if(cards.length === 0){
       cards.push({
         tone: 'info',
-        title: 'No cross-show signals',
-        sub: 'Clear runway',
-        body: 'No venue reuse, crew conflicts, or prior-show context detected for this window. Sensors stay on as more shows land.'
+        title: 'No cross-show signals right now',
+        badge: 'CLEAR RUNWAY',
+        sub: 'Sensors stay on',
+        body: 'No venue reuse, crew conflicts, or prior-show context detected for this window. The system is watching — as more shows land, signals will surface here automatically.'
       });
     }
 
-    document.getElementById('xshow').innerHTML = cards.map(c => `
+    document.getElementById('xshow').innerHTML = `
+      <div style="grid-column: 1/-1; padding: 10px 14px; border: 1px dashed var(--pcg-spotlight-purple); border-radius: var(--r-sm); margin-bottom: 10px; background: rgba(149,100,216,0.04);">
+        <span class="eyebrow" style="color: var(--pcg-spotlight-purple); font-size: 10px;">🧠 The system is thinking ahead</span>
+        <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px;">
+          Signals below are computed live from the rest of the portfolio — venue reuse, crew conflicts, and client history. Each one saves a call, a walkthrough, or an email.
+        </div>
+      </div>
+    ` + cards.map(c => `
       <div class="xshow-card ${c.tone}">
-        <h4>${c.title}</h4>
+        <h4>${c.title}${c.badge ? `<span class="pill plain ${c.tone==='strong'?'purple':(c.tone==='warn'?'amber':'blue')}">${c.badge}</span>` : ''}</h4>
         <div class="sub">${PCG.escapeHtml(c.sub)}</div>
         <div class="body">${c.body}</div>
-        ${c.href ? `<a class="go" href="${c.href}">Open →</a>` : ''}
+        ${c.href ? `<a class="go" href="${c.href}"><strong>${c.hrefLabel || 'Open →'}</strong></a>` : ''}
       </div>`).join('');
   }
 

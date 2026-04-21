@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Client Portal · Internal Config</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Internal config/preview page for the client portal. Clearly
+     INTERNAL — different chrome from the external view so a PM never
+     confuses "what the client sees" with "what I'm configuring". */
+  .cfg-banner {
+    padding: 14px 18px; border-radius: var(--r-sm);
+    background: var(--surface-1);
+    border: 1px solid var(--border-accent); border-left: 3px solid var(--pcg-spotlight-purple);
+    margin-bottom: var(--sp-4);
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  }
+  .cfg-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: var(--r-pill);
+    background: var(--pcg-spotlight-purple); color: #fff;
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .cfg-split { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--sp-4); }
+  @media (max-width: 900px){ .cfg-split { grid-template-columns: 1fr; } }
+
+  .toggle-row {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .toggle-row:last-child { border-bottom: 0; }
+  .toggle-row .ti { font-size: 18px; text-align: center; }
+  .toggle-row .tt { font-weight: 500; color: var(--text-primary); font-size: var(--fs-sm); }
+  .toggle-row .tn { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* Native toggle switch */
+  .switch {
+    position: relative; width: 40px; height: 22px; display: inline-block; cursor: pointer;
+    border-radius: 11px; background: var(--surface-3); transition: background var(--t-fast);
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; transition: left var(--t-fast);
+  }
+  .switch.on { background: var(--pcg-bright-blue); }
+  .switch.on::after { left: 20px; }
+
+  /* Permission level radio */
+  .perm-row { padding: 10px 14px; border-top: 1px solid var(--border); }
+  .perm-row .lbl { font-size: 11px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px; }
+  .perm-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+  .perm-choice {
+    padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-secondary); cursor: pointer; font-size: 12px;
+    font-family: var(--font-display); letter-spacing: 0.04em;
+  }
+  .perm-choice.on {
+    background: rgba(1,153,253,0.15); border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue);
+  }
+
+  .preview-frame {
+    border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden;
+    background: var(--surface-0);
+  }
+  .preview-head {
+    padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-tertiary);
+  }
+  .preview-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-green); }
+  .preview-frame iframe {
+    width: 100%; height: 520px; border: 0; background: #fff; display: block;
+  }
+  .cfg-actions {
+    margin-top: var(--sp-3); display:flex; gap: 10px; flex-wrap: wrap;
+    padding-top: var(--sp-3); border-top: 1px dashed var(--border);
+  }
+
+  .audit-row {
+    display: grid; grid-template-columns: 90px 1fr; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12.5px;
+  }
+  .audit-row:last-child { border-bottom: 0; }
+  .audit-row .when { font-family: var(--font-mono); color: var(--text-tertiary); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="cfg-banner">
+        <span class="cfg-tag">🔧 Internal · Client Portal Config</span>
+        <span style="font-size: 12.5px; color: var(--text-secondary); flex: 1; min-width: 260px;">
+          <strong>STAGE users only.</strong> Configure exactly what the client sees in their portal, manage document visibility, set permission level, and preview the live external view before sharing the link.
+        </span>
+        <a href="#" id="ext-link" class="btn sm primary">🔗 Open client-facing portal ↗</a>
+      </div>
+
+      <div id="not-found" style="display:none;" class="card">
+        <div class="card-body empty">Show not found. <a href="index.html">Back to portfolio →</a></div>
+      </div>
+
+      <div id="cfg-main" style="display:none;">
+        <div style="margin-bottom: var(--sp-4);">
+          <div class="eyebrow">Show</div>
+          <h1 id="show-title" style="margin:2px 0;">—</h1>
+          <div class="muted" id="show-sub" style="font-size: var(--fs-sm);">—</div>
+        </div>
+
+        <div class="cfg-split">
+
+          <!-- LEFT: visibility toggles + permission + audit -->
+          <div>
+            <div class="card" style="margin-bottom: var(--sp-4);">
+              <div class="card-header">
+                <div class="title">Visible sections</div>
+                <span class="muted" style="margin-left:auto; font-size: var(--fs-xs);" id="toggle-count"></span>
+              </div>
+              <div id="toggles"></div>
+
+              <div class="perm-row">
+                <div class="lbl">Client permission level</div>
+                <div class="perm-choices" id="perms">
+                  <div class="perm-choice on" data-p="view">View only</div>
+                  <div class="perm-choice"    data-p="comment">View + Comment</div>
+                  <div class="perm-choice"    data-p="approve">View + Approve</div>
+                </div>
+              </div>
+
+              <div class="cfg-actions" style="padding: var(--sp-3); border-top: 1px solid var(--border); margin-top: 0;">
+                <button class="btn primary" id="save-cfg">💾 Save configuration</button>
+                <button class="btn ghost" id="copy-link">🔗 Copy shareable link</button>
+                <button class="btn ghost" id="email-link">📧 Email portal to client</button>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom: var(--sp-4);">
+              <div class="card-header"><div class="title">Client access log</div></div>
+              <div class="card-body" id="access-log"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="title">Portal URL</div></div>
+              <div class="card-body">
+                <code id="portal-url" style="display:block; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 12px; word-break: break-all;"></code>
+                <div class="muted" style="font-size: 11px; margin-top: 6px;">Anyone with this link can view (subject to the toggles above). Rotate the token to revoke.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: live preview -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <div class="title">Live preview · what the client sees</div>
+                <span class="muted" style="margin-left:auto; font-size: var(--fs-xs);">Reflects current toggles</span>
+              </div>
+              <div class="preview-frame">
+                <div class="preview-head">
+                  <span class="dot"></span>
+                  <span class="mono" id="preview-url">—</span>
+                  <span style="margin-left:auto;">read-only · client view</span>
+                </div>
+                <iframe id="preview-iframe" title="Client view preview"></iframe>
+              </div>
+              <div class="cfg-actions" style="padding: var(--sp-3);">
+                <a href="#" id="open-new" class="btn sm ghost">↗ Open in new tab</a>
+                <button class="btn sm ghost" id="refresh-prev">↻ Refresh preview</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'client-portal-config', pageTitle:'Client Portal · Config'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code);
+
+  if(!proj){ document.getElementById('not-found').style.display = 'block'; throw new Error('no project'); }
+  document.getElementById('cfg-main').style.display = 'block';
+
+  document.getElementById('show-title').textContent = proj.name;
+  document.getElementById('show-sub').textContent =
+    `${proj.code} · ${proj.client || ''} · ${proj.venueName || ''} · ${PCG.fmtShort(proj.dates?.showStart)}`;
+
+  const externalHref = `client-portal.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('ext-link').href = externalHref;
+  document.getElementById('open-new').href = externalHref;
+  document.getElementById('open-new').target = '_blank';
+  document.getElementById('preview-iframe').src = externalHref;
+
+  const absUrl = new URL(externalHref, location.href).toString() + '&token=cp_' + Math.random().toString(36).slice(2, 10);
+  document.getElementById('portal-url').textContent = absUrl;
+  document.getElementById('preview-url').textContent = externalHref;
+
+  // ----- Visibility toggles -----
+  // Each toggle drives what renders in client-portal.html. In v1 we
+  // persist to sessionStorage only — the external portal reads it on
+  // next render (future: actually gate sections in the external page).
+  const CFG_KEY = `pcg_portal_cfg_${code}`;
+  const defaults = [
+    { id:'overview',   ico:'📋', lbl:'Show overview + status',           note:'Name, venue, dates, current status chip', on:true,  always:true },
+    { id:'schedule',   ico:'🕒', lbl:'Key milestones / schedule',        note:'Load-in, rehearsals, show, strike — dates only', on:true },
+    { id:'contacts',   ico:'📇', lbl:'Key contacts',                     note:'PM, TD, Show Caller, 24/7 hotline', on:true },
+    { id:'advance',    ico:'⚡', lbl:'Production Advance (auto)',        note:'Read-only advance document', on:true },
+    { id:'documents',  ico:'📄', lbl:'Shared documents',                 note:'ROS draft, creative brief, COI, credentials', on:true },
+    { id:'updates',    ico:'📰', lbl:'Recent updates feed',              note:'Client-safe updates (no internal risks / margin)', on:true },
+    { id:'todos',      ico:'✅', lbl:'"What you need to do" requests',   note:'Open items waiting on the client', on:true },
+    { id:'approvals',  ico:'✍',  lbl:'Approval / sign-off section',      note:'Let the client sign change orders in-portal', on:false },
+    { id:'messaging',  ico:'💬', lbl:'Direct message channel to PM',     note:'Client can message the PM directly (future)', on:false },
+    { id:'financials', ico:'💰', lbl:'Financial summary',                note:'Totals only — NEVER margin / cost', on:false }
+  ];
+  const cfg = JSON.parse(sessionStorage.getItem(CFG_KEY) || 'null') || defaults.map(d => ({ id:d.id, on:d.on }));
+  function getState(id){ return (cfg.find(c => c.id === id) || {}).on; }
+  function renderToggles(){
+    const onCount = cfg.filter(c => c.on).length;
+    document.getElementById('toggle-count').textContent = `${onCount} / ${cfg.length} visible to client`;
+    document.getElementById('toggles').innerHTML = defaults.map(d => {
+      const on = getState(d.id);
+      return `
+        <div class="toggle-row">
+          <div class="ti">${d.ico}</div>
+          <div>
+            <div class="tt">${d.lbl}</div>
+            <div class="tn">${d.note}${d.always ? ' · <strong style="color: var(--pcg-bright-blue);">always on</strong>' : ''}</div>
+          </div>
+          <span class="switch ${on?'on':''} ${d.always?'':''}" data-id="${d.id}" ${d.always?'style="opacity:0.5; cursor:not-allowed;"':''}></span>
+        </div>`;
+    }).join('');
+    document.querySelectorAll('.switch').forEach(sw => {
+      const id = sw.dataset.id;
+      const def = defaults.find(d => d.id === id);
+      if(def.always) return;
+      sw.addEventListener('click', () => {
+        const entry = cfg.find(c => c.id === id);
+        if(entry) entry.on = !entry.on;
+        sessionStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+        renderToggles();
+      });
+    });
+  }
+  renderToggles();
+
+  // Permission level
+  document.querySelectorAll('.perm-choice').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('.perm-choice').forEach(x => x.classList.toggle('on', x === c));
+  }));
+
+  // Access log (seeded; demonstrates auditability)
+  const log = [
+    { ts:'2026-04-15T09:18', who:'Kevin Adams (client)', what:'Viewed portal · home' },
+    { ts:'2026-04-15T09:20', who:'Kevin Adams (client)', what:'Opened Production Advance' },
+    { ts:'2026-04-14T17:55', who:'Ryan Hoffman (client)', what:'Downloaded credentials PDF' },
+    { ts:'2026-04-14T11:02', who:'Kevin Adams (client)', what:'Viewed schedule section' },
+    { ts:'2026-04-12T08:41', who:'J. Springer (PCG)',    what:'Configuration updated · enabled Updates feed' }
+  ];
+  document.getElementById('access-log').innerHTML = log.map(l => `
+    <div class="audit-row">
+      <span class="when">${PCG.fmtShort(l.ts)} · ${new Date(l.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>
+      <div><strong>${PCG.escapeHtml(l.who)}</strong> — ${PCG.escapeHtml(l.what)}</div>
+    </div>`).join('');
+
+  // Save / copy / email stubs
+  document.getElementById('save-cfg').addEventListener('click', () => {
+    sessionStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    alert('✓ Portal configuration saved.\n\nChanges are live on the client view — reload the preview or share the link.');
+  });
+  document.getElementById('copy-link').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(absUrl); alert('✓ Shareable portal link copied to clipboard.'); }
+    catch { alert('Link: ' + absUrl); }
+  });
+  document.getElementById('email-link').addEventListener('click', () => {
+    alert(`✓ Portal link staged for email to:\n• ${proj.client || '—'} primary contact\n• Venue ops\n\nA polished launch email with the URL + PIN goes out once you hit Send.`);
+  });
+  document.getElementById('refresh-prev').addEventListener('click', () => {
+    document.getElementById('preview-iframe').src = externalHref + '&_=' + Date.now();
+  });
+</script>
+</body>
+</html>

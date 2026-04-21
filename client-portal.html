@@ -69,8 +69,17 @@
   <main class="main">
     <div class="container">
 
-      <div class="cp-preview-banner">
-        <strong>CLIENT PREVIEW</strong> — This is the read-only view your client sees. No margin, quote, risk, or operational-internals data is exposed.
+      <div style="display:flex; align-items:center; gap: 10px; padding: 10px 14px; margin-bottom: var(--sp-4); background: linear-gradient(90deg, rgba(1,153,253,0.08), rgba(149,100,216,0.06)); border: 1px solid rgba(1,153,253,0.25); border-radius: var(--r-sm); flex-wrap: wrap;">
+        <span style="display:inline-flex; align-items:center; gap:6px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--pcg-bright-blue); color: #001a2a; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700;">
+          🔗 Client View · Auto-updated from STAGE
+        </span>
+        <span style="font-size: 12px; color: var(--text-secondary);">Your dedicated portal for this production — schedule, documents, and updates in one place.</span>
+        <a href="client-portal-config.html?project=LCE-2026" style="margin-left:auto; font-size: 11px; color: var(--text-tertiary); text-decoration: none; border-bottom: 1px dashed var(--text-tertiary);" title="STAGE users only · configure what the client sees">Internal · portal config →</a>
+      </div>
+
+      <div id="latest-update" style="padding: 12px 16px; border-radius: var(--r-sm); background: var(--surface-1); border: 1px solid var(--border); border-left: 3px solid var(--status-green); margin-bottom: var(--sp-4); display:none;">
+        <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--status-green); margin-bottom: 4px;">● Latest update</div>
+        <div id="latest-update-body" style="font-size: var(--fs-sm); color: var(--text-primary);"></div>
       </div>
 
       <div id="not-found" style="display:none;" class="card">
@@ -79,6 +88,11 @@
 
       <div id="cp-main" style="display:none;">
         <div class="cp-banner" id="banner"></div>
+
+        <div class="cp-section">
+          <h2>What you need to do</h2>
+          <div id="client-todo"></div>
+        </div>
 
         <div class="cp-section">
           <h2>Your Show Schedule</h2>
@@ -169,12 +183,58 @@
   document.getElementById('cp-main').style.display = 'block';
   document.getElementById('advance-link').href = `advance.html?project=${encodeURIComponent(code)}`;
 
+  const lifecycleState = (proj.show && proj.show.lifecycleState) || 'Planning';
+  const stateLabel = { InPrep:'In Production', OnShow:'Live Show', Striking:'Strike', Closing:'Wrapping Up' }[lifecycleState] || lifecycleState;
+  const stateColor = { InPrep:'#f5b041', OnShow:'#9564d8', Striking:'#f5b041' }[lifecycleState] || '#0199fd';
   document.getElementById('banner').innerHTML = `
-    <div class="eyebrow" style="font-family:var(--font-display); letter-spacing: 0.14em; font-size: 10.5px; text-transform: uppercase; color: var(--pcg-bright-blue);">Your production · PCG STAGE</div>
-    <h1>${PCG.escapeHtml(proj.name)}</h1>
-    <div class="sub">${PCG.escapeHtml(proj.venueName || '—')} · ${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
-    <div class="muted" style="font-size:var(--fs-sm); margin-top:12px;">${PCG.escapeHtml(proj.oneLiner || '')}</div>
+    <div style="display:flex; justify-content: space-between; align-items: start; gap: 20px; flex-wrap: wrap;">
+      <div style="flex:1; min-width: 260px;">
+        <div class="eyebrow" style="font-family:var(--font-display); letter-spacing: 0.14em; font-size: 10.5px; text-transform: uppercase; color: var(--pcg-bright-blue);">Your production · PCG STAGE</div>
+        <h1>${PCG.escapeHtml(proj.name)}</h1>
+        <div class="sub">${PCG.escapeHtml(proj.venueName || '—')} · ${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
+        <div class="muted" style="font-size:var(--fs-sm); margin-top:12px;">${PCG.escapeHtml(proj.oneLiner || '')}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px;">Current status</div>
+        <div style="display:inline-flex; align-items:center; gap:8px; padding: 6px 14px; border-radius: var(--r-pill); background: ${stateColor}22; border: 1px solid ${stateColor}; color: ${stateColor}; font-family: var(--font-display); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 12px;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${stateColor}; box-shadow: 0 0 0 3px ${stateColor}33;"></span>
+          ${stateLabel}
+        </div>
+      </div>
+    </div>
   `;
+
+  // Latest update banner — highlights the most recent client-visible update.
+  const latestSeed = { ts:'2026-04-15T09:02', text:'Load-in confirmed for Apr 10 at 7 AM. Credentials available at venue ops from 6:30 AM. We\'ll send a final call sheet 24h prior.' };
+  const latestBanner = document.getElementById('latest-update');
+  latestBanner.style.display = 'block';
+  document.getElementById('latest-update-body').innerHTML = `
+    <strong>${PCG.escapeHtml(latestSeed.text)}</strong>
+    <div style="margin-top: 4px; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">Posted ${PCG.fmtShort(latestSeed.ts)} · ${new Date(latestSeed.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+  `;
+
+  // What you need to do — open requests / things on the CLIENT's plate.
+  // Keeps this portal actionable, not just informational.
+  const clientTodos = [
+    { status:'urgent',   ico:'⏳', title:'Deliver sponsor loop assets',    due:'2026-04-15', note:'Need final files by Apr 15 EOD to load in master playback.', owner:'Ryan Hoffman (client)' },
+    { status:'awaiting', ico:'📝', title:'Sign Change Order #3 · Awards ready room', due:'2026-04-16', note:'Reviewed and costed by PCG — final approval opens ready-room build.', owner:'Kevin Adams (client)' },
+    { status:'fyi',      ico:'📋', title:'Confirm catering counts for Day 4', due:'2026-04-17', note:'Vegan + GF counts sent — please confirm totals.', owner:'Kevin Adams (client)' }
+  ];
+  const todoColor = { urgent: 'var(--status-red)', awaiting: 'var(--status-amber)', fyi: 'var(--pcg-bright-blue)' };
+  const todoLbl   = { urgent: 'DUE SOON', awaiting: 'AWAITING YOU', fyi: 'FYI' };
+  document.getElementById('client-todo').innerHTML = clientTodos.map(t => `
+    <div style="display: grid; grid-template-columns: 32px 1fr auto; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1); border-left: 3px solid ${todoColor[t.status]}; margin-bottom: 10px; align-items: start;">
+      <div style="font-size: 22px; line-height: 1;">${t.ico}</div>
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
+          <span style="font-weight: 600; font-size: var(--fs-md); color: var(--text-primary);">${PCG.escapeHtml(t.title)}</span>
+          <span style="font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill); color: ${todoColor[t.status]}; background: ${todoColor[t.status]}22;">${todoLbl[t.status]}</span>
+        </div>
+        <div style="color: var(--text-secondary); font-size: 12.5px; margin-top: 4px; line-height: 1.5;">${PCG.escapeHtml(t.note)}</div>
+        <div style="color: var(--text-tertiary); font-size: 11px; margin-top: 4px; font-family: var(--font-mono);">Assigned to ${PCG.escapeHtml(t.owner)} · Due ${PCG.fmtShort(t.due)}</div>
+      </div>
+      <a href="#" class="btn sm" style="align-self: center;">Mark done</a>
+    </div>`).join('');
 
   function fmtD(iso){ if(!iso) return '—'; const d = new Date(iso); return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
 
