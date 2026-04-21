@@ -78,10 +78,13 @@
     { label:'▍ Project Management', primary:true, items:[
       { id:'pm-home',       label:'Dashboard (Work)',    href:'pm-home.html',                               icon:'⌂', groups:'*' },
       { id:'pif',           label:'＋ New · PIF',         href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
-      { id:'show-center',   label:'Show Command Center', href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
-      { id:'site-visit',    label:'Site Visit (guided)', href:'site-visit.html?project=LCE-2026',           icon:'🗺', groups:'*' },
-      { id:'field-capture', label:'Field Capture (mobile)', href:'field-capture.html?project=LCE-2026',     icon:'📱', groups:'*' },
-      { id:'advance',       label:'Advance (auto)',      href:'advance.html?project=LCE-2026',              icon:'⚡', groups:'*' },
+      { id:'show-center',         label:'Show Command Center',   href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
+      { id:'production-schedule', label:'Production Schedule',   href:'production-schedule.html?project=LCE-2026',  icon:'🗂', groups:'*' },
+      { id:'show-flow',           label:'Show Flow · Cue Grid',  href:'show-flow.html?project=LCE-2026',            icon:'🎬', groups:'*' },
+      { id:'td-package',          label:'TD Show Package',       href:'td-package.html?project=LCE-2026',           icon:'📦', groups:'*' },
+      { id:'site-visit',          label:'Site Visit (guided)',   href:'site-visit.html?project=LCE-2026',           icon:'🗺', groups:'*' },
+      { id:'field-capture',       label:'Field Capture (mobile)',href:'field-capture.html?project=LCE-2026',        icon:'📱', groups:'*' },
+      { id:'advance',             label:'Advance (auto)',        href:'advance.html?project=LCE-2026',              icon:'⚡', groups:'*' },
       { id:'client-portal',        label:'Client Portal (external)',  href:'client-portal.html?project=LCE-2026',        icon:'🔗', groups:'*' },
       { id:'client-portal-config', label:'↳ Portal Config (internal)', href:'client-portal-config.html?project=LCE-2026', icon:'🔧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
       { id:'portfolio',     label:'Portfolio',           href:'index.html',                                  icon:'▦', groups:'*' },
@@ -110,9 +113,12 @@
 
     // =================================================================
     // 4. PRODUCTION — repo group · Shows / ROS / Show Books / Scheduling.
+    //    Show Flow / Production Schedule / TD Show Package live in the
+    //    primary Project Management section — Production keeps the
+    //    legacy ROS + Show Book surfaces for reference.
     // =================================================================
     { label:'▍ Production', items:[
-      { id:'ros',          label:'Run of Show',        href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' },
+      { id:'ros',          label:'Run of Show (legacy)', href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' },
       { id:'showbook',     label:'Show Book',          href:'showbook.html?project=LCE-2026',      icon:'❏', groups:'*' },
       { id:'showbook-gen', label:'Show Book Generator', href:'showbook-gen.html?project=LCE-2026', icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.PA] },
       { id:'playbook',     label:'Playbook',           href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },

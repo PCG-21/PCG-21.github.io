@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Production Schedule</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Production Schedule — the operational build timeline for the show.
+     Distinct from Show Flow (cue grid) and TD Package (packet).
+     This is "how we BUILD the show," phase by phase. */
+
+  .ps-hero {
+    background: linear-gradient(180deg, rgba(1,153,253,0.08) 0%, rgba(10,18,32,0) 100%), var(--surface-1);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+    position: relative; overflow: hidden;
+  }
+  .ps-hero::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .ps-hero h1 { margin: 4px 0 2px; font-family: var(--font-display); font-size: 26px; }
+
+  .ps-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--sp-4); }
+  .ps-lg {
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 10px; border-radius: var(--r-pill);
+    font-size: 11px; font-family: var(--font-mono);
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .ps-lg .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .ps-phase {
+    margin-bottom: var(--sp-5);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .ps-phase-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    background: linear-gradient(90deg, rgba(1,153,253,0.08), transparent 60%);
+    border-bottom: 1px solid var(--border);
+  }
+  .ps-phase-num {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--pcg-confident-blue), var(--pcg-spotlight-purple));
+    color: #fff; display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 14px;
+  }
+  .ps-phase-head h2 {
+    margin: 0; font-family: var(--font-display); font-size: 16px;
+  }
+  .ps-phase-head .meta {
+    margin-left: auto; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary);
+  }
+
+  .ps-row {
+    display: grid;
+    grid-template-columns: 120px 16px 1fr 160px 120px 110px;
+    gap: 14px; align-items: center;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .ps-row:last-child { border-bottom: 0; }
+  .ps-row:hover { background: var(--surface-2); }
+  .ps-when { font-family: var(--font-mono); color: var(--text-secondary); font-size: 12px; }
+  .ps-dot  { width: 10px; height: 10px; border-radius: 50%; }
+  .ps-what strong { font-weight: 600; color: var(--text-primary); }
+  .ps-what .sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; line-height: 1.5; }
+  .ps-owner {
+    display: inline-block; font-size: 11.5px;
+    padding: 2px 8px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary);
+  }
+  .ps-loc { font-size: 11.5px; color: var(--text-secondary); font-family: var(--font-mono); }
+  .ps-status {
+    text-align: center;
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 3px 10px; border-radius: var(--r-pill); font-weight: 700;
+  }
+  .ps-status.conf { background: rgba(61,220,132,0.18); color: var(--status-green); }
+  .ps-status.risk { background: rgba(231,76,60,0.18);  color: var(--status-red); }
+  .ps-status.hold { background: rgba(245,176,65,0.18); color: var(--status-amber); }
+  .ps-status.comp { background: rgba(1,153,253,0.18);  color: var(--pcg-bright-blue); }
+  .ps-status.plan { background: var(--surface-3);      color: var(--text-tertiary); }
+
+  .ps-dot.conf { background: var(--status-green); box-shadow: 0 0 0 3px rgba(61,220,132,0.2); }
+  .ps-dot.risk { background: var(--status-red);   box-shadow: 0 0 0 3px rgba(231,76,60,0.2); }
+  .ps-dot.hold { background: var(--status-amber); box-shadow: 0 0 0 3px rgba(245,176,65,0.2); }
+  .ps-dot.comp { background: var(--pcg-bright-blue); box-shadow: 0 0 0 3px rgba(1,153,253,0.25); }
+  .ps-dot.plan { background: var(--text-tertiary); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
+
+  @media (max-width: 900px) {
+    .ps-row {
+      grid-template-columns: 90px 10px 1fr;
+      row-gap: 4px;
+    }
+    .ps-row .ps-owner, .ps-row .ps-loc, .ps-row .ps-status {
+      grid-column: 3 / 4; text-align: left;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="ps-hero" id="ps-hero"></div>
+
+      <div style="display:flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--sp-4); align-items: center;">
+        <span class="muted" style="font-size: var(--fs-xs); margin-right:auto;">Build timeline · phase by phase · department-owned</span>
+        <a class="btn sm ghost" id="open-sf" href="#">→ Show Flow / ROS</a>
+        <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
+        <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
+      </div>
+
+      <div class="ps-legend">
+        <span class="ps-lg"><span class="dot ps-dot comp"></span> Complete</span>
+        <span class="ps-lg"><span class="dot ps-dot conf"></span> Confirmed</span>
+        <span class="ps-lg"><span class="dot ps-dot hold"></span> On hold / pending</span>
+        <span class="ps-lg"><span class="dot ps-dot risk"></span> At risk</span>
+        <span class="ps-lg"><span class="dot ps-dot plan"></span> Planned</span>
+      </div>
+
+      <div id="ps-phases"></div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'production-schedule', pageTitle:'Production Schedule'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code) || { code, name: 'Show', venueName: 'Venue', dates: {} };
+
+  document.getElementById('open-sf').href  = `show-flow.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-td').href  = `td-package.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-ctr').href = `show-center.html?project=${encodeURIComponent(code)}`;
+
+  // ---------- HERO ----------
+  document.getElementById('ps-hero').innerHTML = `
+    <div class="eyebrow">Production Schedule · <span class="mono">${PCG.escapeHtml(proj.code)}</span></div>
+    <h1>${PCG.escapeHtml(proj.name)}</h1>
+    <div class="muted" style="font-size: var(--fs-sm); margin-top: 2px;">${PCG.escapeHtml(proj.venueName || '')} · ${PCG.fmtShort(proj.dates?.loadIn)} → ${PCG.fmtShort(proj.dates?.ret)}</div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5;">
+      The operational build timeline. How we <strong>construct</strong> the show — trucks, dock, rigging, power, tech, rehearsal blocks, show calls, strike. Owned by the TD and feeds the crew call sheet + venue advance.
+    </div>
+  `;
+
+  // ---------- PHASES & ROWS ----------
+  // Hand-authored AV-realistic content. Times are relative to the show
+  // dates so swapping the project code keeps the narrative intact.
+  function dayOf(iso, hour, min=0){
+    if(!iso) return null;
+    const d = new Date(iso);
+    d.setHours(hour, min, 0, 0);
+    return d.toISOString();
+  }
+  function fmtT(iso){ if(!iso) return '—'; const d = new Date(iso); return d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+  function shortT(iso){ if(!iso) return '—'; const d = new Date(iso); return d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'}) + '\n' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+
+  const loadIn  = proj.dates?.loadIn  || '2026-04-10T07:00';
+  const prep    = proj.dates?.prep    || '2026-04-03';
+  const showS   = proj.dates?.showStart || '2026-04-13T06:00';
+  const showE   = proj.dates?.showEnd   || '2026-04-15T18:00';
+  const strike  = proj.dates?.loadOut   || '2026-04-15T23:00';
+  const ret     = proj.dates?.ret       || '2026-04-20T11:00';
+
+  const phases = [
+    // ---------- PRE-PRODUCTION ----------
+    { n:1, title:'Pre-Production · warehouse + design lock',
+      meta: `Weeks prior · ${PCG.fmtShort(prep)} onward`,
+      rows:[
+        { when: dayOf(prep, 9),                 what:'Design package locked (plot · PL · one-line)', sub:'TD sign-off on rigging plot + power one-line + audio patch. Creative package rev3 frozen.', owner:'TD', loc:'PCG Det · Design', status:'comp' },
+        { when: dayOf(prep, 13),                what:'Warehouse pick · staging begins',               sub:'Pull sheet released · j8 / JSub / Axient rack / Barco E2 staged to truck lane 2.',            owner:'Warehouse', loc:'Detroit WH', status:'comp' },
+        { when: dayOf(prep, 16),                what:'Sub-rental · 2× d&b JSub (Solotech)',           sub:'PO pending signature · delivery window 4/9 AM to warehouse staging.',                        owner:'Vendor · Logistics', loc:'Solotech Chicago', status:'risk' },
+        { when: dayOf(prep, 17),                what:'Creative V1 delivery (opener · awards)',        sub:'Opener render + Awards graphics pushed to QLab master. Sponsor loop pending client files.', owner:'Creative · Kevin Oliver', loc:'Bldg B', status:'hold' },
+        { when: dayOf(prep, 15),                what:'IATSE 720 · rigger call confirmed',             sub:'4 riggers at 6 AM · +2 on climb at 8 AM · steward call placed.',                             owner:'Crew · TSM', loc:'Local 720', status:'conf' },
+        { when: dayOf(prep, 14),                what:'Insurance COI filed with venue',                sub:'Certificate issued 4/3 · additional insured: Caesars Forum LLC.',                            owner:'Ops · Accounting', loc:'Remote', status:'comp' }
+      ]},
+    // ---------- LOAD-IN ----------
+    { n:2, title:'Load-In · trucks, rigging, tech build',
+      meta: `Day of load-in · ${PCG.fmtShort(loadIn)}`,
+      rows:[
+        { when: dayOf(loadIn, 5, 30),           what:'Dock 2 access opens',                           sub:'Key-card released · bollards removed · venue security on deck.',                                  owner:'Venue · Security',   loc:'Dock 2', status:'conf' },
+        { when: dayOf(loadIn, 6, 0),            what:'IATSE rigger call · 4 riggers',                 sub:'Plot review · dead-hang motor prep · safety hands walkthrough.',                                   owner:'Crew · Rigging',     loc:'Ballroom grid', status:'conf' },
+        { when: dayOf(loadIn, 6, 30),           what:'Truck 1 arrives (main rig)',                    sub:'48\' · j8 / JSub / LED header / main scenic. 45-min unload window.',                              owner:'Logistics · PCG',    loc:'Dock 2', status:'conf' },
+        { when: dayOf(loadIn, 7, 0),            what:'Rigging start · motors up',                     sub:'4× 1-ton on J-Series · 2× ½-ton on LED header fly frame. Weight bridge in.',                      owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan' },
+        { when: dayOf(loadIn, 8, 0),            what:'+2 riggers on climb',                           sub:'Climb call adds two per steward approval.',                                                         owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan' },
+        { when: dayOf(loadIn, 8, 30),           what:'Truck 2 arrives (audio + video)',               sub:'Yamaha CL5 · AD4Q quad receivers · Axient rack · Barco E2.',                                       owner:'Logistics · PCG',    loc:'Dock 2', status:'plan' },
+        { when: dayOf(loadIn, 9, 0),            what:'Power tie-in · 200A (FOH dock)',                sub:'Venue electrician on-site for tie-in. House power isolated.',                                      owner:'Power · S. Vance',   loc:'FOH dock panel', status:'hold' },
+        { when: dayOf(loadIn, 10, 0),           what:'Audio load-in · FOH + amp world',               sub:'Stage rack patch · FOH drive rack · system check.',                                                owner:'Audio · A1',         loc:'FOH / SL amps',  status:'plan' },
+        { when: dayOf(loadIn, 10, 30),          what:'LED wall build · header + IMAG',                sub:'Header panels up · IMAG side panels stacked · Barco E2 comms in.',                                 owner:'Video · V1',         loc:'Stage deck',     status:'plan' },
+        { when: dayOf(loadIn, 12, 30),          what:'Crew meal · served in BOH breakroom',           sub:'Venue catering · 62 counts · vegan + GF per pre-brief.',                                           owner:'Venue · Catering',   loc:'BOH breakroom',  status:'conf' },
+        { when: dayOf(loadIn, 14, 0),           what:'Lighting focus + programming start',            sub:'Mac Auras + Source Four focus from grid · console programmer starts cue build.',                   owner:'Lighting · LD',      loc:'FOH',            status:'plan' },
+        { when: dayOf(loadIn, 17, 0),           what:'Video · IMAG calibration',                       sub:'Multiview setup · IMAG delay tested · camera shading pass.',                                       owner:'Video · V1',         loc:'FOH',            status:'plan' }
+      ]},
+    // ---------- REHEARSAL ----------
+    { n:3, title:'Rehearsal · tech + dress',
+      meta: `${PCG.fmtShort(dayOf(loadIn, 0) ? new Date(new Date(loadIn).getTime() + 86400000).toISOString() : '')} → pre-show`,
+      rows:[
+        { when: new Date(new Date(loadIn).getTime() + 86400000 + 9*3600000).toISOString(),  what:'Tech rehearsal · walk-through',     sub:'Top-of-show sequence · opener roll · walk-in music · house-out cue.',         owner:'Full crew',       loc:'Ballroom',      status:'plan' },
+        { when: new Date(new Date(loadIn).getTime() + 86400000 + 13*3600000).toISOString(), what:'Department rehearsal · audio',      sub:'Mic checks · IFB path · stage monitor mixes · comms check.',                    owner:'Audio · A1',      loc:'FOH',           status:'plan' },
+        { when: new Date(new Date(loadIn).getTime() + 86400000 + 14*3600000).toISOString(), what:'Dept rehearsal · video IMAG',       sub:'Camera iso checks · multiview · switcher scene build.',                         owner:'Video · V1',      loc:'FOH',           status:'plan' },
+        { when: new Date(new Date(loadIn).getTime() + 86400000 + 16*3600000).toISOString(), what:'Dress rehearsal · full cast',       sub:'Full run with cast + playback · client attends.',                               owner:'Full crew + Client', loc:'Ballroom',      status:'plan' }
+      ]},
+    // ---------- SHOW ----------
+    { n:4, title:'Show · live execution days',
+      meta: `${PCG.fmtShort(showS)} → ${PCG.fmtShort(showE)}`,
+      rows:[
+        { when: showS,                                                                    what:'Day 1 · General Session opens',       sub:'House open 30 min prior · walk-in music · opener at top of show.',       owner:'Show Caller',   loc:'FOH / stage', status:'plan' },
+        { when: new Date(new Date(showS).getTime() + 86400000).toISOString(),             what:'Day 2 · Breakouts + keynotes',        sub:'Breakout rooms open · main GS afternoon block.',                           owner:'Show Caller',   loc:'Ballroom + breakouts', status:'plan' },
+        { when: new Date(new Date(showS).getTime() + 86400000 * 2).toISOString(),         what:'Day 3 · Cocktail reception · DJ patch', sub:'Ambient reinforcement · DJ patch at 18:00 · ready-room build parallel.',  owner:'Audio + Scenic', loc:'Ballroom + ready room', status:'plan' },
+        { when: showE,                                                                    what:'Day 4 · Awards show · Day-4 evening', sub:'Awards package playback · ready-room active · finale at 20:30.',           owner:'Full crew',      loc:'Ballroom',     status:'plan' }
+      ]},
+    // ---------- STRIKE ----------
+    { n:5, title:'Strike · load-out',
+      meta: `${PCG.fmtShort(strike)} post-show`,
+      rows:[
+        { when: strike,                                 what:'Strike begins · audience out',             sub:'Client sign-off walkaround first · then rig down motors · power cutover.',                    owner:'Full crew',      loc:'Ballroom',   status:'plan' },
+        { when: new Date(new Date(strike).getTime() + 2*3600000).toISOString(), what:'Rig down · motors · truss',                sub:'Dead-hangs down · trussing crossover pulled · LED header off first.',                 owner:'Rigging · Video', loc:'Grid · stage', status:'plan' },
+        { when: new Date(new Date(strike).getTime() + 4*3600000).toISOString(), what:'Trucks loaded · dock 2',                   sub:'48\' trucks reloaded in reverse order · manifest signed.',                              owner:'Logistics',      loc:'Dock 2',     status:'plan' },
+        { when: new Date(new Date(strike).getTime() + 5*3600000).toISOString(), what:'Venue sign-off walkthrough',               sub:'Pre-Load Venue Condition re-walked · damage claims reconciled against baseline.',     owner:'PM · Venue Ops',  loc:'Full venue', status:'plan' }
+      ]},
+    // ---------- CLOSEOUT ----------
+    { n:6, title:'Closeout · return + debrief',
+      meta: `${PCG.fmtShort(ret)} post-strike`,
+      rows:[
+        { when: ret,                                                         what:'Gear return · warehouse check-in',           sub:'Manifest reconciled · sub-rental returned to Solotech · damaged-gear log opened.', owner:'Warehouse',      loc:'Detroit WH', status:'plan' },
+        { when: new Date(new Date(ret).getTime() + 86400000).toISOString(),  what:'Client debrief + internal retro',             sub:'Client call + PCG internal retro · learnings captured to show diary.',           owner:'PM',             loc:'Remote',     status:'plan' },
+        { when: new Date(new Date(ret).getTime() + 86400000 * 2).toISOString(), what:'Financial closeout · CO reconciliation',  sub:'CO#3 (ready room) invoice posted · labor actuals reconciled.',                    owner:'Accounting · PM', loc:'Remote',     status:'plan' }
+      ]}
+  ];
+
+  document.getElementById('ps-phases').innerHTML = phases.map(p => `
+    <section class="ps-phase">
+      <div class="ps-phase-head">
+        <div class="ps-phase-num">${p.n}</div>
+        <h2>${PCG.escapeHtml(p.title)}</h2>
+        <span class="meta">${PCG.escapeHtml(p.meta)}</span>
+      </div>
+      ${p.rows.map(r => `
+        <div class="ps-row">
+          <div class="ps-when">${shortT(r.when)}</div>
+          <div class="ps-dot ${r.status}"></div>
+          <div class="ps-what">
+            <strong>${PCG.escapeHtml(r.what)}</strong>
+            ${r.sub ? `<div class="sub">${PCG.escapeHtml(r.sub)}</div>` : ''}
+          </div>
+          <span class="ps-owner">${PCG.escapeHtml(r.owner)}</span>
+          <span class="ps-loc">📍 ${PCG.escapeHtml(r.loc)}</span>
+          <span class="ps-status ${r.status}">${r.status === 'conf' ? 'Confirmed' : r.status === 'risk' ? 'At risk' : r.status === 'hold' ? 'Pending' : r.status === 'comp' ? 'Complete' : 'Planned'}</span>
+        </div>`).join('')}
+    </section>
+  `).join('');
+</script>
+</body>
+</html>

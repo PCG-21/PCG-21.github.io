@@ -301,6 +301,36 @@
   .dec-card .dec-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
   .dec-card .dec-btns .btn { padding: 6px 12px; font-size: 11.5px; }
 
+  /* Execution Toolkit cards — three equally-weighted big tiles so the
+     schedule / cue grid / TD packet feel like major operational surfaces. */
+  .exec-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 820px) { .exec-grid { grid-template-columns: repeat(3, 1fr); } }
+  .exec-card {
+    padding: 20px 22px; border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(1,153,253,0.08), transparent 70%), var(--surface-1);
+    border: 1px solid var(--border);
+    color: var(--text-primary); text-decoration: none;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color var(--t-fast), transform var(--t-fast);
+    position: relative; overflow: hidden;
+  }
+  .exec-card::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue));
+    opacity: 0.6;
+  }
+  .exec-card.flow::before    { background: linear-gradient(90deg, var(--pcg-spotlight-purple), var(--pcg-bright-blue)); }
+  .exec-card.td::before      { background: linear-gradient(90deg, var(--pcg-bright-blue), var(--pcg-spotlight-purple)); opacity: 1; }
+  .exec-card:hover { border-color: var(--pcg-bright-blue); transform: translateY(-2px); text-decoration: none; }
+  .exec-card .ico  { font-size: 24px; line-height: 1; }
+  .exec-card .ey   { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); }
+  .exec-card .tt   { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+  .exec-card .nt   { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
+  .exec-card .who  { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: auto; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .exec-card .who b { color: var(--pcg-bright-blue); font-weight: 600; }
+  .exec-card.td { background: linear-gradient(135deg, rgba(149,100,216,0.10), rgba(1,153,253,0.06) 60%), var(--surface-1); border-color: rgba(149,100,216,0.35); }
+  .exec-card.td .tt { background: var(--grad-spectrum-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
   /* -------- Lifecycle / phase indicator -------- */
   .lc-strip {
     display: flex; align-items: stretch; gap: 0;
@@ -517,6 +547,22 @@
           <div class="card">
             <div class="card-header"><div class="title">Today on this show</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Daily work experience · replaces the spreadsheet</span></div>
             <div class="card-body"><div class="daily-strip" id="daily-strip"></div></div>
+          </div>
+        </section>
+
+        <!-- EXECUTION TOOLKIT — the three operational surfaces that
+             actually run the show: the build schedule, the live cue
+             grid, and the TD crew packet. These are not buried links;
+             they're first-class execution documents. -->
+        <section class="scc-section" id="sec-exec">
+          <div class="card">
+            <div class="card-header">
+              <div class="title">🛠 Execution Toolkit</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">The three documents that actually run the show — schedule · cue grid · TD packet.</span>
+            </div>
+            <div class="card-body">
+              <div class="exec-grid" id="exec-grid"></div>
+            </div>
           </div>
         </section>
 
@@ -785,6 +831,7 @@
   const tabs = [
     ['health',   '❤ Health'],
     ['daily',    '◎ Today'],
+    ['exec',     '🛠 Execution'],
     ['decisions','🧭 Decisions'],
     ['comm',     '💬 Comms'],
     ['tasks',    '☑ Tasks'],
@@ -2075,11 +2122,43 @@
     }));
   }
 
+  // =================================================================
+  // EXECUTION TOOLKIT — render the three big cards.
+  // =================================================================
+  function renderExecution(){
+    const pm = PCG.findPerson(proj.primaryPM);
+    const td = PCG.findPerson(proj.td);
+    const sc = PCG.findPerson(proj.showCaller);
+    const cards = [
+      { cls:'', href: `production-schedule.html?project=${encodeURIComponent(proj.code)}`,
+        ico:'🗂', ey:'Build timeline', tt:'Production Schedule',
+        nt:'Phase-by-phase operational timeline — trucks, dock, rigging, power, tech, rehearsal, show, strike, closeout. Department-owned, status-tracked.',
+        who:`Owner · <b>${td ? PCG.escapeHtml(td.name) : 'TD'}</b>` },
+      { cls:'flow', href: `show-flow.html?project=${encodeURIComponent(proj.code)}`,
+        ico:'🎬', ey:'Live execution', tt:'Show Flow · Cue Grid',
+        nt:'Cue-by-cue operator grid across Audio / Video / Lighting / LED / Scenic. What the show caller drives live during the show.',
+        who:`Owner · <b>${sc ? PCG.escapeHtml(sc.name) : 'Show Caller'}</b>` },
+      { cls:'td', href: `td-package.html?project=${encodeURIComponent(proj.code)}`,
+        ico:'📦', ey:'Generated packet', tt:'TD Show Package',
+        nt:'Internal TD / crew execution packet — overview, contacts, leads, schedule, ROS summary, scope, venue watch-outs, latest field notes. Printable · distributable.',
+        who:`For · <b>TD + department leads</b>` }
+    ];
+    document.getElementById('exec-grid').innerHTML = cards.map(c => `
+      <a class="exec-card ${c.cls}" href="${c.href}">
+        <span class="ico">${c.ico}</span>
+        <span class="ey">${PCG.escapeHtml(c.ey)}</span>
+        <span class="tt">${PCG.escapeHtml(c.tt)}</span>
+        <span class="nt">${PCG.escapeHtml(c.nt)}</span>
+        <span class="who">${c.who}</span>
+      </a>`).join('');
+  }
+
   renderHealth();
   renderDaily();
   renderXShow();
   renderEchoes();
   renderDecisions();
+  renderExecution();
 
   // Highlight active tab on scroll (intersection observer)
   const sections = tabs.map(([id]) => document.getElementById(`sec-${id}`));

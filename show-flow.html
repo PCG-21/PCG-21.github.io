@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Show Flow · Cue Grid</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Show Flow — cue-by-cue operator grid. Deliberately NOT the build
+     timeline (Production Schedule) and NOT the packet (TD Show Package).
+     This is what the show caller + operators actually work from live.
+     Dense, monospaced, scannable. */
+
+  .sf-hero {
+    background: linear-gradient(180deg, rgba(149,100,216,0.08) 0%, rgba(10,18,32,0) 100%), var(--surface-1);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-md);
+    padding: var(--sp-4); margin-bottom: var(--sp-4);
+    position: relative; overflow: hidden;
+  }
+  .sf-hero::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-spotlight-purple), var(--pcg-bright-blue), var(--pcg-confident-blue));
+  }
+  .sf-hero h1 { margin: 4px 0 2px; font-family: var(--font-display); font-size: 26px; }
+
+  .sf-toolbar {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    margin-bottom: var(--sp-4);
+  }
+  .sf-toolbar .muted { font-size: var(--fs-xs); margin-right: auto; }
+
+  /* Section block */
+  .sf-section {
+    margin-bottom: var(--sp-5);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .sf-section-head {
+    padding: 12px 18px;
+    background: linear-gradient(90deg, rgba(149,100,216,0.12), transparent 60%);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .sf-section-head h2 {
+    margin: 0; font-family: var(--font-display); font-size: 15px;
+    letter-spacing: 0.04em;
+  }
+  .sf-section-head .meta {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);
+  }
+  .sf-section-head .dur {
+    margin-left: auto; font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--pcg-spotlight-purple); background: rgba(149,100,216,0.12);
+    border: 1px solid rgba(149,100,216,0.35);
+    padding: 2px 8px; border-radius: var(--r-pill);
+  }
+
+  /* Grid table */
+  .sf-grid {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+  }
+  .sf-grid thead th {
+    position: sticky; top: var(--topbar-h);
+    background: var(--surface-2); z-index: 5;
+    font-family: var(--font-display); font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary);
+    padding: 10px 12px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .sf-grid td {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.45;
+  }
+  .sf-grid tbody tr:hover { background: var(--surface-2); }
+  .sf-grid .cue-t  { font-family: var(--font-mono); font-size: 12px; color: var(--pcg-bright-blue); white-space: nowrap; font-weight: 600; }
+  .sf-grid .cue-n  { color: var(--text-primary); font-weight: 500; }
+  .sf-grid .cue-n .sub { display: block; font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; font-family: var(--font-mono); }
+  .sf-grid .dept   { color: var(--text-secondary); }
+  .sf-grid .dept em { color: var(--text-tertiary); font-style: normal; font-size: 11.5px; }
+  .sf-grid .dept b  { color: var(--text-primary); font-weight: 500; }
+
+  /* Column widths · optimized for monospaced cue-sheet feel */
+  .sf-grid col.cue  { width: 90px; }
+  .sf-grid col.name { width: 240px; }
+  .sf-grid col.dep  { width: auto; }
+  .sf-grid col.note { width: 180px; }
+
+  /* Cue-kind accent */
+  .sf-grid tr.cue-standby  { background: rgba(245,176,65,0.05); }
+  .sf-grid tr.cue-go       { background: rgba(61,220,132,0.04); }
+  .sf-grid tr.cue-break td { color: var(--text-tertiary); font-style: italic; background: var(--surface-2); }
+  .sf-grid .gocue {
+    display: inline-block; padding: 0 6px; border-radius: var(--r-sm);
+    background: var(--status-green); color: #000;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .sf-grid .sbcue {
+    display: inline-block; padding: 0 6px; border-radius: var(--r-sm);
+    background: var(--status-amber); color: #1a0c00;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .sf-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); }
+  .sf-legend b { color: var(--text-secondary); margin-right: 2px; }
+
+  @media (max-width: 900px) {
+    .sf-grid thead { display: none; }
+    .sf-grid, .sf-grid tbody, .sf-grid tr, .sf-grid td { display: block; width: 100%; }
+    .sf-grid tr { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .sf-grid td { padding: 4px 0; border: 0; }
+    .sf-grid td::before { content: attr(data-lbl) " · "; font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
+    .sf-grid td.cue-t::before, .sf-grid td.cue-n::before { content: ""; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="sf-hero" id="sf-hero"></div>
+
+      <div class="sf-toolbar">
+        <span class="muted">Show-day execution · cue-by-cue · show caller drives this · operators react</span>
+        <a class="btn sm ghost" id="open-ps" href="#">→ Production Schedule</a>
+        <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
+        <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
+      </div>
+
+      <div class="sf-legend" style="margin-bottom: var(--sp-4);">
+        <span><b>STBY</b> standby · <b>GO</b> fire now · <b>IMAG</b> in-room camera · <b>QLab</b> playback · <b>House</b> front-of-house audio · <b>WO</b> walk-on · <b>OP</b> operator owner</span>
+      </div>
+
+      <div id="sf-sections"></div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'show-flow', pageTitle:'Show Flow · Cue Grid'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code) || { code, name: 'Show', venueName: 'Venue' };
+
+  document.getElementById('open-ps').href  = `production-schedule.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-td').href  = `td-package.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-ctr').href = `show-center.html?project=${encodeURIComponent(code)}`;
+
+  // ---------- HERO ----------
+  document.getElementById('sf-hero').innerHTML = `
+    <div class="eyebrow" style="color: var(--pcg-spotlight-purple);">Show Flow · Cue Grid · <span class="mono">${PCG.escapeHtml(proj.code)}</span></div>
+    <h1>${PCG.escapeHtml(proj.name)}</h1>
+    <div class="muted" style="font-size: var(--fs-sm); margin-top: 2px;">${PCG.escapeHtml(proj.venueName || '')} · Day 1 General Session · GSA-1 run</div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; max-width: 840px;">
+      This is the live execution grid — what the show caller reads, what each operator reacts to. Different from the build schedule (<a href="#" id="hp-ps" style="color: var(--pcg-bright-blue);">Production Schedule</a>) and from the crew packet (<a href="#" id="hp-td" style="color: var(--pcg-bright-blue);">TD Show Package</a>).
+    </div>
+  `;
+  document.getElementById('hp-ps').href  = `production-schedule.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('hp-td').href  = `td-package.html?project=${encodeURIComponent(code)}`;
+
+  // ---------- SECTIONS ----------
+  // Each section = a block within the show. Each cue row has:
+  //   t   : clock time
+  //   cue : GSA-### or STBY / GO markers
+  //   name: narrative line of what's happening
+  //   a   : audio op note   | v : video op note | l : lighting | led : LED / switcher | s : scenic / stage | n : show-caller note
+  const GO   = '<span class="gocue">GO</span>';
+  const SBY  = '<span class="sbcue">STBY</span>';
+
+  const sections = [
+    {
+      title: 'Pre-Show',
+      meta: 'Doors open · House walk-in',
+      dur:  '30:00 pre',
+      rows: [
+        { t:'07:30 AM', cue:'GSA-000', name:'House opens', a:'<b>Walk-in music UP</b> @ -8dB · 🎚 playlist master', v:'IMAG OFF · monitors dark', l:'<b>House wash</b> · LD preset 01 · amber 25%', led:'<b>House loop</b> · sponsor logos · Barco E2 preset 1', s:'Stage clean · podium set · water refresh', n:'Greeters at doors · show caller on cans' },
+        { t:'07:45 AM', cue:'GSA-005', name:'5-min warning', a:'Walk-in fade toward -12dB over 60s', v:'Multiview up · ISO cameras warm', l:'House step down · LD preset 02', led:'Countdown slate loaded · 5:00', s:'Final stage check · notes to scenic', n:'<b>STBY all ops</b> · confirm on cans' },
+        { t:'07:59 AM', cue:'GSA-010', name:'30-sec to top-of-show', a:`${SBY} walk-in fade to OUT · Stinger ready`, v:`${SBY} IMAG UP on G0`, l:`${SBY} house OUT · opener wash`, led:`${SBY} countdown 0:30 · Opener roll-in loaded`, s:'Cast backstage confirmed', n:'<b>STBY EVERYONE</b>' },
+      ]
+    },
+    {
+      title: 'Opener · Day 1 General Session',
+      meta: 'Client-branded opener + CEO walk-on',
+      dur:  '12:00',
+      rows: [
+        { t:'08:00 AM', cue:'GSA-020', name:'Top of show · opener video', a:`${GO} Walk-in OUT · <b>Opener playback UP</b> @ 0dB`, v:`${GO} <b>Opener roll</b> · IMAG muted during playback`, l:`${GO} House OUT · stage BLACK`, led:`${GO} <b>Opener package</b> · Barco preset 2 · full-wall`, s:'Stage BLACK · traveler closed', n:'Opener 2:40 · ride to end' },
+        { t:'08:02:40', cue:'GSA-025', name:'Opener ends · stage reveal', a:`${GO} Opener OUT · stinger cue · House bed UP -18dB`, v:`${GO} IMAG UP · stage wide on Cam 2`, l:`${GO} <b>Reveal wash</b> · LD preset 03 · follow-spot SL`, led:`${GO} Opener OUT · IMAG SIDES up · center <b>Stage Reveal</b> still`, s:`${GO} Traveler OPENS · stage revealed`, n:'Scenic reveal — confirm on clean line' },
+        { t:'08:03:00', cue:'GSA-030', name:'CEO walk-on · opening remarks', a:`${GO} Mic 1 (handheld) UP · IFB live to CEO`, v:'IMAG live · Cam 1 tight CEO · Cam 2 wide', l:'Follow-spot SL on CEO · LD preset 04', led:'IMAG sides · center <b>CEO name</b> lower-third', s:'CEO walks on SL to center · mark 1', n:'4-min remarks · WARN 1min' },
+        { t:'08:07:00', cue:'GSA-040', name:'Keynote video roll', a:`${SBY} mic 1 FADE · playback bed UP`, v:`${SBY} IMAG fade · playback takeover`, l:`${SBY} stage wash DOWN -50%`, led:`${SBY} <b>Keynote sizzle</b> loaded · Barco preset 5`, s:'CEO cross to chair · water refill', n:'Ride next — call "GO" on my mark' },
+      ]
+    },
+    {
+      title: 'Sponsor Bumper + Lunch Break',
+      meta: 'Transition to catered lunch',
+      dur:  '60:00 break',
+      rows: [
+        { t:'11:45 AM', cue:'GSA-120', name:'Pre-lunch bumper · sponsor loop', a:`${GO} Sponsor bed UP @ -10dB · 4:00 loop`, v:`${GO} IMAG fade to black · loop takeover`, l:`${GO} Amber wash · follow-spot OUT`, led:`${GO} <b>Sponsor loop V1</b> · 25 assets · auto-advance 8s`, s:'Clear handhelds · pre-set lunch signage', n:'Lunch call · audience break' },
+        { t:'11:49 AM', cue:'GSA-125', name:'House up · lunch dismissal', a:`${GO} Sponsor bed OUT · house music bed UP`, v:`${GO} IMAG OFF · multiview down`, l:`${GO} <b>House full</b> · 100% · LD preset 01`, led:'Lunch slate · return time 12:45', s:'Ushers to doors · fire lanes clear', n:'Back in 60 — all ops stretch, eat, reset' },
+        { t:'12:00 PM', cue:'GSA-130', name:'Lunch in BOH',                   a:'<em>Meal break · mic check resume at 12:30</em>', v:'<em>ISO recording paused</em>', l:'<em>House wash hold</em>', led:'<em>Sponsor loop on continuous</em>', s:'<em>Scenic refresh + podium reset</em>', n:'<em>Break · no cues</em>' },
+      ],
+      rowClasses: ['', '', 'cue-break']
+    },
+    {
+      title: 'Awards Package · Day 4',
+      meta: 'Feature segment · playback heavy · follow-spot intensive',
+      dur:  '45:00',
+      rows: [
+        { t:'07:30 PM', cue:'AWD-010', name:'Awards opener video', a:`${GO} <b>Awards bed UP</b> @ -3dB · bumper 0:45`, v:`${GO} Awards opener roll · IMAG muted`, l:`${GO} Stage BLACK · pre-award wash ready`, led:`${GO} <b>Awards package</b> · Barco preset 9`, s:'Winners envelope pre-set on podium', n:'45-min run · follow cue list tightly' },
+        { t:'07:30:45', cue:'AWD-020', name:'Host walk-on', a:`${GO} Host lav UP · IFB live`, v:`${GO} IMAG live · Cam 3 tight host`, l:`${GO} Host wash · follow-spot SR to center`, led:`${GO} IMAG sides · <b>Host name</b> lower-third`, s:'Host enters SR · cross to podium', n:'Host 2-min intro' },
+        { t:'07:33:00', cue:'AWD-030', name:'Category 1 · Winner playback', a:`${GO} Host mic down -12dB · winner bed UP`, v:`${GO} IMAG camera cross to winner table · wide then tight`, l:`${GO} Follow-spot SL picks up winner · house dim 50%`, led:`${GO} <b>Category 1 slate</b> · winner name reveal`, s:'Stage manager signals winner at table', n:'Winner walks · ~30s to stage · STBY trophy hand-off' },
+        { t:'07:34:30', cue:'AWD-035', name:'Winner on stage · speech', a:`${GO} Winner mic hand-off · IFB cut`, v:`${GO} IMAG live · Cam 1 tight · Cam 2 wide`, l:`${GO} Podium wash · follow-spot holds`, led:'IMAG · <b>Winner name</b> plate', s:'Trophy hand-off SR · water refresh ready', n:'90-sec speech · WARN 15 sec' },
+        { t:'07:36:00', cue:'AWD-040', name:'Off-stage · transition', a:`${SBY} Winner mic OUT · transition bed UP`, v:`${SBY} IMAG wide · follow winner exit`, l:`${SBY} Transition wash · follow-spot OUT`, led:`${SBY} <b>Transition slate</b> · Category 2 loaded`, s:'Winner crosses SR · scenic reset podium', n:'Repeat structure · Cat 2–6' },
+      ]
+    },
+    {
+      title: 'Closing',
+      meta: 'Outro cue · house up · egress',
+      dur:  '08:00',
+      rows: [
+        { t:'08:15 PM', cue:'GSA-900', name:'Final speaker · closing remarks', a:'Mic 1 UP · closing bed -24dB', v:'IMAG live · Cam 1 tight', l:'Stage wash · follow-spot SL', led:'IMAG sides · center static brand', s:'Closing teleprompter cued', n:'3-min close' },
+        { t:'08:18:00', cue:'GSA-910', name:'Outro video roll', a:`${GO} Closing bed UP · mic 1 FADE`, v:`${GO} Outro package roll · IMAG muted`, l:`${GO} Stage wash DOWN · outro wash`, led:`${GO} <b>Outro package</b> · Barco preset 10`, s:'Cast exit SR backstage', n:'Outro 1:20' },
+        { t:'08:19:20', cue:'GSA-920', name:'Outro ends · house up · egress', a:`${GO} Outro OUT · <b>Walk-out music UP</b> @ -10dB`, v:`${GO} IMAG OFF · multiview down`, l:`${GO} <b>House FULL</b> · aisle wash up`, led:`${GO} <b>Thank you / sponsor loop</b> · Barco preset 1`, s:'Audience egress · ushers direct', n:'Walk-out music 20 min · de-brief at 21:00' },
+      ]
+    }
+  ];
+
+  document.getElementById('sf-sections').innerHTML = sections.map(s => `
+    <section class="sf-section">
+      <div class="sf-section-head">
+        <h2>${PCG.escapeHtml(s.title)}</h2>
+        <span class="meta">${PCG.escapeHtml(s.meta)}</span>
+        <span class="dur">${PCG.escapeHtml(s.dur)}</span>
+      </div>
+      <table class="sf-grid">
+        <colgroup><col class="cue"><col class="name"><col class="dep"><col class="dep"><col class="dep"><col class="dep"><col class="dep"><col class="note"></colgroup>
+        <thead>
+          <tr>
+            <th>Time / Cue</th>
+            <th>What happens</th>
+            <th>Audio</th>
+            <th>Video · IMAG</th>
+            <th>Lighting</th>
+            <th>LED · Switcher</th>
+            <th>Scenic · Stage</th>
+            <th>Show-caller note</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${s.rows.map((r, i) => {
+            const rowCls = (s.rowClasses && s.rowClasses[i]) || '';
+            return `
+              <tr class="${rowCls}">
+                <td class="cue-t" data-lbl="Cue">${PCG.escapeHtml(r.t)}<br><span style="color: var(--text-tertiary); font-size: 10.5px;">${PCG.escapeHtml(r.cue)}</span></td>
+                <td class="cue-n" data-lbl="Cue">${r.name}</td>
+                <td class="dept" data-lbl="Audio">${r.a || '—'}</td>
+                <td class="dept" data-lbl="Video">${r.v || '—'}</td>
+                <td class="dept" data-lbl="Lighting">${r.l || '—'}</td>
+                <td class="dept" data-lbl="LED">${r.led || '—'}</td>
+                <td class="dept" data-lbl="Scenic">${r.s || '—'}</td>
+                <td class="dept" data-lbl="Note">${r.n || '—'}</td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </section>
+  `).join('');
+</script>
+</body>
+</html>

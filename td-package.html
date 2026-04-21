@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · TD Show Package</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* TD Show Package — the internal execution packet.
+     Not the client advance (that's external); not the cue grid.
+     This is the TD / crew's run-of-show digest, generated from the
+     Show Command Center and printable as a field handout. */
+
+  .td-toolbar {
+    display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);
+  }
+  .td-toolbar .right { margin-left:auto; display:flex; gap: var(--sp-2); }
+
+  .td-shell {
+    max-width: 1000px; margin: 0 auto;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .td-hero {
+    padding: 30px 36px;
+    background: linear-gradient(135deg, rgba(1,153,253,0.10), rgba(149,100,216,0.10)), var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .td-hero::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .td-hero .eyebrow {
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--pcg-bright-blue);
+  }
+  .td-hero h1 {
+    font-family: var(--font-display); font-size: 32px; margin: 6px 0 4px; letter-spacing: 0.01em;
+  }
+  .td-hero .sub { color: var(--text-secondary); font-size: var(--fs-md); }
+  .td-banner {
+    display:inline-flex; align-items:center; gap: 8px;
+    margin-top: 14px;
+    padding: 6px 12px; border-radius: var(--r-pill);
+    background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue);
+    border: 1px solid rgba(1,153,253,0.35);
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .td-hero .dates { margin-top: 18px; display: flex; gap: 24px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 13px; }
+  .td-hero .dates div span { display:block; font-size: 10px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+
+  .td-toc {
+    padding: 14px 36px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 11.5px; font-family: var(--font-mono);
+  }
+  .td-toc a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px dashed transparent; }
+  .td-toc a:hover { color: var(--pcg-bright-blue); border-color: var(--pcg-bright-blue); }
+
+  .td-body { padding: 28px 36px; }
+  .td-section { margin-bottom: 36px; scroll-margin-top: calc(var(--topbar-h) + 24px); }
+  .td-section h2 {
+    font-family: var(--font-display); font-size: 13px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--pcg-bright-blue);
+    border-bottom: 1px solid var(--border-accent);
+    padding-bottom: 8px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .td-section h2 .repo { margin-left: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); font-weight: 400; }
+
+  .td-grid { display: grid; grid-template-columns: 160px 1fr; gap: 12px 24px; font-size: var(--fs-sm); }
+  .td-grid .k { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10.5px; color: var(--text-tertiary); padding-top: 3px; }
+  .td-grid .v { color: var(--text-primary); line-height: 1.6; }
+
+  .td-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .td-contact {
+    border: 1px solid var(--border); border-radius: var(--r-sm); padding: 14px;
+    background: var(--surface-0);
+  }
+  .td-contact .role { font-size: 10px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+  .td-contact .who  { font-weight: 600; font-size: var(--fs-md); margin-top: 2px; }
+  .td-contact .meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-mono); line-height: 1.7; }
+
+  .td-leads { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .td-lead {
+    padding: 14px;
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--surface-0);
+    display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: start;
+  }
+  .td-lead .ico { font-size: 22px; line-height: 1; }
+  .td-lead .dept { font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .td-lead .nm   { font-weight: 600; font-size: var(--fs-sm); margin-top: 2px; }
+  .td-lead .cn   { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); margin-top: 4px; line-height: 1.7; }
+
+  .td-sched { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+  .td-sched table { width:100%; border-collapse: collapse; }
+  .td-sched th, .td-sched td { padding: 10px 14px; font-size: var(--fs-sm); border-bottom: 1px solid var(--border); text-align: left; }
+  .td-sched th { background: var(--surface-2); font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .td-sched td:first-child { font-family: var(--font-mono); white-space: nowrap; color: var(--text-secondary); }
+  .td-sched tr:last-child td { border-bottom: 0; }
+
+  .td-ros { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+  .td-ros table { width: 100%; border-collapse: collapse; }
+  .td-ros th, .td-ros td { padding: 8px 12px; font-size: 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .td-ros th { background: var(--surface-2); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .td-ros td:first-child { font-family: var(--font-mono); white-space: nowrap; color: var(--pcg-bright-blue); }
+  .td-ros tr:last-child td { border-bottom: 0; }
+
+  .td-scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .td-scope-col { border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-0); padding: 12px 14px; }
+  .td-scope-col h4 { margin: 0 0 8px; font-size: var(--fs-sm); font-family: var(--font-display); letter-spacing: 0.04em; }
+  .td-scope-col ul { margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+  .td-scope-col li { padding: 3px 0; border-bottom: 1px dashed var(--border); }
+  .td-scope-col li:last-child { border-bottom: 0; }
+
+  .td-watch {
+    padding: 14px 18px; border-radius: var(--r-sm);
+    border: 1px solid rgba(245,176,65,0.35);
+    background: linear-gradient(135deg, rgba(245,176,65,0.08), transparent 70%);
+    border-left: 3px solid var(--status-amber);
+  }
+  .td-watch ul { margin: 0; padding-left: 20px; font-size: var(--fs-sm); line-height: 1.7; color: var(--text-primary); }
+  .td-watch ul li { padding: 2px 0; }
+
+  .td-notes { display: grid; gap: 8px; }
+  .td-note {
+    padding: 10px 14px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--surface-0);
+    border-left: 2px solid var(--pcg-bright-blue);
+  }
+  .td-note .t { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); margin-bottom: 2px; }
+  .td-note .b { font-size: 12.5px; color: var(--text-primary); line-height: 1.5; }
+
+  .td-refs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .td-ref {
+    padding: 14px 16px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--surface-0);
+    display: grid; grid-template-columns: 32px 1fr; gap: 12px;
+    color: var(--text-primary); text-decoration: none;
+    transition: border-color var(--t-fast);
+  }
+  .td-ref:hover { border-color: var(--pcg-bright-blue); }
+  .td-ref .ico { font-size: 22px; line-height: 1; }
+  .td-ref .tt  { font-weight: 600; font-size: var(--fs-sm); }
+  .td-ref .nt  { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; font-family: var(--font-mono); }
+
+  .td-footer {
+    padding: 18px 36px; background: var(--surface-2); border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text-tertiary); display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  }
+
+  @media print {
+    .no-print, nav, #app-shell, .td-toolbar { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .td-shell { border: 0; max-width: 100%; }
+    .td-hero, .td-body, .td-footer, .td-toc { background: #fff !important; color: #000 !important; }
+    .td-hero h1, .td-section h2, .td-lead .nm, .td-contact .who { color: #000 !important; }
+    .td-hero .eyebrow, .td-section h2 { color: #0066aa !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="td-toolbar no-print">
+        <a class="btn sm ghost" id="back-link" href="#">← Back to Show Command Center</a>
+        <span class="muted" style="font-size: var(--fs-xs);">TD / Crew execution packet · distinct from the client Advance</span>
+        <div class="right">
+          <a class="btn sm ghost" id="open-ps" href="#">→ Production Schedule</a>
+          <a class="btn sm ghost" id="open-sf" href="#">→ Show Flow</a>
+          <button class="btn sm ghost" onclick="window.print()">⎙ Print / PDF</button>
+          <button class="btn sm" id="dist">📧 Distribute to crew</button>
+        </div>
+      </div>
+
+      <div class="td-shell" id="td"></div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'td-package', pageTitle:'TD Show Package'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code);
+  if(!proj){
+    document.getElementById('td').innerHTML = '<div class="card-body empty" style="padding: 40px;">Show not found.</div>';
+    throw new Error('no project');
+  }
+
+  document.getElementById('back-link').href = `show-center.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-ps').href   = `production-schedule.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-sf').href   = `show-flow.html?project=${encodeURIComponent(code)}`;
+
+  document.getElementById('dist').addEventListener('click', () => {
+    alert('✓ TD package staged for distribution.\n\nRecipients:\n• Technical Director · Chris Taylor\n• Audio lead · Priya Shah (A1)\n• Video lead · V1 operator\n• Lighting lead · LD\n• Scenic lead\n• Rigging · IATSE 720 steward\n• Show Caller · J. Gerber\n\nA PDF copy also archives to the Show Book.');
+  });
+
+  // ---------- Lookups ----------
+  const pm = PCG.findPerson(proj.primaryPM);
+  const td = PCG.findPerson(proj.td);
+  const creative = PCG.findPerson(proj.creativeLead);
+  const showCaller = PCG.findPerson(proj.showCaller);
+  function fmtD(iso){ if(!iso) return '—'; const d = new Date(iso); return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
+
+  // Field-captured issues/learnings for latest-notes block
+  const rawField = JSON.parse(sessionStorage.getItem(`pcg_field_${proj.code}`) || '[]');
+  const fieldNotes = rawField.filter(r => ['issue','learning','note','diary'].includes(r.kind)).slice(0, 5);
+  const diary = JSON.parse(sessionStorage.getItem(`pcg_diary_${proj.code}`) || 'null') || [];
+
+  // ---------- Render ----------
+  document.getElementById('td').innerHTML = `
+    <div class="td-hero">
+      <div class="eyebrow">TD Show Package · ${PCG.escapeHtml(proj.code)}</div>
+      <h1>${PCG.escapeHtml(proj.name)}</h1>
+      <div class="sub">${PCG.escapeHtml(proj.venueName || '—')} · ${PCG.escapeHtml(proj.oneLiner || '')}</div>
+      <div class="td-banner">⚡ Generated from STAGE · Internal TD / Crew packet</div>
+      <div class="dates">
+        <div><span>Prep</span>${PCG.fmtShort(proj.dates?.prep)}</div>
+        <div><span>Load-In</span>${fmtD(proj.dates?.loadIn)}</div>
+        <div><span>Show</span>${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
+        <div><span>Strike</span>${fmtD(proj.dates?.loadOut)}</div>
+        <div><span>Return</span>${PCG.fmtShort(proj.dates?.ret)}</div>
+      </div>
+    </div>
+
+    <div class="td-toc">
+      <span style="color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px;">Sections:</span>
+      <a href="#td-over">Overview</a>
+      <a href="#td-con">Contacts</a>
+      <a href="#td-lead">Department leads</a>
+      <a href="#td-sched">Schedule summary</a>
+      <a href="#td-ros">ROS summary</a>
+      <a href="#td-scope">Scope</a>
+      <a href="#td-watch">Venue watch-outs</a>
+      <a href="#td-notes">Field notes</a>
+      <a href="#td-refs">References</a>
+    </div>
+
+    <div class="td-body">
+
+      <!-- OVERVIEW -->
+      <div class="td-section" id="td-over">
+        <h2>Overview <span class="repo">Pulled from Show Command Center · live</span></h2>
+        <div class="td-grid">
+          <div class="k">Client</div>        <div class="v">${PCG.escapeHtml(proj.client || '—')}</div>
+          <div class="k">Venue</div>         <div class="v">${PCG.escapeHtml(proj.venueName || '—')}</div>
+          <div class="k">Show type</div>     <div class="v">${PCG.escapeHtml(proj.showType || 'general-session')}</div>
+          <div class="k">Project code</div>  <div class="v mono">${PCG.escapeHtml(proj.code)}</div>
+          <div class="k">Lifecycle</div>     <div class="v">${PCG.escapeHtml((proj.show && proj.show.lifecycleState) || proj.status || 'Planning')}</div>
+          ${proj.quoteNo ? `<div class="k">Source quote</div><div class="v mono">${PCG.escapeHtml(proj.quoteNo)}</div>` : ''}
+          <div class="k">One-liner</div>     <div class="v">${PCG.escapeHtml(proj.oneLiner || '—')}</div>
+        </div>
+      </div>
+
+      <!-- CONTACTS -->
+      <div class="td-section" id="td-con">
+        <h2>Contacts <span class="repo">PM · TD · Creative · Show Caller · venue ops · 24/7 hotline</span></h2>
+        <div class="td-contacts">
+          ${pm ? `<div class="td-contact">
+            <div class="role">Project Manager</div>
+            <div class="who">${PCG.escapeHtml(pm.name)}</div>
+            <div class="meta">📧 ${(pm.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${pm.phone || '(555) 000-0000'}</div>
+          </div>` : ''}
+          ${td ? `<div class="td-contact">
+            <div class="role">Technical Director</div>
+            <div class="who">${PCG.escapeHtml(td.name)}</div>
+            <div class="meta">📧 ${(td.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${td.phone || '(555) 000-0000'}</div>
+          </div>` : ''}
+          ${showCaller ? `<div class="td-contact">
+            <div class="role">Show Caller</div>
+            <div class="who">${PCG.escapeHtml(showCaller.name)}</div>
+            <div class="meta">📧 ${(showCaller.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${showCaller.phone || '(555) 000-0000'}</div>
+          </div>` : ''}
+          ${creative ? `<div class="td-contact">
+            <div class="role">Creative Lead</div>
+            <div class="who">${PCG.escapeHtml(creative.name)}</div>
+            <div class="meta">📧 ${(creative.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${creative.phone || '(555) 000-0000'}</div>
+          </div>` : ''}
+          <div class="td-contact">
+            <div class="role">Venue Ops</div>
+            <div class="who">Caesars Forum · Ops Desk</div>
+            <div class="meta">📧 ops@caesarsforum.com<br>📱 (702) 555-0140</div>
+          </div>
+          <div class="td-contact">
+            <div class="role">PCG 24/7 Ops</div>
+            <div class="who">PCG Production Hotline</div>
+            <div class="meta">📧 ops@pcgstage.com<br>📱 (248) 555-0199</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPARTMENT LEADS -->
+      <div class="td-section" id="td-lead">
+        <h2>Department leads <span class="repo">Crew-facing ownership · IATSE + PCG</span></h2>
+        <div class="td-leads">
+          <div class="td-lead"><span class="ico">🎚</span><div><div class="dept">Audio · A1</div><div class="nm">Priya Shah</div><div class="cn">FOH · CL5<br>📱 (248) 555-0151</div></div></div>
+          <div class="td-lead"><span class="ico">🎥</span><div><div class="dept">Video · V1</div><div class="nm">Tom Rivera</div><div class="cn">Barco E2 · IMAG<br>📱 (248) 555-0152</div></div></div>
+          <div class="td-lead"><span class="ico">💡</span><div><div class="dept">Lighting · LD</div><div class="nm">Morgan Hale</div><div class="cn">ETC Ion XE · FOH<br>📱 (248) 555-0153</div></div></div>
+          <div class="td-lead"><span class="ico">⛓</span><div><div class="dept">Rigging</div><div class="nm">IATSE 720 Steward</div><div class="cn">Dead-hangs · motor certs<br>📱 (702) 555-0175</div></div></div>
+          <div class="td-lead"><span class="ico">⚡</span><div><div class="dept">Power</div><div class="nm">Scott Vance</div><div class="cn">Tie-in + distro<br>📱 (248) 555-0155</div></div></div>
+          <div class="td-lead"><span class="ico">🧱</span><div><div class="dept">Scenic · Stage</div><div class="nm">Lena Wu</div><div class="cn">Marquee set · thrust<br>📱 (248) 555-0156</div></div></div>
+          <div class="td-lead"><span class="ico">🎨</span><div><div class="dept">Creative · QLab</div><div class="nm">${creative ? PCG.escapeHtml(creative.name) : 'K. Oliver'}</div><div class="cn">Playback · graphics<br>📱 (248) 555-0157</div></div></div>
+          <div class="td-lead"><span class="ico">🚚</span><div><div class="dept">Logistics</div><div class="nm">M. Duda</div><div class="cn">Trucks · dock ops<br>📱 (248) 555-0158</div></div></div>
+        </div>
+      </div>
+
+      <!-- SCHEDULE SUMMARY -->
+      <div class="td-section" id="td-sched">
+        <h2>Production schedule · key milestones <span class="repo">Pulled from Production Schedule</span></h2>
+        <div class="td-sched">
+          <table>
+            <thead><tr><th>When</th><th>Milestone</th><th>Owner</th></tr></thead>
+            <tbody>
+              <tr><td>${fmtD(proj.dates?.prep)}</td><td>Prep begins · warehouse pull</td><td>Warehouse + TD</td></tr>
+              <tr><td>${fmtD(proj.dates?.loadIn)}</td><td>Dock 2 opens · truck 1 arrives · IATSE rig call</td><td>Rigging + Logistics</td></tr>
+              <tr><td>${proj.dates?.loadIn ? fmtD(new Date(new Date(proj.dates.loadIn).getTime() + 2*3600000).toISOString()) : '—'}</td><td>Motors up · rigging start</td><td>Rigging</td></tr>
+              <tr><td>${proj.dates?.loadIn ? fmtD(new Date(new Date(proj.dates.loadIn).getTime() + 3*3600000).toISOString()) : '—'}</td><td>Power tie-in · 200A (FOH dock)</td><td>Power · S. Vance</td></tr>
+              <tr><td>${proj.dates?.loadIn ? fmtD(new Date(new Date(proj.dates.loadIn).getTime() + 86400000).toISOString()) : '—'}</td><td>Tech rehearsal · full run</td><td>Full crew</td></tr>
+              <tr><td>${fmtD(proj.dates?.showStart)}</td><td>Day 1 · General Session opens</td><td>Show Caller</td></tr>
+              <tr><td>${proj.dates?.showStart ? fmtD(new Date(new Date(proj.dates.showStart).getTime() + 86400000 * 2 + 12*3600000).toISOString()) : '—'}</td><td>Day 4 · Awards show</td><td>Full crew</td></tr>
+              <tr><td>${fmtD(proj.dates?.loadOut)}</td><td>Strike · load-out</td><td>Full crew</td></tr>
+              <tr><td>${fmtD(proj.dates?.ret)}</td><td>Gear return · warehouse check-in</td><td>Warehouse</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ROS SUMMARY -->
+      <div class="td-section" id="td-ros">
+        <h2>Show Flow · summary cue list <span class="repo">Pulled from Show Flow</span></h2>
+        <div class="td-ros">
+          <table>
+            <thead><tr><th>Time</th><th>Cue</th><th>What happens</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td>07:30 AM</td><td>GSA-000</td><td>House opens · walk-in music UP</td><td>Greeters at doors · SC on cans</td></tr>
+              <tr><td>07:59</td><td>GSA-010</td><td>30-sec to top-of-show · STBY ALL</td><td>Confirm all ops on cans</td></tr>
+              <tr><td>08:00</td><td>GSA-020</td><td>Top of show · opener video GO</td><td>House OUT · stage BLACK</td></tr>
+              <tr><td>08:02:40</td><td>GSA-025</td><td>Opener ends · stage reveal · traveler opens</td><td>Follow-spot SL up</td></tr>
+              <tr><td>08:03</td><td>GSA-030</td><td>CEO walk-on · opening remarks</td><td>4 min · WARN 1 min</td></tr>
+              <tr><td>11:45</td><td>GSA-120</td><td>Sponsor bumper · pre-lunch</td><td>4:00 loop · then house UP</td></tr>
+              <tr><td>07:30 PM</td><td>AWD-010</td><td>Awards opener video (Day 4)</td><td>Awards package · 45-min block</td></tr>
+              <tr><td>08:19:20</td><td>GSA-920</td><td>Outro ends · house UP · egress</td><td>Walk-out music 20 min · debrief 21:00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SCOPE -->
+      <div class="td-section" id="td-scope">
+        <h2>Scope summary <span class="repo">Operational · what we're running</span></h2>
+        <div class="td-scope">
+          <div class="td-scope-col"><h4>Video</h4><ul>
+            <li>Barco E2 4K screen management</li>
+            <li>4× HD cameras (2× Fujinon long lens)</li>
+            <li>LED header + split fabric traveler</li>
+            <li>ProPresenter primary + QLab playback</li>
+          </ul></div>
+          <div class="td-scope-col"><h4>Audio</h4><ul>
+            <li>d&amp;b J-Series (4 flown · 24× J8 · 12× JSub)</li>
+            <li>Yamaha CL5 FOH + stage rack</li>
+            <li>Axient Digital 16ch (upgraded from 12ch)</li>
+            <li>DJ patch · cocktail reception</li>
+          </ul></div>
+          <div class="td-scope-col"><h4>Lighting</h4><ul>
+            <li>ETC Ion XE at FOH</li>
+            <li>20× Mac Auras · 12× Source Four LED</li>
+            <li>Floor package for Awards night</li>
+            <li>Ambient wash for cocktail</li>
+          </ul></div>
+          <div class="td-scope-col"><h4>Rigging</h4><ul>
+            <li>4 dead-hang motors · J-Series arrays</li>
+            <li>LED header fly frame (1,200 lb)</li>
+            <li>Truss crossover with spot truss</li>
+            <li>IATSE 720 rigger call</li>
+          </ul></div>
+          <div class="td-scope-col"><h4>Power</h4><ul>
+            <li>200A tie-in · FOH dock</li>
+            <li>100A spur · amp world</li>
+            <li>100A spur · LED processor</li>
+            <li>Distro 60/50A · ready room (CO#3 pending)</li>
+          </ul></div>
+          <div class="td-scope-col"><h4>Staging</h4><ul>
+            <li>Marquee set (32'×24' × 48" deck)</li>
+            <li>SR thrust with stairs</li>
+            <li>Podium + confidence monitors</li>
+            <li>Awards ready room platforms</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <!-- VENUE WATCH-OUTS -->
+      <div class="td-section" id="td-watch">
+        <h2>Venue watch-outs <span class="repo">From Site Visit + Pre-Load Venue Condition</span></h2>
+        <div class="td-watch">
+          <ul>
+            <li><strong>Dock 2 primary</strong> for 48' trucks. Dock 4 shared with hotel catering after 3 PM — do not plan load-in moves past then.</li>
+            <li><strong>Power tie-in requires venue engineer</strong> · 24h notice mandatory · house power on isolated feed.</li>
+            <li><strong>No dynamic rigging after 10 PM</strong> per venue contract. Rigger cert review required before first climb.</li>
+            <li><strong>Center chandelier rigging points</strong> NOT available to show motors · confirmed on plot.</li>
+            <li><strong>Ballroom access blocked</strong> during afternoon turnover (12–2 PM Day 1) · no rigger climbs during that window.</li>
+            <li><strong>Hallway corner protection</strong> missing on last visit — venue installing before crew arrives · <em>confirm on arrival</em>.</li>
+            <li><strong>BOH storage room</strong> holds venue furniture during load-in AM · venue clears before 7 AM call.</li>
+            <li><strong>Freight elevator</strong> 10'×6' × 5,000 lb · key-card required after 10 PM.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- LATEST FIELD NOTES -->
+      <div class="td-section" id="td-notes">
+        <h2>Latest field notes <span class="repo">From Field Capture + Show Diary</span></h2>
+        <div class="td-notes">
+          ${fieldNotes.length
+            ? fieldNotes.map(n => `<div class="td-note"><div class="t">${PCG.ago(n.t)}${n.kind ? ' · ' + n.kind : ''}${n.who ? ' · ' + PCG.escapeHtml(n.who) : ''}</div><div class="b">${PCG.escapeHtml(n.body)}</div></div>`).join('')
+            : `
+              <div class="td-note"><div class="t">Apr 15 · 14:12 · J. Sharp</div><div class="b">Caesars security flagged a secondary door during walkthrough — rigger call may need +15 min buffer for credentials.</div></div>
+              <div class="td-note"><div class="t">Apr 14 · 19:02 · J. Sharp</div><div class="b">Ready-room walkthrough pushed to Wed PM — venue couldn't open the space tonight. Flagging to C. Taylor.</div></div>
+              <div class="td-note"><div class="t">Apr 13 · 22:10 · J. Sharp</div><div class="b">Client seems happy with V4 wireless plan. Ryan Hoffman asked about spare handheld — bringing one as a runner.</div></div>
+            `}
+          ${diary.slice(0, 3).map(d => `<div class="td-note"><div class="t">${PCG.fmtShort(d.ts)} · Show Diary</div><div class="b">${PCG.escapeHtml(d.body)}</div></div>`).join('')}
+        </div>
+      </div>
+
+      <!-- REFERENCES -->
+      <div class="td-section" id="td-refs">
+        <h2>References · linked surfaces</h2>
+        <div class="td-refs">
+          <a class="td-ref" href="show-center.html?project=${encodeURIComponent(code)}"><span class="ico">◈</span><div><div class="tt">Show Command Center</div><div class="nt">Live source of truth</div></div></a>
+          <a class="td-ref" href="production-schedule.html?project=${encodeURIComponent(code)}"><span class="ico">🗂</span><div><div class="tt">Production Schedule</div><div class="nt">Full build timeline · phase by phase</div></div></a>
+          <a class="td-ref" href="show-flow.html?project=${encodeURIComponent(code)}"><span class="ico">🎬</span><div><div class="tt">Show Flow · Cue Grid</div><div class="nt">Cue-by-cue operator grid</div></div></a>
+          <a class="td-ref" href="advance.html?project=${encodeURIComponent(code)}"><span class="ico">⚡</span><div><div class="tt">Advance</div><div class="nt">Client / venue-facing advance document</div></div></a>
+          <a class="td-ref" href="client-portal.html?project=${encodeURIComponent(code)}"><span class="ico">🔗</span><div><div class="tt">Client Portal</div><div class="nt">External client view</div></div></a>
+          <a class="td-ref" href="site-visit.html?project=${encodeURIComponent(code)}"><span class="ico">🗺</span><div><div class="tt">Site Visit</div><div class="nt">Structured venue walkthrough</div></div></a>
+          <a class="td-ref" href="field-capture.html?project=${encodeURIComponent(code)}"><span class="ico">📱</span><div><div class="tt">Field Capture</div><div class="nt">Mobile quick-capture · onsite</div></div></a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="td-footer">
+      <div>Generated ${new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})} · PCG STAGE · v1</div>
+      <div>Distributed to TD + department leads · revisions auto-flow from the Show Command Center.</div>
+    </div>
+  `;
+</script>
+</body>
+</html>
