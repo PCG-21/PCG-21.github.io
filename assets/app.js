@@ -68,30 +68,40 @@
   // ----- Navigation manifest (role-driven) -----
   // Each entry declares which groups can see it. API enforces data; nav just hides.
   PCG.NAV = [
-    // -------- 1. HOME + SEARCH --------
-    { label:'Home', items:[
-      { id:'myhome',    label:'My Home',      href:'home.html',         icon:'⌂', groups:'*' },
-      { id:'search',    label:'Search',       href:'search.html',       icon:'⌕', groups:'*' },
-      { id:'action',    label:'Action Queue', href:'action-queue.html', icon:'◎', groups:'*' }
+    // =================================================================
+    // 1. PROJECT MANAGEMENT — the PM-first primary section.
+    //    This is the face of the product. Every PM workflow anchors here.
+    // =================================================================
+    { label:'▍ Project Management', primary:true, items:[
+      { id:'pm-home',       label:'Dashboard',           href:'pm-home.html',                               icon:'⌂', groups:'*' },
+      { id:'pif',           label:'＋ New Show · PIF',    href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
+      { id:'show-center',   label:'Show Command Center', href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
+      { id:'advance',       label:'Advance (auto)',      href:'advance.html?project=LCE-2026',              icon:'⚡', groups:'*' },
+      { id:'client-portal', label:'Client Portal',       href:'client-portal.html?project=LCE-2026',        icon:'🔗', groups:'*' },
+      { id:'portfolio',     label:'Portfolio',           href:'index.html',                                  icon:'▦', groups:'*' },
+      { id:'projects',      label:'All Projects',        href:'projects.html',                               icon:'▤', groups:'*' },
+      { id:'tours',         label:'Tours',               href:'tours.html',                                  icon:'🚌', groups:'*' },
+      { id:'action',        label:'Action Queue',        href:'action-queue.html',                           icon:'◎', groups:'*' },
+      { id:'myhome',        label:'My Home',             href:'home.html',                                   icon:'☖', groups:'*' },
+      { id:'search',        label:'Search',              href:'search.html',                                 icon:'⌕', groups:'*' }
     ]},
 
-    // -------- 2. SALES (pre-award) --------
-    { label:'Sales', items:[
-      { id:'pif',       label:'＋ New Project · Show / Tour / Program', href:'pif.html', icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
-      { id:'pitch',     label:'Pitches',      href:'pitch.html', icon:'★', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
+    // =================================================================
+    // 2. SALES — pre-award pipeline.
+    // =================================================================
+    { label:'▍ Sales', items:[
+      { id:'pitch',     label:'Pitches',       href:'pitch.html',                  icon:'★', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
       { id:'quote',     label:'Quote Builder', href:'quote.html?id=q.LCE-2026.v3', icon:'§', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING] },
-      { id:'clients',   label:'Clients',       href:'clients.html', icon:'◉', groups:'*' }
+      { id:'clients',   label:'Clients',       href:'clients.html',                icon:'◉', groups:'*' }
     ]},
 
-    // -------- 3. PROJECTS (post-award operations) --------
-    { label:'Projects', items:[
-      { id:'portfolio',     label:'Portfolio',            href:'index.html',                                  icon:'▦', groups:'*' },
-      { id:'projects',      label:'All Projects',         href:'projects.html',                               icon:'▤', groups:'*' },
-      { id:'tours',         label:'Tours',                href:'tours.html',                                  icon:'🚌', groups:'*' },
-      { id:'show-center',   label:'Show Command Center',  href:'show-center.html?project=LCE-2026',           icon:'◈', groups:'*' },
-      { id:'advance',       label:'Advance (auto)',       href:'advance.html?project=LCE-2026',               icon:'⚡', groups:'*' },
-      { id:'client-portal', label:'Client Portal',        href:'client-portal.html?project=LCE-2026',         icon:'🔗', groups:'*' },
-      { id:'playbook',     label:'Playbook (demo)',    href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },
+    // =================================================================
+    // 3. OPERATIONS — execution tools that support running shows.
+    //    Grouped as "Project Tools" (deeper PM surfaces) up top and
+    //    then the operational sub-buckets below.
+    // =================================================================
+    { label:'▍ Operations · Project Tools', items:[
+      { id:'playbook',     label:'Playbook',           href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },
       { id:'workback',     label:'Workback · Handoff', href:'workback.html?project=LCE-2026',    icon:'⇄', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.AE] },
       { id:'checklist',    label:'Checklists',         href:'checklist.html?project=LCE-2026',   icon:'☑', groups:'*' },
       { id:'field-notes',  label:'Field Notes',        href:'field-notes.html?project=LCE-2026', icon:'✎', groups:'*' },
@@ -99,8 +109,8 @@
       { id:'closeout',     label:'Closeout',           href:'closeout.html?project=GLBX-GSK26',  icon:'✓', groups:'*' }
     ]},
 
-    // -------- 4. SHOW EXECUTION (ROS + live day) --------
-    { label:'Show Execution', items:[
+    // -------- Operations · Show Execution (ROS + live day) --------
+    { label:'▍ Operations · Show Execution', items:[
       { id:'ros',          label:'Run of Show',        href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' },
       { id:'add-order',    label:'Add Orders (Field)', href:'add-order.html',              icon:'＋', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS] },
       { id:'tour-edge',    label:'Tour Edge Cases',    href:'tour-edge-cases.html', icon:'⚠', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.AE] },
@@ -109,8 +119,8 @@
       { id:'incidents',    label:'Incidents',          href:'incidents.html', icon:'⚠', groups:'*' }
     ]},
 
-    // -------- 5. CREW & LABOR --------
-    { label:'Crew & Labor', items:[
+    // -------- Operations · Crew & Labor --------
+    { label:'▍ Operations · Crew & Labor', items:[
       { id:'labor-home',   label:'Labor Home',        href:'labor-home.html',    icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS] },
       { id:'scheduling',   label:'Scheduling Grid',   href:'scheduling.html',    icon:'▥', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
       { id:'crew-assign',  label:'Assign Crew',       href:'crew-assign.html',   icon:'✔', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS] },
@@ -123,8 +133,8 @@
       { id:'messages',     label:'Crew Messages',     href:'messages.html',      icon:'✉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM] }
     ]},
 
-    // -------- 6. WAREHOUSE & INVENTORY --------
-    { label:'Warehouse & Inventory', items:[
+    // -------- Operations · Warehouse & Inventory --------
+    { label:'▍ Operations · Warehouse & Inventory', items:[
       { id:'wh-sup-home',  label:'Warehouse Lead',    href:'wh-sup-home.html', icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
       { id:'wh-tech-home', label:'Warehouse Tech',    href:'wh-tech-home.html', icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
       { id:'eqlpc',        label:'EQLPC',             href:'eqlpc.html',     icon:'◇', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS] },
@@ -139,8 +149,8 @@
       { id:'vendors',      label:'Vendor Library',    href:'vendors.html', icon:'★', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE] }
     ]},
 
-    // -------- 7. TECH PLANNING --------
-    { label:'Tech Planning', items:[
+    // -------- Operations · Tech Planning --------
+    { label:'▍ Operations · Tech Planning', items:[
       { id:'videoio',      label:'Video I/O Plan',    href:'video-io.html?showId=GLBX-GSK26', icon:'▤', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
       { id:'intercom',     label:'Intercom',          href:'intercom.html?showId=GLBX-GSK26', icon:'📻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
       { id:'tech-reuse',   label:'Historical Reuse',  href:'tech-reuse.html', icon:'↻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
@@ -148,22 +158,22 @@
       { id:'tech',         label:'Technical',         href:'tech.html',     icon:'▲', groups:'*' }
     ]},
 
-    // -------- 8. VENUES --------
-    { label:'Venues', items:[
+    // -------- Operations · Venues --------
+    { label:'▍ Operations · Venues', items:[
       { id:'venues',       label:'Venue Library',     href:'venue.html', icon:'🏛', groups:'*' }
     ]},
 
-    // -------- 9. FINANCE --------
-    { label:'Finance', items:[
+    // -------- Finance --------
+    { label:'▍ Finance', items:[
       { id:'finance',      label:'Finance Dashboard', href:'finance.html', icon:'◉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE, PCG.GROUPS.LEADERSHIP] }
     ]},
-    { label:'Leadership', items:[
+    { label:'▍ Leadership', items:[
       { id:'reports', label:'Reports',            href:'reports.html', icon:'📊', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.AE] },
       { id:'audit',   label:'Audit Trail',        href:'audit.html',   icon:'◻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ACCOUNTING] },
       { id:'admin',      label:'Admin · Governance', href:'admin.html',     icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS] },
       { id:'pay-rules',  label:'Pay Rules Settings', href:'pay-rules.html', icon:'⌘', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS] }
     ]},
-    { label:'Field Surfaces', items:[
+    { label:'▍ Field Surfaces', items:[
       { id:'qc',       label:'QC Scan',         href:'qc-scan.html?pullSheet=ps.sae.breakout', icon:'◆', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
       { id:'ic',       label:'IC Return Scan',  href:'ic-scan.html?manifest=man.lce.out1',     icon:'◈', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
       { id:'whtv',     label:'Warehouse TV',    href:'warehouse-tv.html',     icon:'▣', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS] },
@@ -179,7 +189,7 @@
         if(it.groups==='*') return true;
         return it.groups.some(gp=>PCG.hasPermission(gp));
       });
-      if(items.length) out.push({ label:g.label, items });
+      if(items.length) out.push({ label:g.label, items, primary: !!g.primary });
     });
     return out;
   };
@@ -190,14 +200,16 @@
     const user = PCG.user;
 
     const nav = PCG.navItems();
-    const navHtml = nav.map(g=>`
-      <div class="section-label">${PCG.escapeHtml(g.label)}</div>
+    const navHtml = nav.map((g, i)=>{
+      const cls = (g.primary ? 'primary ' : '') + (i > 0 ? 'divider' : '');
+      return `
+      <div class="section-label ${cls}">${PCG.escapeHtml(g.label)}</div>
       ${g.items.map(it=>`
         <a class="nav-item ${it.id===active?"active":""}" href="${it.href}">
           <span class="icon">${it.icon}</span>
           <span class="lbl">${PCG.escapeHtml(it.label)}</span>
-        </a>`).join("")}
-    `).join("");
+        </a>`).join("")}`;
+    }).join("");
 
     const crumbHtml = crumbs.length
       ? crumbs.map((c,i)=>{

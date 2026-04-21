@@ -168,6 +168,24 @@ img.badge { display: block; }
   color: var(--text-tertiary);
   text-transform: uppercase;
 }
+/* Primary "Project Management" section — elevated typography + accent
+   divider below to make the PM-first hierarchy obvious. */
+.rail .section-label.primary {
+  color: var(--pcg-bright-blue);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding-top: var(--sp-3);
+}
+.rail .section-label.primary::after {
+  content: ""; display: block;
+  height: 1px; margin-top: 8px; margin-right: var(--sp-4);
+  background: linear-gradient(90deg, var(--pcg-bright-blue), transparent);
+}
+.rail .section-label.divider {
+  border-top: 1px solid var(--border);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-4);
+}
 
 .rail .nav-item {
   display: flex; align-items: center; gap: var(--sp-3);

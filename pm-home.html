@@ -228,15 +228,112 @@
     <div style="height:var(--sp-4);"></div>
   ` : '';
 
-  // Action queue (role-filtered)
-  const q = PCG.api.getActionQueue().slice(0,8);
-  document.getElementById('actionQ').innerHTML = q.length ? q.map(item=>`
-    <div class="attn-item ${item.priority==='high'?'red':''}" style="margin-bottom:6px;">
-      <div><div class="ttl">${PCG.escapeHtml(item.title)}</div>
-      <div class="meta"><span class="mono">${item.proj}</span> · ${item.stale}</div></div>
-      <div class="act"><a class="btn sm" href="playbook.html?project=${item.proj}">Open</a></div>
-    </div>
-  `).join('') : PCG.states.empty('Inbox zero.');
+  // =================================================================
+  // Action Queue v2 — segmented by what it actually wants from you.
+  // Pulls together tasks (from show-center sessionStorage), risks,
+  // client-blocked approvals, and upcoming deadlines across my shows
+  // so a PM opens this in the morning and sees exactly what moves.
+  // =================================================================
+  const q = PCG.api.getActionQueue();
+
+  // Overdue tasks from per-show sessionStorage
+  const overdueTasks = [];
+  mine.forEach(p => {
+    const ts = JSON.parse(sessionStorage.getItem(`pcg_tasks_${p.code}`) || 'null');
+    if(!ts) return;
+    ts.forEach(t => {
+      if(!t.done && t.due && new Date(t.due) < PCG.today){
+        overdueTasks.push({ title: t.title, code: p.code, due: t.due, owner: t.owner });
+      }
+    });
+  });
+
+  // Unresolved risks across my shows
+  const unresolvedRisks = mine.flatMap(p => (p.risks || [])
+    .filter(r => r.status === 'open')
+    .map(r => ({ ...r, code: p.code })))
+    .sort((a,b)=> (a.sev==='high'?0:1) - (b.sev==='high'?0:1));
+
+  // Waiting on client — pending approvals initiated by me
+  const waitingClient = mine.flatMap(p => (p.approvals || [])
+    .filter(a => a.status === 'pending')
+    .map(a => ({ ...a, code: p.code })));
+
+  // Upcoming deadlines in the next 7 days
+  const sevenDays = Date.now() + 7 * 86400000;
+  const deadlines = mine.flatMap(p => {
+    const out = [];
+    const d = p.dates || {};
+    [['loadIn','Load-In'],['showStart','Show Start'],['loadOut','Load-Out'],['ret','Gear Return']].forEach(([k, lbl]) => {
+      if(d[k] && new Date(d[k]).getTime() <= sevenDays && new Date(d[k]) >= PCG.today){
+        out.push({ code: p.code, label: lbl, when: d[k] });
+      }
+    });
+    return out;
+  }).sort((a,b)=> new Date(a.when) - new Date(b.when));
+
+  function segment(label, count, rows, tone){
+    return `
+      <div style="margin-bottom: var(--sp-3);">
+        <div class="eyebrow" style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+          ${label}
+          <span class="pill plain ${tone}" style="font-size:9px;">${count}</span>
+        </div>
+        ${rows || `<div class="muted" style="font-size: 11.5px; padding: 2px 0;">Nothing here. ✓</div>`}
+      </div>`;
+  }
+
+  document.getElementById('actionQ').innerHTML =
+    segment('⚠ Overdue tasks', overdueTasks.length,
+      overdueTasks.slice(0,4).map(t => `
+        <div class="attn-item red" style="margin-bottom: 4px;">
+          <div>
+            <div class="ttl" style="font-size:12.5px;">${PCG.escapeHtml(t.title)}</div>
+            <div class="meta"><span class="mono">${t.code}</span> · Due ${PCG.fmtShort(t.due)}</div>
+          </div>
+          <div class="act"><a class="btn sm ghost" href="show-center.html?project=${t.code}#sec-tasks">Open</a></div>
+        </div>`).join(''), 'red')
+    +
+    segment('● Unresolved risks', unresolvedRisks.length,
+      unresolvedRisks.slice(0,4).map(r => `
+        <div class="attn-item ${r.sev==='high'?'red':''}" style="margin-bottom: 4px;">
+          <div>
+            <div class="ttl" style="font-size:12.5px;">${PCG.escapeHtml(r.title)}</div>
+            <div class="meta"><span class="mono">${r.code}</span> · ${(r.sev||'').toUpperCase()} · ${PCG.escapeHtml(PCG.findPerson(r.owner)?.name || r.owner || '')}</div>
+          </div>
+          <div class="act"><a class="btn sm ghost" href="show-center.html?project=${r.code}#sec-risks">Open</a></div>
+        </div>`).join(''), 'amber')
+    +
+    segment('⏳ Waiting on client', waitingClient.length,
+      waitingClient.slice(0,4).map(a => `
+        <div class="attn-item" style="margin-bottom: 4px;">
+          <div>
+            <div class="ttl" style="font-size:12.5px;">${PCG.escapeHtml(a.title)}</div>
+            <div class="meta"><span class="mono">${a.code}</span> · Waiting since ${PCG.fmtShort(a.since)}</div>
+          </div>
+          <div class="act"><a class="btn sm ghost" href="show-center.html?project=${a.code}">Open</a></div>
+        </div>`).join(''), 'blue')
+    +
+    segment('📅 Next 7 days', deadlines.length,
+      deadlines.slice(0,5).map(d => `
+        <div class="attn-item" style="margin-bottom: 4px;">
+          <div>
+            <div class="ttl" style="font-size:12.5px;">${PCG.escapeHtml(d.label)}</div>
+            <div class="meta"><span class="mono">${d.code}</span> · ${PCG.fmtShort(d.when)}</div>
+          </div>
+          <div class="act"><a class="btn sm ghost" href="show-center.html?project=${d.code}#sec-timeline">Open</a></div>
+        </div>`).join(''), 'blue')
+    +
+    (q.length ? `
+      <div style="margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px dashed var(--border);">
+        <div class="eyebrow" style="margin-bottom:6px;">◎ Role-based queue</div>
+        ${q.slice(0,5).map(item => `
+          <div class="attn-item ${item.priority==='high'?'red':''}" style="margin-bottom:4px;">
+            <div><div class="ttl" style="font-size:12.5px;">${PCG.escapeHtml(item.title)}</div>
+            <div class="meta"><span class="mono">${item.proj}</span> · ${item.stale}</div></div>
+            <div class="act"><a class="btn sm ghost" href="playbook.html?project=${item.proj}">Open</a></div>
+          </div>`).join('')}
+      </div>` : '');
 
   // SOT cheat sheet (educational callout — drives trust per user's add)
   const sot = [

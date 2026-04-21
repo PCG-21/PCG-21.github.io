@@ -180,6 +180,152 @@
   .fd-row { display: grid; grid-template-columns: 100px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
   .fd-row:last-child { border-bottom: 0; }
   .fd-when { font-family: var(--font-mono); color: var(--text-tertiary); font-size: 11px; }
+
+  /* -------- Show Health (the big signal at the top) -------- */
+  .health-card {
+    display: grid; grid-template-columns: 170px 1fr; gap: 28px;
+    padding: 22px 26px;
+    border-radius: var(--r-md);
+    position: relative; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .health-card.green  { background: linear-gradient(135deg, rgba(61,220,132,0.10), rgba(10,18,32,0) 70%), var(--surface-1); border-color: rgba(61,220,132,0.3); }
+  .health-card.amber  { background: linear-gradient(135deg, rgba(245,176,65,0.12), rgba(10,18,32,0) 70%), var(--surface-1); border-color: rgba(245,176,65,0.3); }
+  .health-card.red    { background: linear-gradient(135deg, rgba(231,76,60,0.12), rgba(10,18,32,0) 70%), var(--surface-1); border-color: rgba(231,76,60,0.3); }
+  .health-score {
+    font-family: var(--font-display); font-size: 64px; font-weight: 700; line-height: 1;
+    background: var(--grad-spectrum-text); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .health-state {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-tertiary); margin-top: 6px;
+  }
+  .health-state b { font-size: 14px; letter-spacing: 0.06em; margin-left: 4px; }
+  .health-state.green  b { color: var(--status-green); }
+  .health-state.amber  b { color: var(--status-amber); }
+  .health-state.red    b { color: var(--status-red); }
+  .health-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-content: center; }
+  .health-metric {
+    padding: 10px 12px; border-radius: var(--r-sm);
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .health-metric .lbl { font-size: 10px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .health-metric .val { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+  .health-metric .sub { font-size: 11px; color: var(--text-secondary); }
+  .health-metric.bad .val  { color: var(--status-red); }
+  .health-metric.warn .val { color: var(--status-amber); }
+  .health-metric.good .val { color: var(--status-green); }
+  .health-signals { grid-column: 1/-1; display:flex; gap:8px; flex-wrap:wrap; margin-top: 8px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .health-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: var(--r-pill);
+    font-size: 11.5px; font-family: var(--font-mono);
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .health-chip.bad  { color: var(--status-red);   border-color: rgba(231,76,60,0.4); background: rgba(231,76,60,0.08); }
+  .health-chip.warn { color: var(--status-amber); border-color: rgba(245,176,65,0.4); background: rgba(245,176,65,0.08); }
+  .health-chip.good { color: var(--status-green); border-color: rgba(61,220,132,0.4); background: rgba(61,220,132,0.08); }
+
+  /* -------- Daily attention strip -------- */
+  .daily-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .daily-card {
+    padding: 12px 14px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--surface-1);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .daily-card .head {
+    font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-tertiary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .daily-card.attn  { border-left: 3px solid var(--pcg-bright-blue); }
+  .daily-card.over  { border-left: 3px solid var(--status-red); }
+  .daily-card.block { border-left: 3px solid var(--status-amber); }
+  .daily-card .big { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text-primary); }
+  .daily-card ul { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); max-height: 70px; overflow: hidden; }
+  .daily-card li { padding: 2px 0; border-bottom: 1px dashed var(--border); }
+  .daily-card li:last-child { border-bottom: 0; }
+
+  /* -------- Chat: mark-as-decision -------- */
+  .chat-msg:hover .chat-actions { opacity: 1; }
+  .chat-actions { opacity: 0; display:flex; gap: 4px; margin-top: 4px; transition: opacity var(--t-fast); }
+  .chat-actions button {
+    font-size: 10px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: var(--r-pill); border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-secondary); cursor: pointer;
+  }
+  .chat-actions button:hover { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+  .chat-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+  .chat-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-family: var(--font-display); letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill);
+    font-weight: 700;
+  }
+  .chat-tag.decision { background: rgba(61,220,132,0.14);  color: var(--status-green); }
+  .chat-tag.issue    { background: rgba(231,76,60,0.14);   color: var(--status-red); }
+  .chat-tag.action   { background: rgba(1,153,253,0.14);   color: var(--pcg-bright-blue); }
+
+  /* -------- Scope item tags -------- */
+  .scope-col li .s-tags { display: block; margin-top: 2px; }
+  .s-tag {
+    display: inline-block; font-family: var(--font-display);
+    font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: var(--r-pill); margin-right: 4px;
+    font-weight: 700;
+  }
+  .s-tag.new-co  { background: rgba(245,176,65,0.18); color: var(--status-amber); }
+  .s-tag.added   { background: rgba(1,153,253,0.18);  color: var(--pcg-bright-blue); }
+  .s-tag.client  { background: rgba(149,100,216,0.18); color: var(--pcg-spotlight-purple); }
+  .s-tag.locked  { background: rgba(61,220,132,0.18); color: var(--status-green); }
+
+  /* -------- Creative pipeline -------- */
+  .cp-pipe { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+  .cp-pipe-row {
+    display: grid; grid-template-columns: 1fr 120px 130px 1fr; gap: 14px;
+    padding: 10px 14px; align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+  }
+  .cp-pipe-row:last-child { border-bottom: 0; }
+  .cp-pipe-row:hover { background: var(--surface-2); }
+  .cp-stages { display: flex; gap: 2px; }
+  .cp-stage {
+    flex: 1; height: 6px; background: var(--surface-3); border-radius: 2px;
+  }
+  .cp-stage.on { background: var(--pcg-bright-blue); }
+  .cp-stage.done { background: var(--status-green); }
+  .cp-approval {
+    font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: var(--r-pill); text-align: center;
+  }
+  .cp-approval.pend { background: rgba(245,176,65,0.15); color: var(--status-amber); }
+  .cp-approval.appr { background: rgba(61,220,132,0.15); color: var(--status-green); }
+  .cp-approval.none { background: var(--surface-2); color: var(--text-tertiary); }
+
+  /* -------- Upgraded domain cards -------- */
+  .dom-card .dom-owner { font-size: var(--fs-sm); color: var(--text-primary); font-weight: 500; margin-bottom: 8px; }
+  .dom-attr { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .dom-attr .lbl { font-size: 10px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 3px; }
+  .dom-attr ul { margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); }
+  .dom-attr li { padding: 2px 0; display: flex; gap: 6px; }
+  .dom-attr li::before { content: "•"; color: var(--text-tertiary); flex: none; }
+  .dom-attr.risk li::before { content: "⚠"; color: var(--status-amber); }
+
+  /* -------- Cross-show intelligence -------- */
+  .xshow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); }
+  .xshow-card {
+    padding: 14px; border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--surface-1);
+    border-left: 3px solid var(--pcg-spotlight-purple);
+  }
+  .xshow-card.warn { border-left-color: var(--status-amber); }
+  .xshow-card.info { border-left-color: var(--pcg-bright-blue); }
+  .xshow-card h4 { margin: 0 0 4px; font-size: var(--fs-sm); display: flex; align-items: center; gap: 6px; }
+  .xshow-card .sub { font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 6px; }
+  .xshow-card .body { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+  .xshow-card a.go { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--pcg-bright-blue); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -200,6 +346,20 @@
         <div class="scc-tabs" id="scc-tabs"></div>
 
         <!-- SECTIONS (all rendered — tabs scroll-jump) -->
+
+        <!-- SHOW HEALTH — the single biggest "is this show OK?" signal. -->
+        <section class="scc-section" id="sec-health">
+          <div id="health"></div>
+        </section>
+
+        <!-- DAILY ATTENTION — What needs you now / overdue / blocked. -->
+        <section class="scc-section" id="sec-daily">
+          <div class="card">
+            <div class="card-header"><div class="title">Today on this show</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Daily work experience · replaces the spreadsheet</span></div>
+            <div class="card-body"><div class="daily-strip" id="daily-strip"></div></div>
+          </div>
+        </section>
+
         <section class="scc-section" id="sec-pulse">
           <div class="card">
             <div class="card-header"><div class="title">Pulse · Today on this show</div></div>
@@ -315,6 +475,13 @@
           </div>
         </section>
 
+        <section class="scc-section" id="sec-xshow">
+          <div class="card">
+            <div class="card-header"><div class="title">🔭 Cross-Show Intelligence</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Signals from other shows in the portfolio</span></div>
+            <div class="card-body"><div class="xshow-grid" id="xshow"></div></div>
+          </div>
+        </section>
+
         <section class="scc-section" id="sec-activity">
           <div class="card">
             <div class="card-header"><div class="title">⎈ Activity Feed</div></div>
@@ -381,7 +548,8 @@
 
   // -------- TABS --------
   const tabs = [
-    ['pulse',    'Pulse'],
+    ['health',   '❤ Health'],
+    ['daily',    '◎ Today'],
     ['comm',     '💬 Comms'],
     ['tasks',    '☑ Tasks'],
     ['scope',    '🎛 Scope'],
@@ -395,6 +563,7 @@
     ['preload',  '📸 Pre-Load'],
     ['domain',   '🧭 Domains'],
     ['creative', '🎨 Creative'],
+    ['xshow',    '🔭 Cross-Show'],
     ['activity', '⎈ Activity'],
   ];
   document.getElementById('scc-tabs').innerHTML = tabs.map(([id, lbl], i) =>
@@ -469,23 +638,72 @@
       el.addEventListener('click', ()=>{ activeChannel = el.dataset.ch; renderChannels(); renderThread(); document.getElementById('chat-input').placeholder = `Message #${activeChannel}…`; });
     });
   }
+  // Chat → Decision / Issue / Action system.
+  // Marks persist in sessionStorage under the chat key and echo into
+  // the Production Log (Decision), Risk Register (Issue), and Tasks
+  // (Action) when the user marks a message. This makes chat structurally
+  // meaningful, not just a side conversation.
+  const MARK_KEY = `pcg_chat_marks_${proj.code}`;
+  const markEchoes = JSON.parse(sessionStorage.getItem(MARK_KEY) || '{"decision":[],"issue":[],"action":[]}');
   function renderThread(){
     const msgs = (chat[activeChannel]||[]);
     let last = '';
-    document.getElementById('chat-thread').innerHTML = msgs.map(m=>{
+    document.getElementById('chat-thread').innerHTML = msgs.map((m, idx)=>{
       const d = new Date(m.t); const day = d.toDateString();
       const dayMark = day !== last ? `<div class="chat-day">${day}</div>` : '';
       last = day;
       const initials = m.who.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      const msgKey = `${activeChannel}:${idx}`;
+      const currentTags = Object.keys(markEchoes).filter(k => (markEchoes[k]||[]).some(e => e.key === msgKey));
+      const tagPills = currentTags.length
+        ? `<div class="chat-tags">${currentTags.map(t => `<span class="chat-tag ${t}">● ${t}</span>`).join('')}</div>`
+        : '';
       return `${dayMark}
         <div class="chat-msg">
           <div class="chat-avatar">${initials}</div>
           <div>
             <div class="chat-head"><span class="who">${PCG.escapeHtml(m.who)}</span><span class="ts">${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span></div>
             <div class="chat-body">${PCG.escapeHtml(m.body)}</div>
+            ${tagPills}
+            <div class="chat-actions" data-msgkey="${msgKey}">
+              <button data-kind="decision" title="Logs this message as a formal decision in the Production Log">● Mark Decision</button>
+              <button data-kind="issue"    title="Escalates this message to the Risk Register">● Mark Issue</button>
+              <button data-kind="action"   title="Turns this message into a task">● Mark Action</button>
+            </div>
           </div>
         </div>`;
     }).join('') || '<div class="empty">No messages yet.</div>';
+
+    // Wire mark buttons
+    document.querySelectorAll('.chat-actions button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const kind = btn.dataset.kind;
+        const msgKey = btn.parentElement.dataset.msgkey;
+        const [ch, i] = msgKey.split(':');
+        const src = (chat[ch]||[])[+i];
+        if(!src) return;
+        // Toggle: remove if already marked, else add.
+        const bucket = (markEchoes[kind] ||= []);
+        const exists = bucket.findIndex(e => e.key === msgKey);
+        if(exists >= 0){
+          bucket.splice(exists, 1);
+        } else {
+          bucket.push({
+            key: msgKey,
+            who: src.who,
+            body: src.body,
+            t:   src.t,
+            channel: ch,
+            markedBy: PCG.user?.name || 'You',
+            markedAt: new Date().toISOString()
+          });
+        }
+        sessionStorage.setItem(MARK_KEY, JSON.stringify(markEchoes));
+        renderThread();
+        renderEchoes(); // update prod log / risks / tasks from marks
+      });
+    });
   }
   renderChannels(); renderThread();
   document.getElementById('chat-send').addEventListener('click', ()=>{
@@ -550,20 +768,66 @@
   }
   renderTasks();
 
-  // -------- SCOPE --------
+  // -------- SCOPE (with CO awareness — Added after quote / Needs CO / Client change) --------
+  // Each scope item carries optional tags that connect operations to
+  // commercial reality. `locked` = in approved quote; `added` = added
+  // after initial quote (operational reality, not yet billed); `co` =
+  // needs a change order; `client` = client-driven change (for context).
   const scopeDomains = [
-    { name:'Video',     items:['Barco E2 4K screen management','4x HD camera package (2x Fujinon long lens)','LED header + split fabric traveler','ProPresenter primary + Qlab for playback'] },
-    { name:'Audio',     items:['d&b J-Series line array (4x flown, 24x J8, 12x JSub)','Yamaha CL5 FOH + stage rack','Axient Digital wireless — 16ch upgraded','DJ patch for cocktail reception'] },
-    { name:'Lighting',  items:['ETC Ion XE at FOH','20x Mac Auras, 12x Source Four LED','Floor package for Awards night','Ambient wash for cocktail'] },
-    { name:'Rigging',   items:['4 dead-hang motors · J-Series arrays','LED header fly frame (1,200 lbs)','Truss crossover w/ spot truss','IATSE 720 rigger call'] },
-    { name:'Power',     items:['200A tie-in · FOH dock','100A spur · amp world','100A spur · LED processor','Distro 60A/50A for ready room (TBD)'] },
-    { name:'Staging',   items:['Marquee stage set (32\' × 24\', 48" deck)','Thrust w/ stairs SR','Podium + confidence monitors','Ready room platforms (Awards night)'] },
-    { name:'Creative',  items:['Opener package (client-branded)','Sponsor loop (pending client files)','Award show package (approved)','Recovery room graphics (TBD)'] },
+    { name:'Video', items:[
+      { t:'Barco E2 4K screen management', tags:['locked'] },
+      { t:'4x HD camera package (2x Fujinon long lens)', tags:['locked'] },
+      { t:'+ PEEK-A-BOO Sony robo package', tags:['added','co'], note:'Added 4/13 · ~$6,400' },
+      { t:'LED header + split fabric traveler', tags:['locked'] },
+      { t:'ProPresenter primary + Qlab for playback', tags:['locked'] }
+    ]},
+    { name:'Audio', items:[
+      { t:'d&b J-Series line array (4x flown, 24x J8, 12x JSub)', tags:['locked'] },
+      { t:'Yamaha CL5 FOH + stage rack', tags:['locked'] },
+      { t:'Axient Digital wireless · 16ch (upgraded from 12ch)', tags:['client','co'], note:'Upgrade request 4/13 · Ryan Hoffman' },
+      { t:'DJ patch for cocktail reception', tags:['added'] }
+    ]},
+    { name:'Lighting', items:[
+      { t:'ETC Ion XE at FOH', tags:['locked'] },
+      { t:'20x Mac Auras, 12x Source Four LED', tags:['locked'] },
+      { t:'Floor package for Awards night', tags:['locked'] },
+      { t:'Ambient wash for cocktail', tags:['added'] }
+    ]},
+    { name:'Rigging', items:[
+      { t:'4 dead-hang motors · J-Series arrays', tags:['locked'] },
+      { t:'LED header fly frame (1,200 lbs)', tags:['locked'] },
+      { t:'Truss crossover w/ spot truss', tags:['locked'] },
+      { t:'IATSE 720 rigger call', tags:['locked'] }
+    ]},
+    { name:'Power', items:[
+      { t:'200A tie-in · FOH dock', tags:['locked'] },
+      { t:'100A spur · amp world', tags:['locked'] },
+      { t:'100A spur · LED processor', tags:['locked'] },
+      { t:'Distro 60A/50A for ready room', tags:['client','co'], note:'Ready room CO pending · spec TBD' }
+    ]},
+    { name:'Staging', items:[
+      { t:'Marquee stage set (32\' × 24\', 48" deck)', tags:['locked'] },
+      { t:'Thrust w/ stairs SR', tags:['locked'] },
+      { t:'Podium + confidence monitors', tags:['locked'] },
+      { t:'Awards ready room platforms', tags:['client','co'], note:'Change order #3 pending' }
+    ]},
+    { name:'Creative', items:[
+      { t:'Opener package (client-branded)', tags:['locked'] },
+      { t:'Sponsor loop (in build)', tags:['client'], note:'Client files received 4/15' },
+      { t:'Award show package', tags:['locked'] },
+      { t:'Recovery room graphics', tags:['client','co'], note:'Awaiting client direction' }
+    ]}
   ];
+  const tagCopy = { locked:'In Quote', added:'Added after quote', co:'Needs CO', client:'Client change' };
   document.getElementById('scope').innerHTML = scopeDomains.map(d => `
     <div class="scope-col">
       <h4>${d.name}</h4>
-      <ul>${d.items.map(i=>`<li>${PCG.escapeHtml(i)}</li>`).join('')}</ul>
+      <ul>${d.items.map(i=>`
+        <li>
+          ${PCG.escapeHtml(i.t)}
+          ${i.tags && i.tags.length ? `<span class="s-tags">${i.tags.map(tg=>`<span class="s-tag ${tg==='co'?'new-co':tg}">${tagCopy[tg]||tg}</span>`).join('')}</span>` : ''}
+          ${i.note ? `<span class="muted" style="display:block; font-size:10.5px; margin-top:2px;">${PCG.escapeHtml(i.note)}</span>` : ''}
+        </li>`).join('')}</ul>
     </div>`).join('');
 
   // -------- TIMELINE --------
@@ -700,43 +964,128 @@
       <strong>Notes:</strong> All d&b J-Series visually inspected. 1x JSub (s/n #A-2240) showed minor cabinet scuff — documented. All motors tested to 125% load; cert sheet attached to rigging packet.
     </div>`;
 
-  // -------- DOMAINS --------
+  // -------- DOMAINS (upgraded · owner + constraints + key requirements + risks) --------
   const domains = [
-    { name:'Rigging',   ico:'⛓', owner:'p.ctaylor', note:'Plot signed off. Motors certified. IATSE call confirmed.' },
-    { name:'Power',     ico:'⚡', owner:'p.svance',  note:'One-line delivered to venue. Ready room spec outstanding.' },
-    { name:'Logistics', ico:'🚚', owner:'p.mduda',   note:'2 trucks on dock 2 at 7am. Return logistics scheduled 4/20.' },
-    { name:'Creative',  ico:'🎨', owner:'p.koliver', note:'Opener + Awards approved. Sponsor loop + Ready room graphics in flight.' },
+    { name:'Rigging', ico:'⛓', owner:'p.ctaylor', status:'Green',
+      note:'Plot signed off. Motors certified. IATSE 720 call confirmed for 6am rig + 8am climb.',
+      constraints:[
+        'No dynamic rigging after 10 PM (venue contract)',
+        'Max beam capacity 4,500 lb on ballroom grid',
+        'Rigger cert review by venue safety hands before first climb'
+      ],
+      reqs:[
+        '4× 1-ton motors for J-Series arrays',
+        '2× ½-ton motors for LED header',
+        'Dead-hang centerline aligned to ballroom plot within 4"'
+      ],
+      risks:[
+        { t:'Motor cert review scheduled PM of load-in — day-of delay risk', sev:'medium' }
+      ]
+    },
+    { name:'Power', ico:'⚡', owner:'p.svance', status:'Yellow',
+      note:'Main one-line delivered to venue. Ready room spec outstanding — walkthrough Wed PM.',
+      constraints:[
+        'Venue electrician required for tie-in · 24h notice',
+        'House power on separate feed — do not share',
+        'No generator backup on-site'
+      ],
+      reqs:[
+        '200A main service at FOH dock panel',
+        '100A spurs: amp world + LED processor',
+        '60A/50A distro for Awards ready room (spec TBD)'
+      ],
+      risks:[
+        { t:'Ready room power spec unknown — blocking distro order', sev:'medium' }
+      ]
+    },
+    { name:'Logistics', ico:'🚚', owner:'p.mduda', status:'Green',
+      note:'2 trucks on dock 2 at 7am. Pickup Apr 10 · return logistics scheduled 4/20.',
+      constraints:[
+        'Dock 4 blocked 4/10 AM by catering — shift to dock 2',
+        'Freight elevator: 10\'×6\', 5,000 lb limit',
+        'No pull-up lane activity after 7 PM'
+      ],
+      reqs:[
+        '2× 48\' trucks, dock 2, 7:00 AM arrival',
+        'Return manifest signed at warehouse 4/20',
+        'Dock access keycard after 10 PM (day-of)'
+      ],
+      risks:[]
+    },
+    { name:'Creative', ico:'🎨', owner:'p.koliver', status:'Yellow',
+      note:'Opener + Awards approved. Sponsor loop in build. Ready room graphics waiting on client direction.',
+      constraints:[
+        'Client approval required before playback load',
+        'All graphics delivered 48h before first rehearsal',
+        'QLab only for primary playback'
+      ],
+      reqs:[
+        'Opener package · Approved',
+        'Sponsor loop · 25 assets received 4/15',
+        'Lower-third templates · locked'
+      ],
+      risks:[
+        { t:'Ready room graphics not yet briefed by client', sev:'medium' }
+      ]
+    },
   ];
   document.getElementById('domains').innerHTML = domains.map(d => {
     const p = PCG.findPerson(d.owner);
+    const statusTone = d.status==='Red'?'red':(d.status==='Yellow'?'amber':'green');
     return `<div class="dom-card">
-      <h4>${d.ico} ${d.name}</h4>
+      <h4>${d.ico} ${d.name} <span class="pill plain ${statusTone}" style="margin-left:auto; font-size:9px;">${d.status.toUpperCase()}</span></h4>
       <div class="dom-owner">${p ? PCG.escapeHtml(p.name) : d.owner}</div>
       <div class="dom-note">${PCG.escapeHtml(d.note)}</div>
+      <div class="dom-attr">
+        <div class="lbl">Constraints</div>
+        <ul>${d.constraints.map(c=>`<li>${PCG.escapeHtml(c)}</li>`).join('')}</ul>
+      </div>
+      <div class="dom-attr">
+        <div class="lbl">Key requirements</div>
+        <ul>${d.reqs.map(r=>`<li>${PCG.escapeHtml(r)}</li>`).join('')}</ul>
+      </div>
+      ${d.risks.length ? `
+        <div class="dom-attr risk">
+          <div class="lbl">Risks</div>
+          <ul>${d.risks.map(r=>`<li>${PCG.escapeHtml(r.t)}</li>`).join('')}</ul>
+        </div>` : ''}
     </div>`;
   }).join('');
 
-  // -------- CREATIVE --------
+  // -------- CREATIVE pipeline (stages: Not started → In design → In build → Approved) --------
+  const creativeStages = ['Not started', 'In design', 'In build', 'Approved'];
   const creativeRows = [
-    { piece:'Opener package',         status:'Approved',   ts:'2026-04-10', note:'Final render delivered. In master playback.' },
-    { piece:'Award show graphics',    status:'Approved',   ts:'2026-04-12', note:'Client sign-off received. Loaded to QLab.' },
-    { piece:'Sponsor loop',           status:'In Progress',ts:'2026-04-15', note:'Files received today — 25 sponsor assets. Assembly in progress.' },
-    { piece:'Ready room graphics',    status:'Pending',    ts:'—',          note:'Awaiting client direction on recovery room branding.' },
-    { piece:'Lower-third templates',  status:'Approved',   ts:'2026-04-09', note:'Template locked; name plates generated from rundown.' },
+    { piece:'Opener package',        stage:3, approval:'appr', ts:'2026-04-10', note:'Final render delivered. In master playback.' },
+    { piece:'Award show graphics',   stage:3, approval:'appr', ts:'2026-04-12', note:'Client sign-off received. Loaded to QLab.' },
+    { piece:'Lower-third templates', stage:3, approval:'appr', ts:'2026-04-09', note:'Template locked; name plates generated from rundown.' },
+    { piece:'Sponsor loop',          stage:2, approval:'pend', ts:'2026-04-15', note:'Files received 4/15 — 25 sponsor assets · assembly in progress.' },
+    { piece:'Ready room graphics',   stage:0, approval:'none', ts:'—',          note:'Awaiting client direction on recovery room branding.' },
+    { piece:'Speaker name plates',   stage:1, approval:'pend', ts:'2026-04-14', note:'Designing from current rundown · will lock once RSVPs final.' },
   ];
   document.getElementById('creative').innerHTML = `
-    <table class="pcg-table">
-      <thead><tr><th>Piece</th><th>Status</th><th>Updated</th><th>Notes</th></tr></thead>
-      <tbody>
-        ${creativeRows.map(r => `
-          <tr>
-            <td><strong>${PCG.escapeHtml(r.piece)}</strong></td>
-            <td><span class="pill plain ${r.status==='Approved'?'green':(r.status==='Pending'?'gray':'blue')}">${r.status.toUpperCase()}</span></td>
-            <td class="mono">${PCG.fmtShort(r.ts) || '—'}</td>
-            <td>${PCG.escapeHtml(r.note)}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
+    <div class="cp-pipe">
+      <div class="cp-pipe-row" style="background: var(--surface-2); font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary);">
+        <div>Piece</div>
+        <div>Stage</div>
+        <div>Approval</div>
+        <div>Notes</div>
+      </div>
+      ${creativeRows.map(r => {
+        const stages = creativeStages.map((s, idx) => {
+          const cls = idx < r.stage ? 'done' : (idx === r.stage ? 'on' : '');
+          return `<div class="cp-stage ${cls}" title="${s}"></div>`;
+        }).join('');
+        const stageLabel = creativeStages[r.stage];
+        const apprLabel = r.approval==='appr'?'Approved':(r.approval==='pend'?'Pending':'—');
+        return `
+          <div class="cp-pipe-row">
+            <div><strong>${PCG.escapeHtml(r.piece)}</strong><div class="muted" style="font-size:11px;">${stageLabel} · updated ${PCG.fmtShort(r.ts) || '—'}</div></div>
+            <div class="cp-stages">${stages}</div>
+            <div class="cp-approval ${r.approval}">${apprLabel}</div>
+            <div style="font-size: 12px; color: var(--text-secondary);">${PCG.escapeHtml(r.note)}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
 
   // -------- ACTIVITY --------
   const activity = (proj.activity || []).concat([
@@ -747,6 +1096,258 @@
       <div class="fd-when">${PCG.ago(a.ts)}</div>
       <div><span style="color:var(--pcg-bright-blue);">${PCG.escapeHtml(a.actor)}</span> — ${PCG.escapeHtml(a.text)}</div>
     </div>`).join('') : '<div class="empty">No activity yet.</div>';
+
+  // =================================================================
+  // SHOW HEALTH — composite score from tasks + risks + scope gaps.
+  // Drives a single green/yellow/red state and surfaces the specific
+  // signals behind the number so PMs know exactly why it's yellow.
+  // =================================================================
+  function renderHealth(){
+    const openRisks = (proj.risks || []).filter(r => r.status === 'open');
+    const highRisks = openRisks.filter(r => r.sev === 'high');
+    const overdueTasks = tasks.filter(t => !t.done && t.due && new Date(t.due) < PCG.today);
+    const pendingTasks = tasks.filter(t => !t.done);
+    const scopeGaps = scopeDomains.flatMap(d => d.items.filter(i => (i.tags||[]).includes('co')));
+    const pendingApprovals = (proj.approvals || []).filter(a => a.status === 'pending');
+    const issueMarks = (markEchoes.issue || []).length;
+
+    // Score: start at 100, subtract weighted penalties.
+    let score = 100;
+    score -= highRisks.length * 20;
+    score -= (openRisks.length - highRisks.length) * 8;
+    score -= overdueTasks.length * 6;
+    score -= scopeGaps.length * 5;
+    score -= pendingApprovals.length * 4;
+    score -= issueMarks * 3;
+    score = Math.max(5, Math.min(100, score));
+    const tone = score >= 80 ? 'green' : score >= 55 ? 'amber' : 'red';
+    const state = score >= 80 ? 'GREEN · ON TRACK' : score >= 55 ? 'YELLOW · WATCH' : 'RED · NEEDS ACTION';
+
+    const signals = [];
+    if(highRisks.length)       signals.push({ t:`${highRisks.length} high risk${highRisks.length===1?'':'s'} open`, cls:'bad' });
+    if(openRisks.length - highRisks.length > 0) signals.push({ t:`${openRisks.length - highRisks.length} other open risk${openRisks.length - highRisks.length===1?'':'s'}`, cls:'warn' });
+    if(overdueTasks.length)    signals.push({ t:`${overdueTasks.length} task${overdueTasks.length===1?'':'s'} overdue`, cls:'bad' });
+    if(scopeGaps.length)       signals.push({ t:`${scopeGaps.length} scope item${scopeGaps.length===1?'':'s'} need CO`, cls:'warn' });
+    if(pendingApprovals.length)signals.push({ t:`${pendingApprovals.length} approval${pendingApprovals.length===1?'':'s'} pending`, cls:'warn' });
+    if(issueMarks)             signals.push({ t:`${issueMarks} chat-flagged issue${issueMarks===1?'':'s'}`, cls:'warn' });
+    if(!signals.length)        signals.push({ t:'No blockers', cls:'good' });
+
+    document.getElementById('health').innerHTML = `
+      <div class="health-card ${tone}">
+        <div>
+          <div class="health-score">${score}</div>
+          <div class="health-state ${tone}">Show Health<b>${state}</b></div>
+        </div>
+        <div class="health-metrics">
+          <div class="health-metric ${openRisks.length?'bad':'good'}">
+            <div class="lbl">Open Risks</div>
+            <div class="val">${openRisks.length}</div>
+            <div class="sub">${highRisks.length} high</div>
+          </div>
+          <div class="health-metric ${overdueTasks.length?'bad':(pendingTasks.length>5?'warn':'good')}">
+            <div class="lbl">Tasks</div>
+            <div class="val">${overdueTasks.length}</div>
+            <div class="sub">${overdueTasks.length?'overdue':`${pendingTasks.length} open`}</div>
+          </div>
+          <div class="health-metric ${scopeGaps.length?'warn':'good'}">
+            <div class="lbl">Scope Gaps</div>
+            <div class="val">${scopeGaps.length}</div>
+            <div class="sub">need CO</div>
+          </div>
+          <div class="health-metric ${pendingApprovals.length?'warn':'good'}">
+            <div class="lbl">Approvals</div>
+            <div class="val">${pendingApprovals.length}</div>
+            <div class="sub">pending</div>
+          </div>
+          <div class="health-signals">
+            ${signals.map(s=>`<span class="health-chip ${s.cls}">${PCG.escapeHtml(s.t)}</span>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // =================================================================
+  // DAILY ATTENTION — "What replaces the spreadsheet" strip.
+  // Three cards: Attention / Overdue / Blocked. Each is a live pull
+  // from existing state (tasks + risks + approvals + chat-marked issues).
+  // =================================================================
+  function renderDaily(){
+    const overdueTasks = tasks.filter(t => !t.done && t.due && new Date(t.due) < PCG.today);
+    const attention = (proj.attention || []).slice(0, 5);
+    const blocked = [
+      ...((proj.approvals || []).filter(a => a.status === 'pending').map(a => ({ t: a.title, meta: 'Waiting on ' + (PCG.findPerson(a.approver)?.name || a.approver) }))),
+      ...((proj.risks || []).filter(r => r.status === 'open' && r.sev === 'high').map(r => ({ t: r.title, meta: 'High risk · ' + (PCG.findPerson(r.owner)?.name || r.owner) })))
+    ].slice(0, 5);
+
+    document.getElementById('daily-strip').innerHTML = `
+      <div class="daily-card attn">
+        <div class="head">◎ What needs attention</div>
+        <div class="big">${attention.length}</div>
+        <ul>${attention.map(a => `<li>${PCG.escapeHtml(a.title)}</li>`).join('') || '<li class="muted">All clear.</li>'}</ul>
+      </div>
+      <div class="daily-card over">
+        <div class="head">⚠ Overdue</div>
+        <div class="big" style="color:${overdueTasks.length?'var(--status-red)':'var(--text-primary)'};">${overdueTasks.length}</div>
+        <ul>${overdueTasks.slice(0,4).map(t => `<li>${PCG.escapeHtml(t.title)} <span class="muted" style="font-size:10px;">· ${PCG.fmtShort(t.due)}</span></li>`).join('') || '<li class="muted">Nothing overdue.</li>'}</ul>
+      </div>
+      <div class="daily-card block">
+        <div class="head">⏸ Blocked / waiting</div>
+        <div class="big" style="color:${blocked.length?'var(--status-amber)':'var(--text-primary)'};">${blocked.length}</div>
+        <ul>${blocked.map(b => `<li>${PCG.escapeHtml(b.t)} <span class="muted" style="font-size:10px;">· ${PCG.escapeHtml(b.meta)}</span></li>`).join('') || '<li class="muted">Nothing waiting.</li>'}</ul>
+      </div>
+    `;
+  }
+
+  // =================================================================
+  // CROSS-SHOW INTELLIGENCE — pulls signals from other projects in
+  // the portfolio to surface venue reuse, crew conflicts, and prior
+  // show notes that would otherwise stay tribal.
+  // =================================================================
+  function renderXShow(){
+    const all = PCG.api.getProjects() || [];
+    const others = all.filter(p => p.code !== proj.code);
+    // Same venue — recent or upcoming
+    const sameVenue = others.filter(p => p.venueId && p.venueId === proj.venueId);
+    // Crew overlap — any person listed on both shows with show windows overlapping
+    const myWindow = { a: new Date(proj.dates?.loadIn || Date.now()), b: new Date(proj.dates?.ret || proj.dates?.loadOut || Date.now()) };
+    const peopleHere = [proj.primaryPM, proj.secondaryPM, proj.td, proj.creativeLead, proj.showCaller].filter(Boolean);
+    const conflicts = [];
+    others.forEach(o => {
+      const ow = { a: new Date(o.dates?.loadIn || 0), b: new Date(o.dates?.ret || o.dates?.loadOut || 0) };
+      const overlaps = ow.a < myWindow.b && ow.b > myWindow.a;
+      if(!overlaps) return;
+      const shared = [o.primaryPM, o.secondaryPM, o.td, o.creativeLead, o.showCaller]
+        .filter(x => x && peopleHere.includes(x));
+      shared.forEach(pid => {
+        const p = PCG.findPerson(pid);
+        if(p) conflicts.push({ person: p, otherCode: o.code, otherName: o.name, when: PCG.fmtShort(o.dates?.loadIn) });
+      });
+    });
+
+    const cards = [];
+    sameVenue.slice(0, 3).forEach(v => {
+      cards.push({
+        tone: 'info',
+        title: `🏛 Same venue used · ${v.code}`,
+        sub: `${v.client || ''} · ${PCG.fmtShort(v.dates?.showStart)}`,
+        body: `This venue was also used for <strong>${PCG.escapeHtml(v.name)}</strong>. Review prior-show notes for load-in quirks, dock timing, and power layout — saves a walkthrough.`,
+        href: `show-center.html?project=${encodeURIComponent(v.code)}`
+      });
+    });
+    conflicts.slice(0, 3).forEach(c => {
+      cards.push({
+        tone: 'warn',
+        title: `⚠ Crew overlap · ${c.person.name}`,
+        sub: `Also on ${c.otherCode} · ${c.when}`,
+        body: `<strong>${PCG.escapeHtml(c.person.name)}</strong> is on this show's team and also on <strong>${PCG.escapeHtml(c.otherName)}</strong> in the same window. Confirm assignments with Scheduling.`,
+        href: `show-center.html?project=${encodeURIComponent(c.otherCode)}`
+      });
+    });
+    // Prior show notes — pick one or two closed shows for the same client
+    const priorClient = others.filter(p => p.client === proj.client && (p.show?.lifecycleState === 'Archived' || p.status === 'closed')).slice(0, 2);
+    priorClient.forEach(p => {
+      cards.push({
+        tone: 'info',
+        title: `📎 Prior show · ${p.code}`,
+        sub: `${p.client} · ${PCG.fmtShort(p.dates?.showStart)}`,
+        body: `${PCG.escapeHtml(p.oneLiner || 'Previous show for the same client — open for learnings, crew list, and scope reuse.')}`,
+        href: `show-center.html?project=${encodeURIComponent(p.code)}`
+      });
+    });
+    if(cards.length === 0){
+      cards.push({
+        tone: 'info',
+        title: 'No cross-show signals',
+        sub: 'Clear runway',
+        body: 'No venue reuse, crew conflicts, or prior-show context detected for this window. Sensors stay on as more shows land.'
+      });
+    }
+
+    document.getElementById('xshow').innerHTML = cards.map(c => `
+      <div class="xshow-card ${c.tone}">
+        <h4>${c.title}</h4>
+        <div class="sub">${PCG.escapeHtml(c.sub)}</div>
+        <div class="body">${c.body}</div>
+        ${c.href ? `<a class="go" href="${c.href}">Open →</a>` : ''}
+      </div>`).join('');
+  }
+
+  // =================================================================
+  // Chat-mark echoes — re-render Prod Log (decisions), Risks (issues),
+  // and Tasks (actions) with the user-marked messages prepended.
+  // =================================================================
+  const prodLogSeed = logs.slice();       // snapshot of seed prod log
+  const risksSeed   = (proj.risks || []).slice();
+  const tasksSeed   = tasks.slice();       // current tasks base
+  function renderEchoes(){
+    // Decisions → Production Log
+    const decisions = (markEchoes.decision || []).map(e => ({
+      ts: e.markedAt, title: `Decision · ${e.who}`,
+      body: `"${e.body}" — marked from #${e.channel} by ${e.markedBy}.`
+    }));
+    const combinedLog = decisions.concat(prodLogSeed);
+    document.getElementById('prodlog').innerHTML = combinedLog.map(l=>`
+      <div class="log-entry" ${l.title.startsWith('Decision') ? 'style="border-left-color: var(--status-green);"' : ''}>
+        <span class="log-ts">${PCG.fmtDate(l.ts, {time:true})}</span>
+        <div class="log-title">${PCG.escapeHtml(l.title)}</div>
+        <div class="log-body">${PCG.escapeHtml(l.body)}</div>
+      </div>`).join('');
+
+    // Issues → Risks (virtual risks from chat, flagged as user-marked)
+    const echoedRisks = (markEchoes.issue || []).map(e => ({
+      title: `"${e.body}"`,
+      sev: 'medium', owner: proj.primaryPM || 'p.jspringer', status: 'open',
+      mitigation: `Flagged from chat #${e.channel} by ${e.markedBy} on ${PCG.fmtShort(e.markedAt)}.`
+    }));
+    const combinedRisks = echoedRisks.concat(risksSeed);
+    document.getElementById('risks').innerHTML = combinedRisks.length ? combinedRisks.map(r => `
+      <div class="risk-row sev-${r.sev}">
+        <div><strong>${PCG.escapeHtml(r.title)}</strong></div>
+        <div><span class="pill plain ${r.sev==='high'?'red':(r.sev==='medium'?'amber':'blue')}">${(r.sev||'').toUpperCase()}</span></div>
+        <div class="t-owner">${PCG.escapeHtml(PCG.findPerson(r.owner)?.name || r.owner)}</div>
+        <div><span class="pill plain ${r.status==='open'?'amber':'gray'}">${(r.status||'').toUpperCase()}</span></div>
+        ${r.mitigation ? `<div class="rmit">${PCG.escapeHtml(r.mitigation)}</div>` : ''}
+      </div>`).join('') : '<div class="empty">No open risks.</div>';
+
+    // Actions → Tasks (ephemeral · shown with "from chat" badge in a
+    // dedicated phase group)
+    const chatTasks = (markEchoes.action || []).map(e => ({
+      phase: 'From Chat',
+      title: e.body,
+      owner: PCG.user?.id,
+      due: null,
+      done: false,
+      fromChat: true,
+      channel: e.channel,
+      markedBy: e.markedBy
+    }));
+    const combined = chatTasks.concat(tasks);
+    const phases = {}; combined.forEach(t => (phases[t.phase] ||= []).push(t));
+    const totalDone = combined.filter(t=>t.done).length;
+    document.getElementById('task-counts').textContent = `${totalDone} / ${combined.length} complete`;
+    document.getElementById('tasks').innerHTML = Object.keys(phases).map(ph=>{
+      return `<div class="task-phase"><h4>${ph}</h4>${phases[ph].map(t=>{
+        const overdue = !t.done && t.due && new Date(t.due) < PCG.today;
+        return `
+          <div class="task-row ${t.done?'done':''} ${overdue?'overdue':''}">
+            <div class="task-check ${t.done?'checked':''}">${t.done?'✓':''}</div>
+            <div class="t-title">${PCG.escapeHtml(t.title)}${t.fromChat ? ` <span class="pill blue plain" style="font-size:9px; margin-left:4px;">FROM CHAT · #${t.channel}</span>` : ''}</div>
+            <div class="t-due">${t.due ? PCG.fmtShort(t.due) : '—'}</div>
+            <div class="t-owner">${PCG.escapeHtml(PCG.findPerson(t.owner)?.name || t.owner || '—')}</div>
+            <div>${overdue?'<span class="pill red plain" style="font-size:9px;">OVERDUE</span>':''}</div>
+          </div>`;
+      }).join('')}</div>`;
+    }).join('');
+
+    // Health + Daily depend on tasks/risks/marks — refresh them too.
+    renderHealth();
+    renderDaily();
+  }
+
+  renderHealth();
+  renderDaily();
+  renderXShow();
+  renderEchoes();
 
   // Highlight active tab on scroll (intersection observer)
   const sections = tabs.map(([id]) => document.getElementById(`sec-${id}`));
