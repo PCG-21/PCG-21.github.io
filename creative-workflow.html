@@ -177,6 +177,21 @@
         <a class="btn sm"       id="open-ctr"   href="#">↺ Back to Show Command Center</a>
       </div>
 
+      <!-- Consequence ribbon · Creative is operationally essential -->
+      <div id="cw-consequence" style="margin-bottom: var(--sp-4); padding: 14px 18px; border-radius: var(--r-md); background: linear-gradient(135deg, rgba(149,100,216,0.12), rgba(1,153,253,0.06) 70%), var(--surface-1); border: 1px solid rgba(149,100,216,0.35); border-left: 3px solid var(--pcg-spotlight-purple); display: grid; grid-template-columns: 42px 1fr auto; gap: 16px; align-items: center;">
+        <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(149,100,216,0.22); color: var(--pcg-spotlight-purple); display: grid; place-items: center; font-size: 20px;">⚡</div>
+        <div>
+          <div style="font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pcg-spotlight-purple); margin-bottom: 4px;">Creative is operationally essential</div>
+          <div style="color: var(--text-primary); font-size: 13.5px; line-height: 1.55;" id="cw-impact-line">—</div>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+          <a href="production-schedule.html?project=LCE-2026" class="sys-nudge" style="text-decoration:none;">⚡ Production Schedule</a>
+          <a href="show-center.html?project=LCE-2026" class="sys-nudge purple" style="text-decoration:none;">⚡ Show Health</a>
+          <a href="td-package.html?project=LCE-2026" class="sys-nudge amber" style="text-decoration:none;">⚡ TD Package</a>
+          <a href="show-flow.html?project=LCE-2026" class="sys-nudge green" style="text-decoration:none;">⚡ Show Flow</a>
+        </div>
+      </div>
+
       <!-- LIFECYCLE PIPELINE -->
       <div class="cw-pipe" id="cw-pipe"></div>
 
@@ -376,7 +391,29 @@
     document.getElementById('cw-dep-list').innerHTML = lines.join('');
   }
 
-  function renderAll(){ renderPipe(); renderPieces(); renderCalendar(); renderApprovals(); renderDeps(); }
+  // Consequence ribbon — deep-link hrefs carry the real project code,
+  // and the impact sentence is live-derived from the current pieces.
+  function renderConsequence(){
+    document.querySelectorAll('#cw-consequence a').forEach(a => {
+      const u = new URL(a.getAttribute('href'), location.href);
+      u.searchParams.set('project', code);
+      a.setAttribute('href', u.pathname.split('/').pop() + '?' + u.searchParams.toString());
+    });
+    const blocked   = pieces.filter(p => p.blocked || p.stage === 'intake').length;
+    const atRisk    = pieces.filter(p => p.appr === 'pend' && (p.stage === 'build' || p.stage === 'review')).length;
+    const approved  = pieces.filter(p => p.appr === 'appr').length;
+    let line;
+    if(blocked > 0){
+      line = `<strong>${blocked}</strong> piece${blocked===1?'':'s'} blocked or still in intake — right now that <strong>pushes warehouse pull</strong>, flips the show to <strong>YELLOW readiness</strong>, and lands as a priority change in the <strong>TD Package</strong>.`;
+    } else if(atRisk > 0){
+      line = `<strong>${atRisk}</strong> piece${atRisk===1?'':'s'} carrying approval risk into build — if any slip the <strong>Production Schedule</strong> moves and the <strong>TD Package</strong> logs it as a priority change.`;
+    } else {
+      line = `All creative is moving clean — <strong>${approved}</strong> approved, build calendar on track. Every approval flip shows up on the <strong>Show Command Center</strong> and the <strong>Client Portal</strong> "What changed" feed.`;
+    }
+    document.getElementById('cw-impact-line').innerHTML = line;
+  }
+
+  function renderAll(){ renderPipe(); renderPieces(); renderCalendar(); renderApprovals(); renderDeps(); renderConsequence(); }
   renderAll();
 </script>
 </body>

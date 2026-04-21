@@ -329,38 +329,60 @@
     if(sessionStorage.getItem('pcg_story_hide') === '1') return;
 
     const PAGE = (location.pathname.split('/').pop() || 'home.html');
+    // Leadership story sequence · 9 stops, one thought each.
+    // Presenter hovers a step to see the talk-track. "Next" pulses.
     const steps = [
-      { k:'pif',     lbl:'PIF',          ico:'◧', href:'pif.html',
+      { k:'pif',      lbl:'PIF',                 ico:'◧',  href:'pif.html',
+        tip:'Start of the show lifecycle · intake form drives Program / Show / Project creation.',
         match: p => p === 'pif.html',
         done: () => {
           const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
-          return drafts.length > 0 || ['show-center.html','advance.html','site-visit.html','field-capture.html','client-portal.html','client-portal-config.html'].includes(PAGE);
+          return drafts.length > 0 || ['show-center.html','production-schedule.html','show-flow.html','td-package.html','advance.html','site-visit.html','field-capture.html','creative-workflow.html','client-portal.html','client-portal-config.html'].includes(PAGE);
         }
       },
-      { k:'show',    lbl:'Show Center',  ico:'◈', href:'show-center.html?project=LCE-2026',
-        match: p => p === 'show-center.html',
-        done: () => ['advance.html','site-visit.html','field-capture.html','client-portal.html','client-portal-config.html'].includes(PAGE)
+      { k:'show',     lbl:'Show Center',         ico:'◈',  href:'show-center.html?project=LCE-2026',
+        tip:'Operational command hub · health, today, decisions, scope, chat, cross-show intelligence.',
+        match: p => p === 'show-center.html' && location.hash !== '#sec-decisions',
+        done: () => ['production-schedule.html','show-flow.html','td-package.html','advance.html','client-portal.html','client-portal-config.html'].includes(PAGE)
       },
-      { k:'fix',     lbl:'Fix Issue',    ico:'⚠', href:'show-center.html?project=LCE-2026#sec-decisions',
+      { k:'fix',      lbl:'Decide / Fix Issue',  ico:'⚠',  href:'show-center.html?project=LCE-2026#sec-decisions',
+        tip:'Decisions Required cards · approve / defer. Each decision writes to Prod Log + closes Risks + clears CO tags.',
         match: p => p === 'show-center.html' && location.hash === '#sec-decisions',
         done: () => {
-          // Count marked-as-decision from any show's chat marks
-          const keys = Object.keys(sessionStorage).filter(k => k.startsWith('pcg_chat_marks_'));
-          return keys.some(k => { try { const m = JSON.parse(sessionStorage.getItem(k) || '{}'); return (m.decision || []).length > 0 || (m.issue || []).length > 0; } catch { return false; } });
+          const kd = Object.keys(sessionStorage).filter(k => k.startsWith('pcg_decisions_'));
+          const km = Object.keys(sessionStorage).filter(k => k.startsWith('pcg_chat_marks_'));
+          return kd.some(k => { try { return JSON.parse(sessionStorage.getItem(k) || '[]').some(d => d.state !== 'open'); } catch { return false; } })
+              || km.some(k => { try { const m = JSON.parse(sessionStorage.getItem(k) || '{}'); return (m.decision || []).length > 0 || (m.issue || []).length > 0; } catch { return false; } });
         }
       },
-      { k:'field',   lbl:'Field / Visit', ico:'📱', href:'field-capture.html?project=LCE-2026',
+      { k:'field',    lbl:'Field / Site Visit',  ico:'📱', href:'field-capture.html?project=LCE-2026',
+        tip:'Phone-based capture onsite · feeds Pre-Load Venue Condition, Advance, and Risk Register instantly.',
         match: p => p === 'field-capture.html' || p === 'site-visit.html',
-        done: () => {
-          return Object.keys(sessionStorage).some(k => k.startsWith('pcg_field_') && JSON.parse(sessionStorage.getItem(k) || '[]').length > 0)
-              || Object.keys(sessionStorage).some(k => k.startsWith('pcg_sv_'));
-        }
+        done: () => Object.keys(sessionStorage).some(k => k.startsWith('pcg_field_') && (JSON.parse(sessionStorage.getItem(k) || '[]') || []).length > 0)
+                 || Object.keys(sessionStorage).some(k => k.startsWith('pcg_sv_'))
       },
-      { k:'advance', lbl:'Advance',      ico:'⚡', href:'advance.html?project=LCE-2026',
+      { k:'schedule', lbl:'Production Schedule', ico:'🗂', href:'production-schedule.html?project=LCE-2026',
+        tip:'Phase-by-phase build timeline · trucking layer, linked to Advance / TD / Show Flow / Client Portal.',
+        match: p => p === 'production-schedule.html',
+        done: () => ['show-flow.html','td-package.html','advance.html','client-portal.html','client-portal-config.html'].includes(PAGE)
+      },
+      { k:'flow',     lbl:'Show Flow',           ico:'🎬', href:'show-flow.html?project=LCE-2026',
+        tip:'Cue-by-cue operator grid · go full-screen for a real show-caller tool with GO / STBY controls.',
+        match: p => p === 'show-flow.html',
+        done: () => ['td-package.html','advance.html','client-portal.html','client-portal-config.html'].includes(PAGE)
+      },
+      { k:'td',       lbl:'TD Package',          ico:'📦', href:'td-package.html?project=LCE-2026',
+        tip:'Internal crew execution packet · top watch-outs, escalation, priority changes, trucking, ROS summary.',
+        match: p => p === 'td-package.html',
+        done: () => ['advance.html','client-portal.html','client-portal-config.html'].includes(PAGE)
+      },
+      { k:'advance',  lbl:'Advance',             ico:'⚡', href:'advance.html?project=LCE-2026',
+        tip:'Auto-generated client / venue advance · companion to Show Book + ROS.',
         match: p => p === 'advance.html',
-        done: () => PAGE === 'client-portal.html' || PAGE === 'client-portal-config.html'
+        done: () => ['client-portal.html','client-portal-config.html'].includes(PAGE)
       },
-      { k:'portal',  lbl:'Client Portal', ico:'🔗', href:'client-portal.html?project=LCE-2026',
+      { k:'portal',   lbl:'Client Portal',       ico:'🔗', href:'client-portal.html?project=LCE-2026',
+        tip:'Branded external client view · confidence cues, open items, approvals, What Changed feed.',
         match: p => p === 'client-portal.html',
         done: () => false
       }
@@ -377,13 +399,15 @@
     strip.className = 'story-strip';
     strip.innerHTML = `
       <div class="story-inner">
-        <span class="story-tag">🎬 Demo Story · run it end-to-end</span>
+        <span class="story-tag" title="Sequence: PIF → Show Center → Decide → Field → Schedule → Show Flow → TD → Advance → Portal">🎬 Demo Story · ${activeIdx + 1} / ${steps.length}</span>
         <div class="story-steps">
           ${steps.map((s, i) => {
             const isDone = i < activeIdx || s.done();
             const isOn   = i === activeIdx;
+            const isNext = i === activeIdx + 1;
+            const tip    = (s.tip ? s.tip + ' · ' : '') + (isOn ? 'Current step.' : isNext ? 'Click to continue the story.' : isDone ? 'Done.' : 'Upcoming.');
             return `
-              <a class="story-step ${isOn?'on':''} ${isDone?'done':''}" href="${s.href}" data-k="${s.k}">
+              <a class="story-step ${isOn?'on':''} ${isDone?'done':''} ${isNext?'next':''}" href="${s.href}" data-k="${s.k}" title="${PCG.escapeHtml(tip)}">
                 <span class="sn">${isDone && !isOn ? '✓' : (i + 1)}</span>
                 <span class="si">${s.ico}</span>
                 <span class="sl">${PCG.escapeHtml(s.lbl)}</span>

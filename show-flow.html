@@ -222,6 +222,217 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(149,100,216,0.6); }
     50%      { box-shadow: 0 0 0 6px rgba(149,100,216,0); }
   }
+
+  /* Column visibility · Edit + Live. Persist toggles let operators
+     pare down to the cells they own. */
+  .sf-cols {
+    display: inline-flex; gap: 6px; flex-wrap: wrap; padding: 4px 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+  }
+  .sf-cols .cb {
+    padding: 4px 10px; border-radius: var(--r-pill);
+    font-size: 11px; font-family: var(--font-display); letter-spacing: 0.04em;
+    background: transparent; border: 1px solid transparent; color: var(--text-tertiary);
+    cursor: pointer;
+  }
+  .sf-cols .cb.on {
+    background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); border-color: rgba(1,153,253,0.35);
+  }
+  .col-hidden-Audio    .dept.c-Audio    , .col-hidden-Audio    th.c-Audio    { display: none; }
+  .col-hidden-Video    .dept.c-Video    , .col-hidden-Video    th.c-Video    { display: none; }
+  .col-hidden-Lighting .dept.c-Lighting , .col-hidden-Lighting th.c-Lighting { display: none; }
+  .col-hidden-LED      .dept.c-LED      , .col-hidden-LED      th.c-LED      { display: none; }
+  .col-hidden-Scenic   .dept.c-Scenic   , .col-hidden-Scenic   th.c-Scenic   { display: none; }
+  .col-hidden-Note     .dept.c-Note     , .col-hidden-Note     th.c-Note     { display: none; }
+
+  /* ============================================================
+     FULL-SCREEN SHOW-CALLER LIVE MODE
+     Dark, high-contrast, huge type. Everything operators need is
+     locked to the top: current cue, next cue, standby, GO button.
+     Controls never leave the viewport.
+     ============================================================ */
+  body.sf-fs {
+    background: #000;
+    overflow: hidden;
+  }
+  body.sf-fs #app-shell,
+  body.sf-fs .topbar,
+  body.sf-fs .crumbs,
+  body.sf-fs .rail,
+  body.sf-fs .story-strip,
+  body.sf-fs .sf-hero,
+  body.sf-fs .sf-toolbar,
+  body.sf-fs .sf-legend,
+  body.sf-fs .sf-section-head .meta,
+  body.sf-fs .sf-section-head .dur { display: none !important; }
+  body.sf-fs .main { padding: 0 !important; }
+  body.sf-fs .container { max-width: none !important; padding: 0 !important; }
+
+  .fs-shell {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background:
+      radial-gradient(circle at 10% 10%, rgba(149,100,216,0.18), transparent 50%),
+      radial-gradient(circle at 90% 0%,  rgba(1,153,253,0.14), transparent 55%),
+      #05080f;
+    color: #fff; font-family: var(--font-body);
+    display: flex; flex-direction: column;
+  }
+  body.sf-fs .fs-shell { display: flex; }
+
+  .fs-top {
+    display: grid; grid-template-columns: 140px 1fr 220px; gap: 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+  }
+  .fs-clock {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 700;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .fs-clock .big { font-size: 28px; line-height: 1.1; color: #fff; }
+  .fs-clock .sm  { font-size: 10px; color: rgba(255,255,255,0.45); font-family: var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; }
+  .fs-title {
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .fs-title .ey {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: rgba(255,255,255,0.5);
+  }
+  .fs-title .nm {
+    font-family: var(--font-display); font-size: 16px; font-weight: 600;
+    color: #fff; margin-top: 2px;
+  }
+  .fs-title .sec {
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--pcg-spotlight-purple); margin-top: 2px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .fs-top-right { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .fs-exit {
+    padding: 8px 14px; border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05); color: #fff;
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;
+    border-radius: var(--r-pill); cursor: pointer;
+  }
+  .fs-exit:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
+
+  .fs-current {
+    flex: 0 0 auto;
+    padding: 28px 40px 20px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 28px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .fs-mode {
+    display: inline-grid; place-items: center;
+    padding: 14px 22px; border-radius: 14px;
+    background: var(--status-green); color: #000;
+    font-family: var(--font-display); font-size: 26px; letter-spacing: 0.1em; font-weight: 900;
+    min-width: 120px; text-align: center;
+    box-shadow: 0 0 24px rgba(61,220,132,0.35);
+  }
+  .fs-mode.stby {
+    background: var(--status-amber); color: #1a0c00;
+    box-shadow: 0 0 24px rgba(245,176,65,0.4);
+    animation: fs-pulse-warn 1.2s infinite;
+  }
+  @keyframes fs-pulse-warn {
+    0%, 100% { box-shadow: 0 0 24px rgba(245,176,65,0.25); }
+    50%      { box-shadow: 0 0 36px rgba(245,176,65,0.7); }
+  }
+  .fs-cue-body { min-width: 0; }
+  .fs-cue-code {
+    font-family: var(--font-mono); font-size: 20px;
+    color: var(--pcg-bright-blue); font-weight: 700; margin-bottom: 8px;
+  }
+  .fs-cue-title {
+    font-family: var(--font-display); font-size: 40px; line-height: 1.15;
+    color: #fff; font-weight: 700;
+    max-width: 1200px;
+  }
+  @media (max-width: 1100px) { .fs-cue-title { font-size: 30px; } }
+  .fs-cue-note {
+    margin-top: 10px; font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.5;
+    max-width: 1100px;
+  }
+  .fs-controls { display: flex; flex-direction: column; gap: 8px; min-width: 180px; }
+  .fs-btn-go {
+    padding: 18px 22px; border-radius: 14px; border: 0;
+    background: var(--status-green); color: #000;
+    font-family: var(--font-display); font-size: 18px; font-weight: 900; letter-spacing: 0.1em;
+    cursor: pointer; box-shadow: 0 6px 20px rgba(61,220,132,0.35);
+  }
+  .fs-btn-go:hover { filter: brightness(1.08); }
+  .fs-btn-go:active { transform: translateY(1px); }
+  .fs-btn-stby {
+    padding: 12px 22px; border-radius: 12px;
+    background: rgba(255,255,255,0.06); color: #fff;
+    border: 1px solid rgba(245,176,65,0.4);
+    font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+    cursor: pointer;
+  }
+  .fs-btn-stby.on { background: var(--status-amber); color: #1a0c00; border-color: var(--status-amber); }
+  .fs-btn-back {
+    padding: 10px 16px; border-radius: 10px; background: transparent; color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .fs-btn-back:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+
+  .fs-next-row {
+    padding: 18px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    flex: 0 0 auto;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  @media (max-width: 900px) { .fs-next-row { grid-template-columns: 1fr; } }
+  .fs-card {
+    padding: 16px 18px; border-radius: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .fs-card .lbl {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 8px;
+  }
+  .fs-card .code { font-family: var(--font-mono); color: var(--pcg-bright-blue); font-weight: 700; font-size: 14px; }
+  .fs-card .ttl  { font-family: var(--font-display); font-size: 18px; color: #fff; margin-top: 4px; line-height: 1.25; }
+  .fs-card.next  { border-color: rgba(1,153,253,0.35); background: rgba(1,153,253,0.06); }
+  .fs-card.stby  { border-color: rgba(245,176,65,0.35); background: rgba(245,176,65,0.06); }
+
+  .fs-body { flex: 1; min-height: 0; overflow: hidden; padding: 20px 40px 28px; }
+  .fs-dept-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .fs-dept {
+    padding: 14px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .fs-dept .name {
+    font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--pcg-bright-blue); margin-bottom: 6px;
+  }
+  .fs-dept .v { color: #fff; font-size: 14px; line-height: 1.55; }
+  .fs-dept.hidden { display: none; }
+
+  .fs-progress {
+    padding: 12px 40px; display: flex; align-items: center; gap: 14px;
+    font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,0.5);
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .fs-progress .bar {
+    flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;
+  }
+  .fs-progress .bar > span {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .fs-kbd {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+    font-family: var(--font-mono); font-size: 10.5px;
+  }
 </style>
 </head>
 <body>
@@ -238,6 +449,15 @@
           <button class="edit on" data-m="edit">✎ Edit Mode</button>
           <button class="live"    data-m="live">● Live Show Mode</button>
         </div>
+        <div class="sf-cols" id="sf-cols" title="Hide / show department columns. Preference is saved per show.">
+          <button class="cb on" data-col="Audio">Audio</button>
+          <button class="cb on" data-col="Video">Video</button>
+          <button class="cb on" data-col="Lighting">Lighting</button>
+          <button class="cb on" data-col="LED">LED</button>
+          <button class="cb on" data-col="Scenic">Scenic</button>
+          <button class="cb on" data-col="Note">Note</button>
+        </div>
+        <button class="btn sm primary" id="fs-enter" title="Throw on a screen and run the show">⛶ Go full-screen</button>
         <a class="btn sm ghost" id="open-ps" href="#">→ Production Schedule</a>
         <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
         <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
@@ -265,6 +485,12 @@
 
       <div class="sf-legend" style="margin-bottom: var(--sp-4);">
         <span><b>STBY</b> standby · <b>GO</b> fire now · <b>IMAG</b> in-room camera · <b>QLab</b> playback · <b>House</b> front-of-house audio · <b>WO</b> walk-on · <b>OP</b> operator owner</span>
+      </div>
+
+      <!-- Cross-surface — operator edits surface in the TD Package summary -->
+      <div style="margin-bottom: var(--sp-4); padding: 10px 14px; border-radius: var(--r-sm); background: linear-gradient(90deg, rgba(149,100,216,0.08), transparent 80%); border: 1px dashed rgba(149,100,216,0.35); font-size: 12px; color: var(--text-secondary); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <span class="sys-nudge purple">⚡ Department edits go live</span>
+        <span>Every cell operators edit here rolls up to the <a href="td-package.html?project=LCE-2026" style="color: var(--pcg-bright-blue);">TD Show Package</a> cue summary. Standby + GO in full-screen mirror to every caller on the same show.</span>
       </div>
 
       <div id="sf-sections"></div>
@@ -399,12 +625,12 @@
           <tr>
             <th>Time / Cue</th>
             <th>What happens</th>
-            <th>Audio</th>
-            <th>Video · IMAG</th>
-            <th>Lighting</th>
-            <th>LED · Switcher</th>
-            <th>Scenic · Stage</th>
-            <th>Show-caller note</th>
+            <th class="c-Audio">Audio</th>
+            <th class="c-Video">Video · IMAG</th>
+            <th class="c-Lighting">Lighting</th>
+            <th class="c-LED">LED · Switcher</th>
+            <th class="c-Scenic">Scenic · Stage</th>
+            <th class="c-Note">Show-caller note</th>
           </tr>
         </thead>
         <tbody>
@@ -415,7 +641,7 @@
               const cid = deptId(key, col);
               const isEdited = Object.prototype.hasOwnProperty.call(edits, cid);
               const content = isEdited ? edits[cid] : (val || '—');
-              return `<td class="dept ${isEdited?'has-edit':''}" data-lbl="${col}" data-key="${cid}">${content}</td>`;
+              return `<td class="dept c-${col} ${isEdited?'has-edit':''}" data-lbl="${col}" data-key="${cid}" data-col="${col}">${content}</td>`;
             };
             return `
               <tr class="${rowCls}" data-key="${key}">
@@ -550,6 +776,199 @@
 
   // Boot mode from persisted state
   setMode(mode.kind);
+
+  // ==============================================================
+  // COLUMN VISIBILITY · persist per-show in sessionStorage.
+  // ==============================================================
+  const COLS_KEY = `pcg_sf_cols_${proj.code}`;
+  const COLS = ['Audio','Video','Lighting','LED','Scenic','Note'];
+  const colState = JSON.parse(sessionStorage.getItem(COLS_KEY) || 'null') || Object.fromEntries(COLS.map(c => [c, true]));
+  function applyCols(){
+    COLS.forEach(c => document.body.classList.toggle('col-hidden-' + c, !colState[c]));
+    document.querySelectorAll('#sf-cols .cb').forEach(b => b.classList.toggle('on', !!colState[b.dataset.col]));
+  }
+  applyCols();
+  document.querySelectorAll('#sf-cols .cb').forEach(b => b.addEventListener('click', () => {
+    colState[b.dataset.col] = !colState[b.dataset.col];
+    sessionStorage.setItem(COLS_KEY, JSON.stringify(colState));
+    applyCols();
+    if(document.body.classList.contains('sf-fs')) renderFS(); // keep fullscreen in sync
+  }));
+
+  // ==============================================================
+  // FULL-SCREEN SHOW-CALLER MODE
+  // Dark, high-contrast, huge type. Current/Next/Standby all locked
+  // in the viewport. GO and Standby controls never leave the screen.
+  // Keys: Space/→ = GO · ← = Back · S = STBY · Esc = Exit.
+  // ==============================================================
+  const fsShell = document.createElement('div');
+  fsShell.className = 'fs-shell';
+  fsShell.innerHTML = `
+    <div class="fs-top">
+      <div class="fs-clock">
+        <span class="big" id="fs-clock">—</span>
+        <span class="sm">show clock</span>
+      </div>
+      <div class="fs-title">
+        <span class="ey">Show Flow · Live</span>
+        <span class="nm" id="fs-show-name">—</span>
+        <span class="sec" id="fs-section">—</span>
+      </div>
+      <div class="fs-top-right">
+        <span class="fs-kbd">Space / →</span>
+        <span style="font-size: 10.5px; color: rgba(255,255,255,0.45); font-family: var(--font-mono);">GO</span>
+        <span class="fs-kbd">S</span>
+        <span style="font-size: 10.5px; color: rgba(255,255,255,0.45); font-family: var(--font-mono);">STBY</span>
+        <span class="fs-kbd">Esc</span>
+        <button class="fs-exit" id="fs-exit">⛶ Exit full-screen</button>
+      </div>
+    </div>
+
+    <div class="fs-current">
+      <span class="fs-mode" id="fs-mode">GO</span>
+      <div class="fs-cue-body">
+        <div class="fs-cue-code" id="fs-code">—</div>
+        <div class="fs-cue-title" id="fs-title">—</div>
+        <div class="fs-cue-note" id="fs-note"></div>
+      </div>
+      <div class="fs-controls">
+        <button class="fs-btn-go"   id="fs-go">GO · Next cue →</button>
+        <button class="fs-btn-stby" id="fs-stby">Toggle STBY</button>
+        <button class="fs-btn-back" id="fs-back">← Back</button>
+      </div>
+    </div>
+
+    <div class="fs-next-row">
+      <div class="fs-card stby">
+        <div class="lbl">Standby (after next)</div>
+        <div class="code" id="fs-stby-code">—</div>
+        <div class="ttl"  id="fs-stby-title">—</div>
+      </div>
+      <div class="fs-card next">
+        <div class="lbl">Next cue</div>
+        <div class="code" id="fs-next-code">—</div>
+        <div class="ttl"  id="fs-next-title">—</div>
+      </div>
+    </div>
+
+    <div class="fs-body">
+      <div class="fs-dept-grid" id="fs-depts"></div>
+    </div>
+
+    <div class="fs-progress">
+      <span id="fs-pos">—</span>
+      <div class="bar"><span id="fs-bar" style="width: 0%;"></span></div>
+      <span id="fs-pct">0%</span>
+    </div>
+  `;
+  document.body.appendChild(fsShell);
+
+  const fsClockTick = () => {
+    const d = new Date();
+    const el = document.getElementById('fs-clock');
+    if(el) el.textContent = d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  };
+  setInterval(fsClockTick, 1000); fsClockTick();
+
+  document.getElementById('fs-show-name').textContent = proj.name;
+
+  function stripHtml(s){ return String(s || '').replace(/<[^>]+>/g, ''); }
+  function renderFS(){
+    if(!document.body.classList.contains('sf-fs')) return;
+    const idx = Math.max(0, Math.min(flat.length - 1, liveState.nowIdx || 0));
+    const now  = flat[idx];
+    const next = flat[idx + 1];
+    const stby = flat[idx + 2];
+    if(!now) return;
+
+    // Mode badge
+    const m = document.getElementById('fs-mode');
+    m.textContent = liveState.standby ? 'STBY' : 'GO';
+    m.classList.toggle('stby', liveState.standby);
+    const sb = document.getElementById('fs-stby'); if(sb) sb.classList.toggle('on', !!liveState.standby);
+
+    document.getElementById('fs-section').textContent = now.s.title;
+    document.getElementById('fs-code').textContent    = now.r.cue + ' · ' + now.r.t;
+    document.getElementById('fs-title').textContent   = stripHtml(now.r.name);
+
+    // Note — pull from "show-caller note" column + sub-note on the cue
+    const noteRaw = withEdits(now.key, 'Note', now.r.n || '');
+    document.getElementById('fs-note').textContent = stripHtml(noteRaw).replace(/^—$/, '');
+
+    // Next / standby
+    document.getElementById('fs-next-code').textContent  = next ? next.r.cue + ' · ' + next.r.t : '—';
+    document.getElementById('fs-next-title').textContent = next ? stripHtml(next.r.name) : 'End of show';
+    document.getElementById('fs-stby-code').textContent  = stby ? stby.r.cue + ' · ' + stby.r.t : '—';
+    document.getElementById('fs-stby-title').textContent = stby ? stripHtml(stby.r.name) : '—';
+
+    // Department cells grid — honors column visibility
+    const cellsHtml = COLS.map(col => {
+      const hidden = !colState[col] ? 'hidden' : '';
+      const raw = withEdits(now.key, col, now.r[{Audio:'a', Video:'v', Lighting:'l', LED:'led', Scenic:'s', Note:'n'}[col]] || '');
+      const body = stripHtml(raw).replace(/^—$/, '');
+      return `
+        <div class="fs-dept ${hidden}">
+          <div class="name">${col === 'LED' ? 'LED · Switcher' : col === 'Video' ? 'Video · IMAG' : col === 'Scenic' ? 'Scenic · Stage' : col === 'Note' ? 'Show-caller note' : col}</div>
+          <div class="v">${body || '—'}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('fs-depts').innerHTML = cellsHtml;
+
+    // Progress
+    document.getElementById('fs-pos').textContent = `Cue ${idx + 1} / ${flat.length}`;
+    const pct = Math.round(((idx + 1) / flat.length) * 100);
+    document.getElementById('fs-bar').style.width = pct + '%';
+    document.getElementById('fs-pct').textContent = pct + '%';
+  }
+
+  function enterFS(){
+    setMode('live');                              // full-screen implies live
+    document.body.classList.add('sf-fs');
+    try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch(e){}
+    renderFS();
+  }
+  function exitFS(){
+    try { document.exitFullscreen && document.fullscreenElement && document.exitFullscreen(); } catch(e){}
+    document.body.classList.remove('sf-fs');
+  }
+  document.getElementById('fs-enter').addEventListener('click', enterFS);
+  document.getElementById('fs-exit').addEventListener('click', exitFS);
+  document.addEventListener('fullscreenchange', () => {
+    if(!document.fullscreenElement) document.body.classList.remove('sf-fs');
+  });
+
+  document.getElementById('fs-go').addEventListener('click', () => {
+    liveState.nowIdx = Math.min(flat.length - 1, (liveState.nowIdx || 0) + 1);
+    liveState.standby = false;
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify(liveState));
+    refreshLive(); renderFS();
+  });
+  document.getElementById('fs-back').addEventListener('click', () => {
+    liveState.nowIdx = Math.max(0, (liveState.nowIdx || 0) - 1);
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify(liveState));
+    refreshLive(); renderFS();
+  });
+  document.getElementById('fs-stby').addEventListener('click', () => {
+    liveState.standby = !liveState.standby;
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify(liveState));
+    refreshLive(); renderFS();
+  });
+
+  // Keyboard — extend the existing show-caller shortcuts so they also
+  // work in fullscreen + add Back (←) and Esc (exit fullscreen).
+  document.addEventListener('keydown', e => {
+    const fs = document.body.classList.contains('sf-fs');
+    if(!fs) return;
+    if(e.target.isContentEditable) return;
+    if(e.key === 'Escape')      { e.preventDefault(); exitFS(); }
+    if(e.code === 'ArrowRight') { e.preventDefault(); document.getElementById('fs-go').click(); }
+    if(e.code === 'ArrowLeft')  { e.preventDefault(); document.getElementById('fs-back').click(); }
+  });
+
+  // Keep fullscreen in sync whenever the underlying state moves.
+  const _origRefreshLive = refreshLive;
+  refreshLive = function(){ _origRefreshLive(); renderFS(); };
+  renderFS();
 </script>
 </body>
 </html>

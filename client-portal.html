@@ -368,6 +368,11 @@
   <!-- LATEST UPDATE -->
   <div class="cv-update" id="cv-update" style="display:none;"></div>
 
+  <!-- Confidence strip · three at-a-glance cues · "you're good, here's what's next" -->
+  <section class="cv-section" id="cv-confidence" style="margin-top: 20px;">
+    <div id="cv-confidence-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;"></div>
+  </section>
+
   <!-- WHAT CHANGED · recent deltas the client should know about -->
   <section class="cv-section" id="cv-changed-sec">
     <h2>What changed<span class="count">Last 48 hours</span></h2>
@@ -626,6 +631,41 @@
   const _rtOld = renderTodos;
   window.renderTodos = function(){ _rtOld.apply(null, arguments); renderPulse(); };
   renderPulse();
+
+  // ---------- CONFIDENCE STRIP · three at-a-glance cues ----------
+  (function renderConfidence(){
+    const ack  = JSON.parse(sessionStorage.getItem(`pcg_cv_ack_${code}`) || 'null') || [];
+    const apps = JSON.parse(sessionStorage.getItem(`pcg_cv_appr_${code}`)|| 'null') || [];
+    const tds  = JSON.parse(sessionStorage.getItem(`pcg_cv_todos_${code}`)|| 'null') || [];
+    const pendingClient = tds.filter(t => !t.done && (t.status === 'urgent' || t.status === 'awaiting')).length;
+    const approvedDocs  = apps.filter(a => a.status === 'approved').length;
+    const ackOpen       = ack.filter(a => !a.on).length;
+
+    const cards = [
+      pendingClient > 0
+        ? { tone:'amber', ico:'⚡', lbl:'We need your input',  v:pendingClient, sub:pendingClient === 1 ? 'open item on your side' : 'open items on your side' }
+        : { tone:'green', ico:'✓',  lbl:'You are on track',    v:'All clear', sub:'Nothing waiting on you' },
+      { tone:'blue',   ico:'🖼', lbl:'Latest approved',   v:approvedDocs, sub:'documents you\'ve signed off' },
+      { tone:'purple', ico:'📄', lbl:'Latest revised',    v:'V2',         sub:'Advance + schedule · auto-updated' },
+      ackOpen > 0
+        ? { tone:'amber', ico:'✅', lbl:'Venue ack pending', v:ackOpen, sub:'venue items to confirm' }
+        : { tone:'green', ico:'✅', lbl:'Venue items',        v:'Acknowledged', sub:'your team has confirmed' }
+    ];
+
+    const toneColor = { blue:'var(--pcg-bright-blue)', purple:'var(--pcg-spotlight-purple)', green:'var(--status-green)', amber:'var(--status-amber)' };
+    document.getElementById('cv-confidence-grid').innerHTML = cards.map(c => `
+      <div style="padding: 16px 18px; border-radius: 14px; background: linear-gradient(135deg, ${toneColor[c.tone]}22, rgba(10,18,32,0.9) 70%); border: 1px solid ${toneColor[c.tone]}55;">
+        <div style="display:flex; align-items:center; gap: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 10px; background: ${toneColor[c.tone]}30; color: ${toneColor[c.tone]}; display: grid; place-items: center; font-size: 16px;">${c.ico}</div>
+          <div>
+            <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: ${toneColor[c.tone]};">${PCG.escapeHtml(c.lbl)}</div>
+            <div style="font-family: var(--font-display); font-size: ${typeof c.v === 'string' && c.v.length > 3 ? '16px' : '24px'}; font-weight: 700; color: #fff; line-height: 1.1; margin-top: 2px;">${PCG.escapeHtml(String(c.v))}</div>
+          </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 11.5px; color: rgba(255,255,255,0.65);">${PCG.escapeHtml(c.sub)}</div>
+      </div>
+    `).join('');
+  })();
 
   // ---------- WHAT CHANGED (last 48h · client-safe deltas) ----------
   // Mixes seed deltas with live signals pulled from sessionStorage so

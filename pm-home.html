@@ -27,6 +27,10 @@
 
       <div class="kpi-strip" id="kpis"></div>
 
+      <!-- Daily Command strip — the "what do I handle right now?" view.
+           Five intent-driven columns built live from existing data. -->
+      <div class="dc-strip" id="dc-strip" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: var(--sp-4);"></div>
+
       <div class="split">
         <div>
           <!-- Active tours I'm on -->
@@ -346,6 +350,121 @@
   document.getElementById('sot').innerHTML = sot.map(([k,v])=>`
     <div style="margin-bottom:6px;"><strong>${PCG.escapeHtml(k)}</strong><br><span class="muted">${PCG.escapeHtml(v)}</span></div>
   `).join('');
+
+  // ==============================================================
+  // DAILY COMMAND STRIP · "what do I handle right now?"
+  // Five columns: Changed since yesterday · Needs decision today ·
+  // Waiting on client · Shows at risk · Upcoming pressure points.
+  // Built from the existing mine[] set + seed signals, with live
+  // pulls from sessionStorage for decisions + field captures.
+  // ==============================================================
+  (function renderDailyCommand(){
+    // --- Changed since yesterday (seed + live field captures) ---
+    const changes = [
+      { t:'Truck 1 arrival moved 6:00 → 6:30', code: mine[0]?.code || 'LCE-2026', kind:'schedule' },
+      { t:'Ballroom cleared flipped to Confirmed', code: mine[0]?.code || 'LCE-2026', kind:'venue' },
+      { t:'Awards creative approved by client', code: mine[0]?.code || 'LCE-2026', kind:'creative' }
+    ];
+    mine.forEach(p => {
+      const raw = JSON.parse(sessionStorage.getItem(`pcg_field_${p.code}`) || '[]');
+      raw.slice(0, 1).forEach(f => changes.unshift({ t: 'Field capture · ' + String(f.body || '').slice(0, 40), code: p.code, kind: f.kind }));
+    });
+
+    // --- Needs decision today (from seeded Decision Required set in show-center) ---
+    const decisions = [];
+    mine.forEach(p => {
+      const dec = JSON.parse(sessionStorage.getItem(`pcg_decisions_${p.code}`) || 'null');
+      if(!dec) {
+        // Use the canonical seed that show-center produces on first load
+        decisions.push({ t:'Approve CO #3 · Awards ready room', code: p.code, urgent: true });
+        decisions.push({ t:'Commit sub-rental · 2× d&b JSub',   code: p.code, urgent: true });
+        return;
+      }
+      dec.filter(d => d.state === 'open').slice(0, 3).forEach(d => decisions.push({
+        t: d.title.length > 46 ? d.title.slice(0, 44) + '…' : d.title,
+        code: p.code, urgent: !!d.urgent
+      }));
+    });
+
+    // --- Waiting on client (pending approvals) ---
+    const wc = mine.flatMap(p => (p.approvals || [])
+      .filter(a => a.status === 'pending')
+      .map(a => ({ t: a.title.length > 50 ? a.title.slice(0,48)+'…' : a.title, code: p.code, since: a.since })));
+
+    // --- Shows at risk (from readiness or health) ---
+    const atRisk = mine.filter(p => p.health === 'red' || p.health === 'amber' || (showsWithR.find(x => x.p === p)?.r?.overall === 'Blocked' || showsWithR.find(x => x.p === p)?.r?.overall === 'Red'));
+
+    // --- Upcoming pressure points (deadlines in next 7d + travel/rehearsal) ---
+    const press = [];
+    const sevenDays = Date.now() + 7 * 86400000;
+    mine.forEach(p => {
+      const d = p.dates || {};
+      [['loadIn','Load-in · trucks + IATSE rig call','🚚'],
+       ['showStart','Show opens','🎬'],
+       ['loadOut','Strike begins','↘'],
+       ['ret','Gear return','🏭']].forEach(([k, lbl, ic]) => {
+        if(!d[k]) return;
+        const t = new Date(d[k]).getTime();
+        if(t >= PCG.today.getTime() && t <= sevenDays){
+          press.push({ t: lbl, code: p.code, when: d[k], ic });
+        }
+      });
+    });
+    press.sort((a,b) => new Date(a.when) - new Date(b.when));
+
+    // ---------- Render ----------
+    function col(tone, title, count, rows){
+      const toneBg = { blue:'rgba(1,153,253,0.08)', red:'rgba(231,76,60,0.08)', amber:'rgba(245,176,65,0.08)', purple:'rgba(149,100,216,0.08)', green:'rgba(61,220,132,0.06)' };
+      const toneBr = { blue:'var(--pcg-bright-blue)', red:'var(--status-red)', amber:'var(--status-amber)', purple:'var(--pcg-spotlight-purple)', green:'var(--status-green)' };
+      return `
+        <div style="padding: 12px 14px; border-radius: var(--r-md); background: ${toneBg[tone]}; border: 1px solid var(--border); border-left: 3px solid ${toneBr[tone]};">
+          <div style="display:flex; align-items:center; gap:6px; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: ${toneBr[tone]}; margin-bottom: 6px;">
+            ${PCG.escapeHtml(title)}
+            <span style="margin-left:auto; font-family: var(--font-mono); letter-spacing: 0; text-transform: none; background: ${toneBg[tone]}; border: 1px solid ${toneBr[tone]}; color: ${toneBr[tone]}; padding: 1px 8px; border-radius: var(--r-pill);">${count}</span>
+          </div>
+          ${rows || `<div class="muted" style="font-size: 11px;">Nothing — you're clear.</div>`}
+        </div>`;
+    }
+
+    const strip = document.getElementById('dc-strip');
+    strip.innerHTML =
+      col('blue', '◎ Changed since yesterday', changes.length,
+        changes.slice(0, 3).map(c => `
+          <div style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border);">
+            <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(c.code)}</span>
+            <span style="color: var(--text-primary);">${PCG.escapeHtml(c.t)}</span>
+          </div>`).join(''))
+      +
+      col('red', '⚠ Needs decision today', decisions.length,
+        decisions.slice(0, 4).map(d => `
+          <a href="show-center.html?project=${d.code}#sec-decisions" style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none;">
+            <span class="mono" style="color: ${d.urgent?'var(--status-red)':'var(--text-tertiary)'}; font-size: 11px;">${PCG.escapeHtml(d.code)}</span>
+            <span style="color: var(--text-primary);">${d.urgent?'<b>':''}${PCG.escapeHtml(d.t)}${d.urgent?'</b>':''}</span>
+          </a>`).join(''))
+      +
+      col('purple', '⏳ Waiting on client', wc.length,
+        wc.slice(0, 3).map(w => `
+          <a href="client-portal-config.html?project=${w.code}" style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none;">
+            <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(w.code)}</span>
+            <span style="color: var(--text-primary);">${PCG.escapeHtml(w.t)}${w.since?` <span class="muted" style="font-size: 10.5px;">· since ${PCG.fmtShort(w.since)}</span>`:''}</span>
+          </a>`).join(''))
+      +
+      col('amber', '● Shows at risk', atRisk.length,
+        atRisk.slice(0, 3).map(p => `
+          <a href="show-center.html?project=${p.code}" style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none;">
+            <span class="mono" style="color: var(--status-amber); font-size: 11px;">${PCG.escapeHtml(p.code)}</span>
+            <span style="color: var(--text-primary);">${PCG.escapeHtml(p.name)} <span class="muted" style="font-size: 10.5px;">· ${(p.attention||[]).length} attn</span></span>
+          </a>`).join(''))
+      +
+      col('green', '📅 Upcoming pressure · 7d', press.length,
+        press.slice(0, 4).map(e => `
+          <div style="display:grid; grid-template-columns: 22px 60px 1fr auto; gap: 6px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); align-items: center;">
+            <span style="font-size: 14px;">${e.ic}</span>
+            <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(e.code)}</span>
+            <span style="color: var(--text-primary);">${PCG.escapeHtml(e.t)}</span>
+            <span class="mono" style="color: var(--pcg-bright-blue); font-size: 11px; font-weight: 700;">${PCG.fmtShort(e.when)}</span>
+          </div>`).join(''));
+  })();
 </script>
 </body>
 </html>
