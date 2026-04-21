@@ -543,7 +543,11 @@
 
         <section class="scc-section" id="sec-comm">
           <div class="card">
-            <div class="card-header"><div class="title">💬 Communication</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Slack-style internal chat · Scoped to this show</span></div>
+            <div class="card-header">
+              <div class="title">💬 Communication</div>
+              <span class="repo-flag" style="margin-left: 10px;" title="Today's product decision · in-show chat is not in the live repo yet. The PM-first thesis treats show-scoped chat as a first-class surface that routes Decision / Issue / Action marks into Production Log / Risks / Tasks.">Demo ahead of product</span>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Slack-style internal chat · Scoped to this show</span>
+            </div>
             <div class="card-body">
               <div class="chat-wrap">
                 <div class="chat-channels" id="chat-channels"></div>
@@ -582,7 +586,10 @@
 
         <section class="scc-section" id="sec-risks">
           <div class="card">
-            <div class="card-header"><div class="title">⚠ Risk Register</div></div>
+            <div class="card-header">
+              <div class="title">⚠ Risk Register</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" title="In the live system, risks surface as OperationalAlerts (WorkItem-based) under /shows/{id}/alerts. The PM-facing Risk Register here groups them with severity + owner for leadership scan.">Repo: OperationalAlerts · grouped here for leadership scan</span>
+            </div>
             <div class="card-body" id="risks"></div>
           </div>
         </section>
@@ -632,6 +639,7 @@
           <div class="card">
             <div class="card-header">
               <div class="title">🏛 Pre-Load Venue Condition</div>
+              <span class="repo-flag" style="margin-left: 10px;" title="Today's product decision · a venue-scoped field surface that protects against damage disputes. Not yet in the live repo; will land alongside the Venue record.">Demo ahead of product</span>
               <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Venue / site baseline · damage protection</span>
             </div>
             <div class="card-body" id="preload"></div>
@@ -698,11 +706,26 @@
   const pm = PCG.findPerson(proj.primaryPM);
   const td = PCG.findPerson(proj.td);
   const creative = PCG.findPerson(proj.creativeLead);
-  const statusLabel = (proj.show && proj.show.lifecycleState) || (proj.status || 'Draft');
+  // Repo lifecycle vocabulary · normalize whatever seed form we have
+  // (in-prep / InPrep / Planning) into the ShowStatus enum the live
+  // system uses: Planning · Ready · InProgress · Completed · Cancelled.
+  const rawState = (proj.show && proj.show.lifecycleState) || (proj.status || 'Planning');
+  const stateMap = {
+    'InPrep':'Planning', 'Planned':'Planning',
+    'in-prep':'Planning', 'planning':'Planning',
+    'OnShow':'InProgress', 'on-show':'InProgress',
+    'Striking':'InProgress', 'Returning':'Completed', 'Closing':'Completed',
+    'closed':'Completed', 'Archived':'Completed'
+  };
+  const statusLabel = stateMap[rawState] || rawState;
   document.getElementById('scc-header').innerHTML = `
     <div style="display:flex; align-items:start; gap: var(--sp-3); flex-wrap:wrap;">
       <div style="flex:1; min-width:280px;">
-        <div class="eyebrow">Show Command Center · <span class="mono">${PCG.escapeHtml(proj.code)}</span></div>
+        <div class="eyebrow" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span>Show Command Center · <span class="mono">${PCG.escapeHtml(proj.code)}</span></span>
+          <span title="In the live system: Show = operational unit; Project = commercial / billing container; Program = umbrella. This page is the Show."
+                style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); background: var(--surface-2); border: 1px solid var(--border); padding: 1px 7px; border-radius: var(--r-pill); text-transform: none; letter-spacing: 0;">Show · operational</span>
+        </div>
         <h1>${PCG.escapeHtml(proj.name)}</h1>
         <div class="muted" style="font-size:var(--fs-sm); margin-top:4px;">${PCG.escapeHtml(proj.oneLiner || '')}</div>
         <div class="scc-meta-row">
@@ -1569,6 +1592,11 @@
     score = Math.max(5, Math.min(100, score));
     const tone = score >= 80 ? 'green' : score >= 55 ? 'amber' : 'red';
     const state = score >= 80 ? 'GREEN · ON TRACK' : score >= 55 ? 'YELLOW · WATCH' : 'RED · NEEDS ACTION';
+    // Repo-grounded Readiness chip — ProjectReadiness in the live
+    // system: Ready / AttentionNeeded / Blocked, derived from required
+    // checklist completion. Demo score maps down for leadership scan.
+    const readinessLabel = score >= 80 ? 'Ready' : score >= 55 ? 'AttentionNeeded' : 'Blocked';
+    const readinessChip = `<span title="Repo term: ProjectReadinessDto · derived from required checklist items in the live system." style="margin-left:8px; padding: 2px 10px; border-radius: var(--r-pill); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; background: ${tone==='green'?'rgba(61,220,132,0.18)':tone==='amber'?'rgba(245,176,65,0.18)':'rgba(231,76,60,0.18)'}; color: ${tone==='green'?'var(--status-green)':tone==='amber'?'var(--status-amber)':'var(--status-red)'};">Readiness · ${readinessLabel}</span>`;
 
     const signals = [];
     if(highRisks.length)       signals.push({ t:`${highRisks.length} high risk${highRisks.length===1?'':'s'} open`, cls:'bad' });
@@ -1655,7 +1683,7 @@
       <div class="health-card ${tone}">
         <div>
           <div class="health-score">${score}</div>
-          <div class="health-state ${tone}">Show Health<b>${state}</b></div>
+          <div class="health-state ${tone}">Show Health<b>${state}</b>${readinessChip}</div>
           ${topIssuesHtml}
           ${breakHtml}
         </div>

@@ -69,12 +69,15 @@
   // Each entry declares which groups can see it. API enforces data; nav just hides.
   PCG.NAV = [
     // =================================================================
-    // 1. PROJECT MANAGEMENT — the PM-first primary section.
-    //    This is the face of the product. Every PM workflow anchors here.
+    // 1. PROJECT MANAGEMENT — PM-first primary section.
+    //    In the live repo this content maps to Workspace /work (PM daily
+    //    command surface) + the Show spine (Program → Show → Project).
+    //    "Show" is the operational unit; "Project" is commercial/billing.
+    //    Demo groups both here for the PM-first story.
     // =================================================================
     { label:'▍ Project Management', primary:true, items:[
-      { id:'pm-home',       label:'Dashboard',           href:'pm-home.html',                               icon:'⌂', groups:'*' },
-      { id:'pif',           label:'＋ New Show · PIF',    href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
+      { id:'pm-home',       label:'Dashboard (Work)',    href:'pm-home.html',                               icon:'⌂', groups:'*' },
+      { id:'pif',           label:'＋ New · PIF',         href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
       { id:'show-center',   label:'Show Command Center', href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
       { id:'site-visit',    label:'Site Visit (guided)', href:'site-visit.html?project=LCE-2026',           icon:'🗺', groups:'*' },
       { id:'field-capture', label:'Field Capture (mobile)', href:'field-capture.html?project=LCE-2026',     icon:'📱', groups:'*' },
@@ -82,48 +85,51 @@
       { id:'client-portal',        label:'Client Portal (external)',  href:'client-portal.html?project=LCE-2026',        icon:'🔗', groups:'*' },
       { id:'client-portal-config', label:'↳ Portal Config (internal)', href:'client-portal-config.html?project=LCE-2026', icon:'🔧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
       { id:'portfolio',     label:'Portfolio',           href:'index.html',                                  icon:'▦', groups:'*' },
-      { id:'projects',      label:'All Projects',        href:'projects.html',                               icon:'▤', groups:'*' },
-      { id:'tours',         label:'Tours',               href:'tours.html',                                  icon:'🚌', groups:'*' },
       { id:'action',        label:'Action Queue',        href:'action-queue.html',                           icon:'◎', groups:'*' },
       { id:'myhome',        label:'My Home',             href:'home.html',                                   icon:'☖', groups:'*' },
       { id:'search',        label:'Search',              href:'search.html',                                 icon:'⌕', groups:'*' }
     ]},
 
     // =================================================================
-    // 2. SALES — pre-award pipeline.
+    // 2. WORKSPACE — repo group. Commercial entities + readiness/ops.
     // =================================================================
-    { label:'▍ Sales', items:[
-      { id:'pitch',     label:'Pitches',       href:'pitch.html',                  icon:'★', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
-      { id:'quote',     label:'Quote Builder', href:'quote.html?id=q.LCE-2026.v3', icon:'§', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING] },
-      { id:'clients',   label:'Clients',       href:'clients.html',                icon:'◉', groups:'*' }
+    { label:'▍ Workspace', items:[
+      { id:'clients',   label:'Clients',       href:'clients.html',                icon:'◉', groups:'*' },
+      { id:'projects',  label:'Projects',      href:'projects.html',               icon:'▤', groups:'*' },
+      { id:'tours',     label:'Tours',         href:'tours.html',                  icon:'🚌', groups:'*' },
+      { id:'venues',    label:'Venues',        href:'venue.html',                  icon:'🏛', groups:'*' }
     ]},
 
     // =================================================================
-    // 3. OPERATIONS — execution tools that support running shows.
-    //    Grouped as "Project Tools" (deeper PM surfaces) up top and
-    //    then the operational sub-buckets below.
+    // 3. SALES — repo group · Pitches / PIFs / Quotes / Programs.
     // =================================================================
-    { label:'▍ Operations · Project Tools', items:[
+    { label:'▍ Sales', items:[
+      { id:'pitch',     label:'Pitches',       href:'pitch.html',                  icon:'★', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN] },
+      { id:'quote',     label:'Quote Builder', href:'quote.html?id=q.LCE-2026.v3', icon:'§', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING] }
+    ]},
+
+    // =================================================================
+    // 4. PRODUCTION — repo group · Shows / ROS / Show Books / Scheduling.
+    // =================================================================
+    { label:'▍ Production', items:[
+      { id:'ros',          label:'Run of Show',        href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' },
+      { id:'showbook',     label:'Show Book',          href:'showbook.html?project=LCE-2026',      icon:'❏', groups:'*' },
+      { id:'showbook-gen', label:'Show Book Generator', href:'showbook-gen.html?project=LCE-2026', icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.PA] },
       { id:'playbook',     label:'Playbook',           href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },
       { id:'workback',     label:'Workback · Handoff', href:'workback.html?project=LCE-2026',    icon:'⇄', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.AE] },
       { id:'checklist',    label:'Checklists',         href:'checklist.html?project=LCE-2026',   icon:'☑', groups:'*' },
       { id:'field-notes',  label:'Field Notes',        href:'field-notes.html?project=LCE-2026', icon:'✎', groups:'*' },
       { id:'breakouts',    label:'Breakouts',          href:'breakouts.html?project=SAE-WCX-2026', icon:'⊟', groups:'*' },
+      { id:'add-order',    label:'Add Orders (Field)', href:'add-order.html',              icon:'＋', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS] },
+      { id:'tour-edge',    label:'Tour Edge Cases',    href:'tour-edge-cases.html', icon:'⚠', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.AE] },
+      { id:'incidents',    label:'Incidents',          href:'incidents.html', icon:'⚠', groups:'*' },
       { id:'closeout',     label:'Closeout',           href:'closeout.html?project=GLBX-GSK26',  icon:'✓', groups:'*' }
     ]},
 
-    // -------- Operations · Show Execution (ROS + live day) --------
-    { label:'▍ Operations · Show Execution', items:[
-      { id:'ros',          label:'Run of Show',        href:'ros.html?project=GLBX-GSK26', icon:'▶', groups:'*' },
-      { id:'add-order',    label:'Add Orders (Field)', href:'add-order.html',              icon:'＋', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS] },
-      { id:'tour-edge',    label:'Tour Edge Cases',    href:'tour-edge-cases.html', icon:'⚠', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.AE] },
-      { id:'showbook',     label:'Show Book',          href:'showbook.html?project=LCE-2026',      icon:'❏', groups:'*' },
-      { id:'showbook-gen', label:'Show Book Generator', href:'showbook-gen.html?project=LCE-2026', icon:'⚙', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.PA] },
-      { id:'incidents',    label:'Incidents',          href:'incidents.html', icon:'⚠', groups:'*' }
-    ]},
+    // Show Execution content now lives under ▍ Production above.
 
-    // -------- Operations · Crew & Labor --------
-    { label:'▍ Operations · Crew & Labor', items:[
+    // -------- Crew & Labor — repo: under Production / Workspace.  --------
+    { label:'▍ Crew & Labor', items:[
       { id:'labor-home',   label:'Labor Home',        href:'labor-home.html',    icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS] },
       { id:'scheduling',   label:'Scheduling Grid',   href:'scheduling.html',    icon:'▥', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
       { id:'crew-assign',  label:'Assign Crew',       href:'crew-assign.html',   icon:'✔', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS] },
@@ -136,8 +142,8 @@
       { id:'messages',     label:'Crew Messages',     href:'messages.html',      icon:'✉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.SCHEDULING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM] }
     ]},
 
-    // -------- Operations · Warehouse & Inventory --------
-    { label:'▍ Operations · Warehouse & Inventory', items:[
+    // -------- Warehouse — repo group. --------
+    { label:'▍ Warehouse', items:[
       { id:'wh-sup-home',  label:'Warehouse Lead',    href:'wh-sup-home.html', icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS] },
       { id:'wh-tech-home', label:'Warehouse Tech',    href:'wh-tech-home.html', icon:'⌂', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.WH_TECHS] },
       { id:'eqlpc',        label:'EQLPC',             href:'eqlpc.html',     icon:'◇', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.WH_SUPERVISORS, PCG.GROUPS.DIRECTORS] },
@@ -152,8 +158,8 @@
       { id:'vendors',      label:'Vendor Library',    href:'vendors.html', icon:'★', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.TSMS, PCG.GROUPS.AE] }
     ]},
 
-    // -------- Operations · Tech Planning --------
-    { label:'▍ Operations · Tech Planning', items:[
+    // -------- Tech Planning — repo: Production / Creative. --------
+    { label:'▍ Tech Planning', items:[
       { id:'videoio',      label:'Video I/O Plan',    href:'video-io.html?showId=GLBX-GSK26', icon:'▤', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
       { id:'intercom',     label:'Intercom',          href:'intercom.html?showId=GLBX-GSK26', icon:'📻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
       { id:'tech-reuse',   label:'Historical Reuse',  href:'tech-reuse.html', icon:'↻', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP] },
@@ -161,12 +167,9 @@
       { id:'tech',         label:'Technical',         href:'tech.html',     icon:'▲', groups:'*' }
     ]},
 
-    // -------- Operations · Venues --------
-    { label:'▍ Operations · Venues', items:[
-      { id:'venues',       label:'Venue Library',     href:'venue.html', icon:'🏛', groups:'*' }
-    ]},
+    // Venues moved up into Workspace to mirror the repo.
 
-    // -------- Finance --------
+    // -------- Finance — repo group. --------
     { label:'▍ Finance', items:[
       { id:'finance',      label:'Finance Dashboard', href:'finance.html', icon:'◉', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.ACCOUNTING, PCG.GROUPS.DIRECTORS, PCG.GROUPS.AE, PCG.GROUPS.LEADERSHIP] }
     ]},

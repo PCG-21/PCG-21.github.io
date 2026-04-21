@@ -262,6 +262,21 @@ img.badge { display: block; }
 .sys-nudge.amber  { background: rgba(245,176,65,0.15);  color: var(--status-amber);        border-color: rgba(245,176,65,0.35); }
 .sys-nudge.green  { background: rgba(61,220,132,0.14);  color: var(--status-green);        border-color: rgba(61,220,132,0.35); }
 
+/* "Demo ahead of product" flag — for surfaces that exist in the demo
+   (today's product decisions) but aren't yet in the live repo. Small,
+   factual, non-alarming. Placement is the page/section author's call. */
+.repo-flag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: var(--r-pill);
+  background: rgba(149,100,216,0.10);
+  border: 1px dashed rgba(149,100,216,0.4);
+  color: var(--pcg-spotlight-purple);
+  font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; font-weight: 700;
+  cursor: help;
+}
+.repo-flag::before { content: "◎"; }
+
 .rail .nav-item {
   display: flex; align-items: center; gap: var(--sp-3);
   padding: 9px var(--sp-5);
