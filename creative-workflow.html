@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Creative Workflow</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Creative Workflow — first-class parallel production lifecycle.
+     Sits alongside the Production Schedule in importance: design →
+     concept → review → approve → build → install-ready → complete.
+     The Creative department has its own tasks, calendar, approvals
+     and its outputs visibly affect Schedule / Advance / TD Package. */
+
+  .cw-hero {
+    background: linear-gradient(135deg, rgba(149,100,216,0.12), rgba(1,153,253,0.06)), var(--surface-1);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+    position: relative; overflow: hidden;
+  }
+  .cw-hero::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-spotlight-purple), var(--pcg-bright-blue), var(--pcg-confident-blue));
+  }
+  .cw-hero h1 { margin: 4px 0 2px; font-family: var(--font-display); font-size: 26px; }
+
+  /* Lifecycle pipeline strip */
+  .cw-pipe {
+    display: grid; grid-template-columns: repeat(8, 1fr);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+    margin-bottom: var(--sp-5);
+  }
+  .cw-stage {
+    padding: 14px 12px; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 4px; min-width: 0;
+    position: relative;
+  }
+  .cw-stage:last-child { border-right: 0; }
+  .cw-stage .lbl {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cw-stage .cnt {
+    font-family: var(--font-display); font-size: 24px; font-weight: 700;
+    color: var(--text-primary); line-height: 1;
+  }
+  .cw-stage .cnt.zero { color: var(--text-tertiary); }
+  .cw-stage .sub { font-size: 10.5px; color: var(--text-tertiary); font-family: var(--font-mono); }
+  .cw-stage.active { background: linear-gradient(180deg, rgba(149,100,216,0.12), transparent); }
+  .cw-stage.active .lbl { color: var(--pcg-spotlight-purple); }
+
+  /* Split body */
+  .cw-body { display: grid; grid-template-columns: 1.35fr 1fr; gap: var(--sp-4); }
+  @media (max-width: 960px) { .cw-body { grid-template-columns: 1fr; } }
+
+  /* Piece cards (creative tasks / deliverables) */
+  .cw-pieces { display: grid; gap: 10px; }
+  .cw-piece {
+    padding: 14px 16px; border-radius: var(--r-md);
+    background: var(--surface-1); border: 1px solid var(--border);
+    display: grid; grid-template-columns: 40px 1fr auto; gap: 14px;
+    align-items: start;
+    border-left: 3px solid var(--border-accent);
+  }
+  .cw-piece.st-approved    { border-left-color: var(--status-green); }
+  .cw-piece.st-review      { border-left-color: var(--pcg-bright-blue); }
+  .cw-piece.st-design      { border-left-color: var(--pcg-spotlight-purple); }
+  .cw-piece.st-revision    { border-left-color: var(--status-amber); }
+  .cw-piece.st-build       { border-left-color: var(--pcg-confident-blue); }
+  .cw-piece.st-install     { border-left-color: var(--status-green); }
+  .cw-piece.st-concept     { border-left-color: var(--pcg-spotlight-purple); }
+  .cw-piece.st-intake      { border-left-color: var(--text-tertiary); }
+  .cw-piece .ico { font-size: 24px; line-height: 1; }
+  .cw-piece .t { font-weight: 600; font-size: var(--fs-md); color: var(--text-primary); }
+  .cw-piece .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .cw-piece .nt { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+  .cw-piece .meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: 4px; }
+  .cw-piece .right {
+    display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+    font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+  .cw-stage-pill {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 700; padding: 3px 8px; border-radius: var(--r-pill);
+    color: var(--text-tertiary); background: var(--surface-3);
+    cursor: pointer; user-select: none;
+  }
+  .cw-stage-pill.intake    { background: rgba(255,255,255,0.05); color: var(--text-tertiary); }
+  .cw-stage-pill.concept   { background: rgba(149,100,216,0.18); color: var(--pcg-spotlight-purple); }
+  .cw-stage-pill.design    { background: rgba(1,153,253,0.18);  color: var(--pcg-bright-blue); }
+  .cw-stage-pill.review    { background: rgba(245,176,65,0.18); color: var(--status-amber); }
+  .cw-stage-pill.revision  { background: rgba(231,76,60,0.18);  color: var(--status-red); }
+  .cw-stage-pill.approved  { background: rgba(61,220,132,0.18); color: var(--status-green); }
+  .cw-stage-pill.build     { background: rgba(1,153,253,0.14);  color: var(--pcg-confident-blue); }
+  .cw-stage-pill.install   { background: rgba(61,220,132,0.14); color: var(--status-green); }
+  .cw-stage-pill.complete  { background: rgba(61,220,132,0.28); color: var(--status-green); }
+
+  .cw-appr {
+    font-size: 10px; font-family: var(--font-display); letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700;
+  }
+  .cw-appr.pend { background: rgba(245,176,65,0.15); color: var(--status-amber); }
+  .cw-appr.appr { background: rgba(61,220,132,0.15); color: var(--status-green); }
+  .cw-appr.rev  { background: rgba(231,76,60,0.15);  color: var(--status-red); }
+  .cw-appr.none { background: var(--surface-2); color: var(--text-tertiary); }
+
+  .cw-tag {
+    font-size: 9.5px; padding: 2px 7px; border-radius: var(--r-pill);
+    font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+  }
+  .cw-tag.dep { background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); border: 1px solid rgba(1,153,253,0.3); }
+  .cw-tag.blk { background: rgba(231,76,60,0.14); color: var(--status-red);     border: 1px solid rgba(231,76,60,0.3); }
+
+  /* Build calendar */
+  .cw-cal {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .cw-cal-head {
+    padding: 12px 16px; background: rgba(1,153,253,0.06);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 14px; align-items: baseline;
+  }
+  .cw-cal-head h2 { margin: 0; font-family: var(--font-display); font-size: 15px; }
+  .cw-cal-head .meta { font-size: 11px; color: var(--text-tertiary); margin-left: auto; font-family: var(--font-mono); }
+  .cw-cal-row {
+    display: grid; grid-template-columns: 95px 10px 1fr auto; gap: 14px;
+    padding: 10px 16px; align-items: center;
+    border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  }
+  .cw-cal-row:last-child { border-bottom: 0; }
+  .cw-cal-row .when { font-family: var(--font-mono); color: var(--text-secondary); font-size: 11.5px; }
+  .cw-cal-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pcg-bright-blue); }
+  .cw-cal-row .dot.due     { background: var(--status-amber); }
+  .cw-cal-row .dot.rev     { background: var(--pcg-spotlight-purple); }
+  .cw-cal-row .dot.fab     { background: var(--pcg-confident-blue); }
+  .cw-cal-row .dot.install { background: var(--status-green); }
+  .cw-cal-row .lbl { color: var(--text-primary); font-weight: 500; }
+  .cw-cal-row .sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .cw-cal-row .kind {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-tertiary);
+  }
+
+  .cw-deps {
+    margin-top: var(--sp-4);
+    padding: 14px 18px; border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(245,176,65,0.06), transparent 70%), var(--surface-1);
+    border: 1px solid var(--border); border-left: 3px solid var(--status-amber);
+  }
+  .cw-deps h3 { margin: 0 0 8px; font-family: var(--font-display); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--status-amber); }
+  .cw-deps ul { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--text-primary); line-height: 1.7; }
+  .cw-deps ul li { padding: 4px 0; border-bottom: 1px dashed var(--border); display: flex; gap: 10px; }
+  .cw-deps ul li:last-child { border-bottom: 0; }
+  .cw-deps ul li::before { content: "→"; color: var(--text-tertiary); flex: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="cw-hero" id="cw-hero"></div>
+
+      <div style="display:flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--sp-4); align-items: center;">
+        <span class="muted" style="font-size: var(--fs-xs); margin-right:auto;">Parallel production workflow · design / build / install / approval</span>
+        <a class="btn sm ghost" id="open-sched" href="#">→ Production Schedule</a>
+        <a class="btn sm ghost" id="open-td"    href="#">→ TD Show Package</a>
+        <a class="btn sm"       id="open-ctr"   href="#">↺ Back to Show Command Center</a>
+      </div>
+
+      <!-- LIFECYCLE PIPELINE -->
+      <div class="cw-pipe" id="cw-pipe"></div>
+
+      <!-- BODY · pieces left · build calendar right -->
+      <div class="cw-body">
+
+        <div>
+          <h2 style="font-family: var(--font-display); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 12px;">Creative pieces · click a stage pill to advance</h2>
+          <div class="cw-pieces" id="cw-pieces"></div>
+
+          <!-- Dependency awareness -->
+          <div class="cw-deps" id="cw-deps">
+            <h3>⚡ Creative affects the rest of the show</h3>
+            <ul id="cw-dep-list"></ul>
+          </div>
+        </div>
+
+        <div>
+          <div class="cw-cal">
+            <div class="cw-cal-head">
+              <h2>📅 Build calendar</h2>
+              <span class="meta">Due / Review / Fabrication / Install-ready</span>
+            </div>
+            <div id="cw-cal-rows"></div>
+          </div>
+
+          <div style="margin-top: var(--sp-4); padding: 14px 16px; border-radius: var(--r-md); background: var(--surface-1); border: 1px solid var(--border); border-left: 3px solid var(--pcg-bright-blue);">
+            <h3 style="margin: 0 0 8px; font-family: var(--font-display); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pcg-bright-blue);">Approval board</h3>
+            <div id="cw-approvals" style="display: grid; gap: 6px;"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'creative-workflow', pageTitle:'Creative Workflow'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code) || { code, name: 'Show', venueName:'Venue' };
+
+  document.getElementById('open-sched').href = `production-schedule.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-td').href    = `td-package.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('open-ctr').href   = `show-center.html?project=${encodeURIComponent(code)}`;
+
+  const creative = PCG.findPerson(proj.creativeLead);
+
+  // HERO
+  document.getElementById('cw-hero').innerHTML = `
+    <div class="eyebrow" style="color: var(--pcg-spotlight-purple);">Creative Workflow · <span class="mono">${PCG.escapeHtml(proj.code)}</span></div>
+    <h1>${PCG.escapeHtml(proj.name)}</h1>
+    <div class="muted" style="font-size: var(--fs-sm); margin-top: 2px;">${creative ? 'Lead · ' + PCG.escapeHtml(creative.name) : 'Creative lead unassigned'} · ${PCG.escapeHtml(proj.venueName || '')}</div>
+    <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; max-width: 780px;">
+      Creative is a parallel production workflow — not a section. Every piece moves through the lifecycle below, carries its own approval state,
+      and visibly affects the Production Schedule and TD Show Package when it slips or lands.
+    </div>
+  `;
+
+  // Stages (8-step lifecycle)
+  const STAGES = [
+    { k:'intake',   lbl:'Intake' },
+    { k:'concept',  lbl:'Concepting' },
+    { k:'design',   lbl:'In Design' },
+    { k:'review',   lbl:'In Review' },
+    { k:'revision', lbl:'Revision' },
+    { k:'approved', lbl:'Approved' },
+    { k:'build',    lbl:'In Build' },
+    { k:'install',  lbl:'Install Ready' }
+  ];
+
+  // Creative pieces · realistic corporate-awards mix
+  const CW_KEY = `pcg_creative_${proj.code}`;
+  const seed = [
+    { id:'p1', ico:'🎬', t:'Opener package',             nt:'30-sec client-branded opener · QLab master locked. Final render delivered.',                    stage:'approved', appr:'appr', tags:['playback','QLab'],     due:'2026-04-10', owner:'K. Oliver', depends:'Finishes before tech rehearsal · on master drive for T2 load-in.' },
+    { id:'p2', ico:'🏆', t:'Awards show graphics',       nt:'Category slates · winner-name reveal package · trophy lower-thirds. Client sign-off 4/12.',     stage:'approved', appr:'appr', tags:['playback','Day 4'],     due:'2026-04-12', owner:'K. Oliver', depends:'Unblocks Awards cue build in Show Flow · V1 loaded to E2 preset 9.' },
+    { id:'p3', ico:'📺', t:'Sponsor loop (25 assets)',   nt:'Client files received 4/15 (late) · assembly in progress. Will ride into Day-1 pre-show.',     stage:'build',    appr:'pend', tags:['playback','Day 1'],     due:'2026-04-16', owner:'K. Oliver', depends:'Tight · if misses 4/16 cutoff, Day-1 pre-show runs placeholder + swap-in cue.' },
+    { id:'p4', ico:'🖼', t:'Ready-room environment graphics', nt:'Awaiting client direction on recovery-room branding. Blocked on CO#3 approval.',         stage:'intake',   appr:'none', tags:['scenic','Day 4'],       due:'2026-04-17', owner:'K. Oliver', depends:'BLOCKED · no brief yet. Ready-room build dead without this.', blocked:true },
+    { id:'p5', ico:'🏷', t:'Speaker name plates',        nt:'Designing from current rundown · will lock once RSVPs final.',                                 stage:'design',   appr:'pend', tags:['scenic','playback'],    due:'2026-04-14', owner:'K. Oliver', depends:'Locks onto lower-third template · changes mean LD cue re-program.' },
+    { id:'p6', ico:'🪧', t:'Stage scenic · Marquee set', nt:'CAD rev3 · LED header fly frame + split traveler. Fabrication tracking.',                     stage:'build',    appr:'appr', tags:['scenic','fabrication'], due:'2026-04-09', owner:'L. Wu',     depends:'Ships with Truck 1 · any fab slip moves load-in start.' },
+    { id:'p7', ico:'📐', t:'Stage drawing (rev 3)',      nt:'Client review requested · pending sign-off. Blocking for Rigging final.',                     stage:'review',   appr:'pend', tags:['approval','handoff'],   due:'2026-04-13', owner:'TD · C. Taylor', depends:'Gates rigging plot finalize. Hold plot releases if not signed by 4/13.' },
+    { id:'p8', ico:'🎨', t:'Lower-third templates',      nt:'Template locked · name plates generated from rundown.',                                        stage:'approved', appr:'appr', tags:['playback'],              due:'2026-04-09', owner:'K. Oliver', depends:'Feeds every speaker intro cue · now reusable across days.' }
+  ];
+  const pieces = JSON.parse(sessionStorage.getItem(CW_KEY) || 'null') || seed;
+
+  // ===== Render lifecycle pipeline counts =====
+  function renderPipe(){
+    const counts = Object.fromEntries(STAGES.map(s => [s.k, 0]));
+    pieces.forEach(p => { if(counts[p.stage] != null) counts[p.stage]++; });
+    document.getElementById('cw-pipe').innerHTML = STAGES.map(s => {
+      const c = counts[s.k];
+      return `<div class="cw-stage ${c>0?'active':''}">
+        <span class="lbl">${PCG.escapeHtml(s.lbl)}</span>
+        <span class="cnt ${c?'':'zero'}">${c}</span>
+        <span class="sub">${c === 1 ? 'piece' : 'pieces'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ===== Render pieces =====
+  function nextStage(k){ const idx = STAGES.findIndex(s => s.k === k); return STAGES[Math.min(STAGES.length-1, idx+1)].k; }
+  function stageLabel(k){ const s = STAGES.find(x => x.k === k); return s ? s.lbl : k; }
+
+  function renderPieces(){
+    const apprCopy = { pend:'Pending', appr:'Approved', rev:'Revision', none:'—' };
+    document.getElementById('cw-pieces').innerHTML = pieces.map(p => `
+      <div class="cw-piece st-${p.stage}">
+        <div class="ico">${p.ico}</div>
+        <div>
+          <div class="t">${PCG.escapeHtml(p.t)}</div>
+          <div class="tags">
+            ${(p.tags||[]).map(t => `<span class="cw-tag dep">${PCG.escapeHtml(t)}</span>`).join('')}
+            ${p.blocked ? '<span class="cw-tag blk">BLOCKED</span>' : ''}
+          </div>
+          <div class="nt">${PCG.escapeHtml(p.nt)}</div>
+          <div class="meta">Owner · ${PCG.escapeHtml(p.owner)} · Due ${PCG.fmtShort(p.due)}</div>
+        </div>
+        <div class="right">
+          <span class="cw-stage-pill ${p.stage}" data-id="${p.id}" title="Click to advance to the next stage">${stageLabel(p.stage)}</span>
+          <span class="cw-appr ${p.appr}">${apprCopy[p.appr]}</span>
+        </div>
+      </div>
+    `).join('');
+
+    // Clicking the stage pill advances the piece.
+    document.querySelectorAll('.cw-stage-pill[data-id]').forEach(el => el.addEventListener('click', () => {
+      const p = pieces.find(x => x.id === el.dataset.id); if(!p) return;
+      p.stage = nextStage(p.stage);
+      if(p.stage === 'approved') p.appr = 'appr';
+      sessionStorage.setItem(CW_KEY, JSON.stringify(pieces));
+      renderAll();
+    }));
+  }
+
+  // ===== Render build calendar =====
+  function renderCalendar(){
+    // Derive calendar rows from piece due dates, plus key review + install milestones.
+    const rows = [];
+    pieces.forEach(p => {
+      rows.push({ when: p.due, kind: p.stage === 'build' || p.stage === 'install' ? 'fab' : p.stage === 'review' ? 'rev' : 'due',
+                  lbl: p.t + ' · ' + stageLabel(p.stage),
+                  sub: 'Owner · ' + p.owner + (p.appr === 'pend' ? ' · approval pending' : '') });
+    });
+    rows.push({ when: proj.dates?.prep,     kind:'due',     lbl:'All creative · design lock',         sub:'Hard gate before warehouse pull' });
+    rows.push({ when: proj.dates?.loadIn,   kind:'install', lbl:'Install-ready · playback to QLab master', sub:'Shipping with Truck 2 / Sprinter A' });
+    rows.push({ when: proj.dates?.showStart,kind:'fab',     lbl:'Day 1 rehearsal · creative live',     sub:'Cues walked · client attends dress' });
+
+    rows.sort((a,b) => new Date(a.when||0) - new Date(b.when||0));
+
+    const kindLbl = { due:'Due',  rev:'Review', fab:'Build', install:'Install ready' };
+    document.getElementById('cw-cal-rows').innerHTML = rows.map(r => `
+      <div class="cw-cal-row">
+        <div class="when">${r.when ? PCG.fmtShort(r.when) : '—'}</div>
+        <div class="dot ${r.kind}"></div>
+        <div>
+          <div class="lbl">${PCG.escapeHtml(r.lbl)}</div>
+          <div class="sub">${PCG.escapeHtml(r.sub)}</div>
+        </div>
+        <span class="kind">${PCG.escapeHtml(kindLbl[r.kind])}</span>
+      </div>
+    `).join('');
+  }
+
+  // ===== Render approvals =====
+  function renderApprovals(){
+    const rows = pieces.filter(p => p.appr === 'pend' || p.appr === 'rev').map(p => `
+      <div style="display:grid; grid-template-columns: 20px 1fr auto; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; align-items: center;">
+        <span style="font-size: 16px;">${p.ico}</span>
+        <div>
+          <div style="color: var(--text-primary); font-weight: 500;">${PCG.escapeHtml(p.t)}</div>
+          <div style="color: var(--text-tertiary); font-size: 11px; font-family: var(--font-mono);">Owner · ${PCG.escapeHtml(p.owner)} · Due ${PCG.fmtShort(p.due)}</div>
+        </div>
+        <span class="cw-appr ${p.appr}">${p.appr === 'pend' ? 'Pending' : 'Revision'}</span>
+      </div>
+    `).join('') || '<div style="font-size: 12px; color: var(--text-tertiary); padding: 8px 0;">Nothing pending · all creative approvals current.</div>';
+    document.getElementById('cw-approvals').innerHTML = rows;
+  }
+
+  // ===== Render dependency callouts =====
+  function renderDeps(){
+    const lines = [];
+    pieces.forEach(p => { if(p.depends) lines.push(`<li><strong>${PCG.escapeHtml(p.t)}:</strong> ${PCG.escapeHtml(p.depends)}</li>`); });
+    // Cross-surface effects
+    lines.unshift('<li><strong>Schedule:</strong> late creative pushes warehouse pull and can move load-in start.</li>');
+    lines.unshift('<li><strong>TD Package:</strong> approval flips show as "Latest changes since yesterday" · crew sees the move instantly.</li>');
+    lines.unshift('<li><strong>Show Flow:</strong> new creative preset swaps re-index Barco E2 cues · Video op reviews in Edit Mode.</li>');
+    document.getElementById('cw-dep-list').innerHTML = lines.join('');
+  }
+
+  function renderAll(){ renderPipe(); renderPieces(); renderCalendar(); renderApprovals(); renderDeps(); }
+  renderAll();
+</script>
+</body>
+</html>

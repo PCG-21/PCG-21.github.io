@@ -618,7 +618,11 @@
 
         <section class="scc-section" id="sec-scope">
           <div class="card">
-            <div class="card-header"><div class="title">🎛 Operational Scope</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">What we're actually doing · not the quote</span></div>
+            <div class="card-header">
+              <div class="title">🎛 Operational Scope</div>
+              <span class="sys-nudge" style="margin-left: 10px;" title="Scope rows flow into the TD Package scope summary and any `Needs CO` items ride on the Client Portal as pending change items.">⚡ Reflected in TD Package &amp; Client Portal</span>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">What we're actually doing · not the quote</span>
+            </div>
             <div class="card-body"><div class="scope-board" id="scope"></div></div>
           </div>
         </section>
@@ -701,8 +705,17 @@
 
         <section class="scc-section" id="sec-creative">
           <div class="card">
-            <div class="card-header"><div class="title">🎨 Creative Management</div></div>
-            <div class="card-body" id="creative"></div>
+            <div class="card-header">
+              <div class="title">🎨 Creative Management</div>
+              <a class="btn sm primary" style="margin-left:auto;" href="creative-workflow.html?project=LCE-2026" id="cw-deep">Open full Creative Workflow →</a>
+            </div>
+            <div class="card-body">
+              <div style="padding: 8px 12px; background: rgba(149,100,216,0.06); border: 1px dashed rgba(149,100,216,0.35); border-radius: var(--r-sm); font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px;">
+                <span class="sys-nudge purple">⚡ Linked to Creative Workflow</span>
+                Full lifecycle · Intake → Concept → Design → Review → Approved → Build → Install-ready. Approvals flip live into the show's Prod Log and the Client Portal.
+              </div>
+              <div id="creative"></div>
+            </div>
           </div>
         </section>
 
@@ -1313,11 +1326,13 @@
   function renderReqs(){
     const counts = reqs.reduce((a,r)=>((a[r.state]=(a[r.state]||0)+1), a), {});
     const summary = `
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: var(--sp-3); font-size: 11px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom: var(--sp-3); font-size: 11px;">
         <span class="req-status comp">${counts.comp||0} Complete</span>
         <span class="req-status conf">${counts.conf||0} Confirmed</span>
         <span class="req-status pend">${counts.pend||0} Pending</span>
         <span class="req-status block">${counts.block||0} Blocked</span>
+        <span class="sys-nudge green" title="Acknowledgments the client has already checked flow into the Client Portal ack list in real time.">⚡ Mirrored to Client Portal</span>
+        <span class="sys-nudge" title="Every row here maps to a venue-expectations line on the generated Advance.">⚡ On Advance</span>
         <span class="muted" style="margin-left:auto; font-size: 11.5px;">Click a row to advance its state — demos how PMs clear this list daily.</span>
       </div>`;
     const rows = reqs.map(r => `
@@ -1568,6 +1583,9 @@
         </div>` : ''}
     </div>`;
   }).join('');
+
+  // Creative Workflow deep-link carries the actual project code
+  { const cw = document.getElementById('cw-deep'); if(cw) cw.href = `creative-workflow.html?project=${encodeURIComponent(proj.code)}`; }
 
   // -------- CREATIVE pipeline (stages: Not started → In design → In build → Approved) --------
   const creativeStages = ['Not started', 'In design', 'In build', 'Approved'];

@@ -115,6 +115,113 @@
     .sf-grid td::before { content: attr(data-lbl) " · "; font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
     .sf-grid td.cue-t::before, .sf-grid td.cue-n::before { content: ""; }
   }
+
+  /* ---------- Mode toggle + Live Show Mode ---------- */
+  .sf-mode {
+    display: inline-flex; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-pill); padding: 3px;
+  }
+  .sf-mode button {
+    border: 0; background: transparent; color: var(--text-tertiary);
+    padding: 6px 12px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .sf-mode button.on {
+    background: var(--pcg-bright-blue); color: #001a2a;
+    font-weight: 700;
+  }
+  .sf-mode button.live.on { background: var(--pcg-spotlight-purple); color: #fff; }
+
+  /* Click-to-edit cells (Edit mode) */
+  body:not(.live-mode) .sf-grid td.dept {
+    cursor: text; position: relative;
+  }
+  body:not(.live-mode) .sf-grid td.dept:hover {
+    background: rgba(1,153,253,0.05);
+    outline: 1px dashed rgba(1,153,253,0.35); outline-offset: -1px;
+  }
+  body:not(.live-mode) .sf-grid td.dept.has-edit::after {
+    content: "●"; position: absolute; top: 4px; right: 4px;
+    font-size: 8px; color: var(--pcg-bright-blue);
+  }
+  .sf-grid td.dept[contenteditable="true"] {
+    background: var(--surface-2); outline: 2px solid var(--pcg-bright-blue); outline-offset: -2px;
+    cursor: text;
+  }
+
+  /* Live Show Mode — pinned current-cue header + current/next highlights */
+  body.live-mode .sf-mode .live { background: var(--pcg-spotlight-purple); color: #fff; }
+  .live-bar {
+    display: none; position: sticky; top: var(--topbar-h); z-index: 40;
+    background: linear-gradient(90deg, rgba(149,100,216,0.14), rgba(1,153,253,0.12)), var(--surface-1);
+    border: 1px solid rgba(149,100,216,0.4);
+    border-radius: var(--r-md);
+    padding: 14px 20px; margin-bottom: var(--sp-4);
+  }
+  body.live-mode .live-bar { display: grid; }
+  .live-bar {
+    grid-template-columns: 56px 1fr auto;
+    gap: 20px; align-items: center;
+  }
+  .live-bar .lb-clock {
+    font-family: var(--font-mono); font-size: 22px; font-weight: 700;
+    color: #fff; text-align: center; line-height: 1.1;
+  }
+  .live-bar .lb-clock .unit {
+    font-size: 9px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.1em; text-transform: uppercase;
+    display: block; margin-top: 2px;
+  }
+  .live-bar .lb-cue {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .live-bar .lb-now {
+    font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+    background: var(--status-green); color: #000;
+    padding: 4px 10px; border-radius: var(--r-pill);
+  }
+  .live-bar .lb-now.stby { background: var(--status-amber); color: #1a0c00; }
+  .live-bar .lb-code {
+    font-family: var(--font-mono); font-size: 13px; color: var(--pcg-bright-blue); font-weight: 700;
+  }
+  .live-bar .lb-title {
+    font-family: var(--font-display); font-size: 16px; color: #fff;
+  }
+  .live-bar .lb-next {
+    display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); margin-top: 4px;
+  }
+  .live-bar .lb-next b { color: var(--text-secondary); }
+  .live-bar .lb-btns { display: flex; gap: 6px; }
+  .live-bar .lb-btn {
+    padding: 8px 14px; border-radius: var(--r-sm); border: 1px solid var(--pcg-bright-blue);
+    background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue);
+    font-family: var(--font-display); font-size: 11.5px; letter-spacing: 0.06em; font-weight: 700;
+    cursor: pointer;
+  }
+  .live-bar .lb-btn:hover { background: var(--pcg-bright-blue); color: #001a2a; }
+  .live-bar .lb-btn.go { background: var(--status-green); color: #000; border-color: var(--status-green); }
+
+  body.live-mode .sf-grid tbody tr { opacity: 0.45; }
+  body.live-mode .sf-grid tbody tr.live-now { opacity: 1; background: rgba(149,100,216,0.12); box-shadow: inset 3px 0 0 var(--pcg-spotlight-purple); }
+  body.live-mode .sf-grid tbody tr.live-next { opacity: 0.85; background: rgba(1,153,253,0.06); box-shadow: inset 3px 0 0 var(--pcg-bright-blue); }
+  body.live-mode .sf-grid tbody tr.live-done { opacity: 0.3; }
+  body.live-mode .sf-grid tbody tr.live-done td.cue-n { text-decoration: line-through; }
+  body.live-mode .sf-grid td.dept { cursor: default; }
+  body.live-mode .sf-grid td.dept:hover { background: transparent; outline: 0; }
+  body.live-mode .sf-grid td.dept[contenteditable] { outline: 0; background: transparent; }
+
+  /* Section "now playing" marker */
+  .sf-section-head .live-tag {
+    background: var(--pcg-spotlight-purple); color: #fff;
+    padding: 3px 10px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;
+    animation: lb-pulse 1.4s infinite;
+  }
+  @keyframes lb-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(149,100,216,0.6); }
+    50%      { box-shadow: 0 0 0 6px rgba(149,100,216,0); }
+  }
 </style>
 </head>
 <body>
@@ -127,9 +234,33 @@
 
       <div class="sf-toolbar">
         <span class="muted">Show-day execution · cue-by-cue · show caller drives this · operators react</span>
+        <div class="sf-mode" id="sf-mode" title="Edit Mode lets department leads tweak cue notes. Live Show Mode pins the current cue and drives the show caller's run.">
+          <button class="edit on" data-m="edit">✎ Edit Mode</button>
+          <button class="live"    data-m="live">● Live Show Mode</button>
+        </div>
         <a class="btn sm ghost" id="open-ps" href="#">→ Production Schedule</a>
         <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
         <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
+      </div>
+
+      <!-- Live Show bar — pinned current / next / advance control -->
+      <div class="live-bar" id="live-bar">
+        <div class="lb-clock">
+          <span id="lb-clock-t">—</span>
+          <span class="unit">show clock</span>
+        </div>
+        <div>
+          <div class="lb-cue">
+            <span class="lb-now" id="lb-now">GO</span>
+            <span class="lb-code" id="lb-code">—</span>
+            <span class="lb-title" id="lb-title">—</span>
+          </div>
+          <span class="lb-next" id="lb-next"></span>
+        </div>
+        <div class="lb-btns">
+          <button class="lb-btn"    id="lb-standby">↔ Toggle STBY</button>
+          <button class="lb-btn go" id="lb-advance">GO · Next cue →</button>
+        </div>
       </div>
 
       <div class="sf-legend" style="margin-bottom: var(--sp-4);">
@@ -238,6 +369,23 @@
     }
   ];
 
+  // ==============================================================
+  // Flatten cues into a master sequence so Live Show Mode can drive.
+  // Every row gets a stable id like "s0r2" (section 0, row 2).
+  // ==============================================================
+  const flat = [];
+  sections.forEach((s, si) => s.rows.forEach((r, ri) => flat.push({ key: `s${si}r${ri}`, sIdx: si, rIdx: ri, r, s })));
+
+  // Pull persisted edits (by cell id) and live state from sessionStorage.
+  const EDIT_KEY = `pcg_sf_edits_${proj.code}`;
+  const LIVE_KEY = `pcg_sf_live_${proj.code}`;
+  const edits = JSON.parse(sessionStorage.getItem(EDIT_KEY) || '{}');
+  const liveState = JSON.parse(sessionStorage.getItem(LIVE_KEY) || 'null') || { mode:'edit', nowIdx: 0, standby: false };
+
+  // Department column → cell id builder
+  function deptId(key, col){ return `${key}:${col}`; }
+  function withEdits(key, col, fallback){ return edits[deptId(key, col)] ?? fallback; }
+
   document.getElementById('sf-sections').innerHTML = sections.map(s => `
     <section class="sf-section">
       <div class="sf-section-head">
@@ -262,22 +410,146 @@
         <tbody>
           ${s.rows.map((r, i) => {
             const rowCls = (s.rowClasses && s.rowClasses[i]) || '';
+            const key = `s${sections.indexOf(s)}r${i}`;
+            const depCell = (col, val) => {
+              const cid = deptId(key, col);
+              const isEdited = Object.prototype.hasOwnProperty.call(edits, cid);
+              const content = isEdited ? edits[cid] : (val || '—');
+              return `<td class="dept ${isEdited?'has-edit':''}" data-lbl="${col}" data-key="${cid}">${content}</td>`;
+            };
             return `
-              <tr class="${rowCls}">
+              <tr class="${rowCls}" data-key="${key}">
                 <td class="cue-t" data-lbl="Cue">${PCG.escapeHtml(r.t)}<br><span style="color: var(--text-tertiary); font-size: 10.5px;">${PCG.escapeHtml(r.cue)}</span></td>
                 <td class="cue-n" data-lbl="Cue">${r.name}</td>
-                <td class="dept" data-lbl="Audio">${r.a || '—'}</td>
-                <td class="dept" data-lbl="Video">${r.v || '—'}</td>
-                <td class="dept" data-lbl="Lighting">${r.l || '—'}</td>
-                <td class="dept" data-lbl="LED">${r.led || '—'}</td>
-                <td class="dept" data-lbl="Scenic">${r.s || '—'}</td>
-                <td class="dept" data-lbl="Note">${r.n || '—'}</td>
+                ${depCell('Audio',   r.a)}
+                ${depCell('Video',   r.v)}
+                ${depCell('Lighting',r.l)}
+                ${depCell('LED',     r.led)}
+                ${depCell('Scenic',  r.s)}
+                ${depCell('Note',    r.n)}
               </tr>`;
           }).join('')}
         </tbody>
       </table>
     </section>
   `).join('');
+
+  // ==============================================================
+  // EDIT MODE · click-to-edit department cells. Saves per cell to
+  // sessionStorage so a showback feels persistent.
+  // ==============================================================
+  document.querySelectorAll('.sf-grid td.dept').forEach(td => {
+    td.addEventListener('click', () => {
+      if(document.body.classList.contains('live-mode')) return;
+      if(td.getAttribute('contenteditable') === 'true') return;
+      td.setAttribute('contenteditable', 'true');
+      td.focus();
+      document.execCommand('selectAll', false, null);
+    });
+    td.addEventListener('blur', () => {
+      if(td.getAttribute('contenteditable') !== 'true') return;
+      td.removeAttribute('contenteditable');
+      const cid = td.dataset.key;
+      edits[cid] = td.innerHTML.trim();
+      sessionStorage.setItem(EDIT_KEY, JSON.stringify(edits));
+      td.classList.add('has-edit');
+    });
+    td.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); td.blur(); }
+      if(e.key === 'Escape'){ td.blur(); }
+    });
+  });
+
+  // ==============================================================
+  // MODE TOGGLE · Edit / Live. Live pins a ribbon bar + highlights
+  // the current and next cue. Standby toggles GO ↔ STBY styling.
+  // ==============================================================
+  const mode = { kind: liveState.mode || 'edit' };
+  function setMode(k){
+    mode.kind = k;
+    document.body.classList.toggle('live-mode', k === 'live');
+    document.querySelectorAll('#sf-mode button').forEach(b => b.classList.toggle('on', b.dataset.m === k));
+    liveState.mode = k;
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify(liveState));
+    if(k === 'live') refreshLive(); else clearLiveMarks();
+  }
+  document.querySelectorAll('#sf-mode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.m)));
+
+  function clearLiveMarks(){
+    document.querySelectorAll('.sf-grid tbody tr').forEach(tr => tr.classList.remove('live-now','live-next','live-done'));
+    document.querySelectorAll('.sf-section-head .live-tag').forEach(el => el.remove());
+  }
+
+  function refreshLive(){
+    clearLiveMarks();
+    if(mode.kind !== 'live') return;
+    const idx = Math.max(0, Math.min(flat.length - 1, liveState.nowIdx || 0));
+    const now  = flat[idx];
+    const next = flat[idx + 1];
+    if(!now) return;
+
+    // Row highlights + done strikeouts
+    flat.forEach((f, i) => {
+      const tr = document.querySelector(`.sf-grid tbody tr[data-key="${f.key}"]`);
+      if(!tr) return;
+      if(i < idx) tr.classList.add('live-done');
+      else if(i === idx) tr.classList.add('live-now');
+      else if(i === idx + 1) tr.classList.add('live-next');
+    });
+
+    // Section "now playing" tag
+    document.querySelectorAll('.sf-section').forEach((sec, si) => {
+      if(si === now.sIdx){
+        const head = sec.querySelector('.sf-section-head');
+        if(head && !head.querySelector('.live-tag')){
+          const tag = document.createElement('span');
+          tag.className = 'live-tag';
+          tag.textContent = '● LIVE · NOW';
+          head.insertBefore(tag, head.querySelector('.dur'));
+        }
+      }
+    });
+
+    // Pinned bar content
+    const nowBadge = document.getElementById('lb-now');
+    nowBadge.textContent = liveState.standby ? 'STBY' : 'GO';
+    nowBadge.classList.toggle('stby', liveState.standby);
+    document.getElementById('lb-code').textContent  = now.r.cue;
+    document.getElementById('lb-title').innerHTML   = PCG.escapeHtml(now.r.name.replace(/<[^>]+>/g, '')) + ` <span style="color: var(--text-tertiary); font-size: 11.5px; font-family: var(--font-mono); margin-left: 8px;">${PCG.escapeHtml(now.s.title)} · ${PCG.escapeHtml(now.r.t)}</span>`;
+    document.getElementById('lb-clock-t').textContent = now.r.t.replace(/\s+/g,'\u00a0').replace(/:\d{2}$/,'').slice(0, 8);
+    if(next){
+      document.getElementById('lb-next').innerHTML =
+        `<b>NEXT →</b> <span style="color: var(--pcg-bright-blue);">${PCG.escapeHtml(next.r.cue)}</span> · ${PCG.escapeHtml(next.r.name.replace(/<[^>]+>/g, '').slice(0, 90))}`;
+    } else {
+      document.getElementById('lb-next').innerHTML = '<b>NEXT →</b> <em>End of show</em>';
+    }
+
+    // Scroll the active row into view
+    const live = document.querySelector('.sf-grid tbody tr.live-now');
+    if(live) live.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  document.getElementById('lb-advance').addEventListener('click', () => {
+    liveState.nowIdx = Math.min(flat.length - 1, (liveState.nowIdx || 0) + 1);
+    liveState.standby = false;
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify(liveState));
+    refreshLive();
+  });
+  document.getElementById('lb-standby').addEventListener('click', () => {
+    liveState.standby = !liveState.standby;
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify(liveState));
+    refreshLive();
+  });
+  // Space = GO · S = STBY toggle (show caller convenience)
+  document.addEventListener('keydown', e => {
+    if(!document.body.classList.contains('live-mode')) return;
+    if(e.target.isContentEditable) return;
+    if(e.code === 'Space'){ e.preventDefault(); document.getElementById('lb-advance').click(); }
+    if(e.key === 's' || e.key === 'S'){ document.getElementById('lb-standby').click(); }
+  });
+
+  // Boot mode from persisted state
+  setMode(mode.kind);
 </script>
 </body>
 </html>

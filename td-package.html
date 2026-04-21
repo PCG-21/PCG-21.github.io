@@ -209,6 +209,41 @@
   document.getElementById('open-ps').href   = `production-schedule.html?project=${encodeURIComponent(code)}`;
   document.getElementById('open-sf').href   = `show-flow.html?project=${encodeURIComponent(code)}`;
 
+  // Populate Latest Changes (24h rolling feel).
+  // Pulls: Decision marks from chat, field-captured items, venue-req
+  // state changes (seed), truck status changes (seed), creative approval
+  // moves (seed). Mixed with hand-authored demo changes so the section
+  // reads true even on first load.
+  setTimeout(() => {
+    const seed = [
+      { icon:'🚚', tone:'amber',  body:'<strong>Truck 1 arrival moved</strong> from 06:00 → <strong>06:30 AM</strong> · dock 2. Production Schedule + Advance updated.' },
+      { icon:'✓',  tone:'green',  body:'<strong>Ballroom cleared</strong> status flipped to <em>Confirmed</em> by venue ops · visible in Client Portal.' },
+      { icon:'🎨', tone:'blue',   body:'<strong>Awards package</strong> creative approval received from client · stage 4/4 · Creative Pipeline updated.' },
+      { icon:'⚠',  tone:'red',    body:'<strong>Field note flagged:</strong> "Dock congestion after 3 PM — hotel catering shift has moved earlier." · posted to Risk Register.' },
+      { icon:'⚡', tone:'purple', body:'<strong>CO #3 · Ready-room</strong> decision approved · scope tags cleared · T4 truck released from hold.' },
+      { icon:'🗺', tone:'blue',   body:'Site visit added <strong>3 venue-condition photos</strong> (hallway corner protection · BOH storage) · saved to Caesars Forum venue record.' }
+    ];
+
+    // Pull field-capture issues into the change list
+    const fieldRaw = JSON.parse(sessionStorage.getItem(`pcg_field_${proj.code}`) || '[]');
+    const recentField = fieldRaw.slice(0, 2).map(f => ({
+      icon: f.kind === 'issue' ? '⚠' : (f.kind === 'venue' ? '🏛' : '📝'),
+      tone: f.kind === 'issue' ? 'red' : 'blue',
+      body: `<strong>Field capture · ${PCG.escapeHtml(f.kind)}:</strong> ${PCG.escapeHtml(String(f.body || '').slice(0, 110))}${f.body && f.body.length > 110 ? '…' : ''}`
+    }));
+
+    const rows = recentField.concat(seed).slice(0, 8);
+    const wrap = document.getElementById('td-change-list');
+    if(wrap){
+      const toneColor = { amber:'var(--status-amber)', green:'var(--status-green)', blue:'var(--pcg-bright-blue)', red:'var(--status-red)', purple:'var(--pcg-spotlight-purple)' };
+      wrap.innerHTML = rows.map(r => `
+        <div style="display:grid; grid-template-columns: 28px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; line-height: 1.5;">
+          <span style="font-size: 15px; color: ${toneColor[r.tone] || 'var(--pcg-bright-blue)'};">${r.icon}</span>
+          <span style="color: var(--text-primary);">${r.body}</span>
+        </div>`).join('');
+    }
+  }, 0);
+
   document.getElementById('dist').addEventListener('click', () => {
     alert('✓ TD package staged for distribution.\n\nRecipients:\n• Technical Director · Chris Taylor\n• Audio lead · Priya Shah (A1)\n• Video lead · V1 operator\n• Lighting lead · LD\n• Scenic lead\n• Rigging · IATSE 720 steward\n• Show Caller · J. Gerber\n\nA PDF copy also archives to the Show Book.');
   });
@@ -246,6 +281,8 @@
       <a href="#td-over">Overview</a>
       <a href="#td-con">Contacts</a>
       <a href="#td-lead">Department leads</a>
+      <a href="#td-changes">Latest changes</a>
+      <a href="#td-trucks">Logistics &amp; trucking</a>
       <a href="#td-sched">Schedule summary</a>
       <a href="#td-ros">ROS summary</a>
       <a href="#td-scope">Scope</a>
@@ -319,6 +356,38 @@
           <div class="td-lead"><span class="ico">🧱</span><div><div class="dept">Scenic · Stage</div><div class="nm">Lena Wu</div><div class="cn">Marquee set · thrust<br>📱 (248) 555-0156</div></div></div>
           <div class="td-lead"><span class="ico">🎨</span><div><div class="dept">Creative · QLab</div><div class="nm">${creative ? PCG.escapeHtml(creative.name) : 'K. Oliver'}</div><div class="cn">Playback · graphics<br>📱 (248) 555-0157</div></div></div>
           <div class="td-lead"><span class="ico">🚚</span><div><div class="dept">Logistics</div><div class="nm">M. Duda</div><div class="cn">Trucks · dock ops<br>📱 (248) 555-0158</div></div></div>
+        </div>
+      </div>
+
+      <!-- LATEST CHANGES SINCE YESTERDAY -->
+      <div class="td-section" id="td-changes">
+        <h2>Latest changes · since yesterday <span class="repo">Live delta · auto-rolls every 24h</span></h2>
+        <div style="border: 1px solid rgba(245,176,65,0.35); border-left: 3px solid var(--status-amber); background: linear-gradient(135deg, rgba(245,176,65,0.05), transparent 70%); border-radius: var(--r-sm); padding: 14px 18px;">
+          <div id="td-change-list"></div>
+          <div style="margin-top: 12px; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">
+            <strong style="color: var(--status-amber);">HEADS UP:</strong>  This section resets every 24h · TDs should scan before the daily huddle.
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGISTICS & TRUCKING (critical · TD does NOT hunt for this) -->
+      <div class="td-section" id="td-trucks">
+        <h2>Logistics &amp; Trucking <span class="repo">Pulled from Production Schedule · Trucking layer</span></h2>
+        <div class="td-sched">
+          <table>
+            <thead><tr><th>Truck</th><th>Driver</th><th>Arrival</th><th>Dock</th><th>Origin → Dest</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="mono"><strong>T1 · 48'</strong><br><span class="muted" style="font-size:11px;">Main rig</span></td><td>M. Alvarado<br><span class="muted" style="font-size:11px; font-family: var(--font-mono);">(248) 555-0101</span></td><td class="mono" style="color: var(--pcg-bright-blue); font-weight: 700;">Load-in day · 6:30 AM</td><td><span style="background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); padding: 2px 8px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Dock 2</span></td><td>Detroit WH → Caesars Forum</td><td><span class="pill green plain" style="font-size: 10px;">CONFIRMED</span></td></tr>
+              <tr><td class="mono"><strong>T2 · 48'</strong><br><span class="muted" style="font-size:11px;">Audio + Video</span></td><td>D. Ellis<br><span class="muted" style="font-size:11px; font-family: var(--font-mono);">(248) 555-0102</span></td><td class="mono" style="color: var(--pcg-bright-blue); font-weight: 700;">Load-in day · 8:30 AM</td><td><span style="background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); padding: 2px 8px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Dock 2</span></td><td>Detroit WH → Caesars Forum</td><td><span class="pill blue plain" style="font-size: 10px;">IN TRANSIT</span></td></tr>
+              <tr><td class="mono"><strong>T3 · 26'</strong><br><span class="muted" style="font-size:11px;">Sub-rental · 2× JSub (Solotech)</span></td><td>Solotech courier<br><span class="muted" style="font-size:11px; font-family: var(--font-mono);">(312) 555-0177</span></td><td class="mono" style="color: var(--pcg-bright-blue); font-weight: 700;">Load-in day · 9:30 AM</td><td><span style="background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); padding: 2px 8px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Dock 2</span></td><td>Solotech Chicago → Caesars Forum</td><td><span class="pill amber plain" style="font-size: 10px;">PENDING</span></td></tr>
+              <tr><td class="mono"><strong>SPRNT · A</strong><br><span class="muted" style="font-size:11px;">Creative / playback drives</span></td><td>K. Oliver (PCG)<br><span class="muted" style="font-size:11px; font-family: var(--font-mono);">(248) 555-0157</span></td><td class="mono" style="color: var(--pcg-bright-blue); font-weight: 700;">Load-in day · 10:00 AM</td><td><span style="background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); padding: 2px 8px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Dock 2 · side</span></td><td>Bldg B → Caesars Forum</td><td><span class="pill green plain" style="font-size: 10px;">CONFIRMED</span></td></tr>
+              <tr><td class="mono"><strong>T4 · 26'</strong><br><span class="muted" style="font-size:11px;">Ready-room platforms</span></td><td>R. Fields<br><span class="muted" style="font-size:11px; font-family: var(--font-mono);">(248) 555-0118</span></td><td class="mono" style="color: var(--pcg-bright-blue); font-weight: 700;">Load-in +1 · 14:00</td><td><span style="background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); padding: 2px 8px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Dock 2</span></td><td>Detroit WH → Caesars Forum</td><td><span class="pill amber plain" style="font-size: 10px;">PENDING CO</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top: 10px; padding: 10px 14px; background: var(--surface-0); border: 1px dashed var(--border-accent); border-radius: var(--r-sm); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+          <strong style="color: var(--pcg-bright-blue);">Dock rules:</strong>
+          Dock 2 primary · 48' clearance · 10'6" door · Freight elevator 10'×6' × 5,000 lb · Key-card after 10 PM · Dock 4 shared with hotel catering after 3 PM — DO NOT plan load moves past then.
         </div>
       </div>
 

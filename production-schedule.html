@@ -104,6 +104,111 @@
       grid-column: 3 / 4; text-align: left;
     }
   }
+
+  /* ---------- Template banner ---------- */
+  .ps-template {
+    padding: 14px 18px; border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(149,100,216,0.1), transparent 70%), var(--surface-1);
+    border: 1px solid rgba(149,100,216,0.35); border-left: 3px solid var(--pcg-spotlight-purple);
+    margin-bottom: var(--sp-4);
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  }
+  .ps-template .lbl {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--pcg-spotlight-purple);
+  }
+  .ps-template .val { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+  .ps-template .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .ps-template .chip {
+    padding: 4px 10px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border);
+    font-size: 11px; font-family: var(--font-display); letter-spacing: 0.04em;
+    color: var(--text-secondary); cursor: pointer; user-select: none;
+  }
+  .ps-template .chip.on {
+    background: rgba(1,153,253,0.15); border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue);
+  }
+
+  /* ---------- Row edit controls ---------- */
+  .ps-row .ps-edit {
+    display: none; gap: 4px; position: absolute; right: 12px; top: 8px;
+  }
+  .ps-row { position: relative; }
+  .ps-row:hover .ps-edit { display: inline-flex; }
+  .ps-edit button {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text-tertiary);
+    padding: 2px 8px; border-radius: var(--r-sm); cursor: pointer;
+    font-size: 11px; line-height: 1;
+  }
+  .ps-edit button:hover { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+
+  /* ---------- "Linked to" chips per row ---------- */
+  .ps-links { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .ps-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 700; text-decoration: none;
+    color: var(--pcg-bright-blue); background: rgba(1,153,253,0.12);
+    border: 1px solid rgba(1,153,253,0.35);
+  }
+  .ps-link.adv { color: var(--pcg-bright-blue); }
+  .ps-link.td  { color: var(--pcg-spotlight-purple); background: rgba(149,100,216,0.14); border-color: rgba(149,100,216,0.35); }
+  .ps-link.sf  { color: var(--status-amber); background: rgba(245,176,65,0.14); border-color: rgba(245,176,65,0.35); }
+  .ps-link.cp  { color: var(--status-green); background: rgba(61,220,132,0.14); border-color: rgba(61,220,132,0.35); }
+
+  /* ---------- Trucking & Logistics card ---------- */
+  .truck-card {
+    background: linear-gradient(135deg, rgba(245,176,65,0.06), transparent 70%), var(--surface-1);
+    border: 1px solid var(--border); border-left: 3px solid var(--status-amber);
+    border-radius: var(--r-md); overflow: hidden;
+    margin-bottom: var(--sp-5);
+  }
+  .truck-head {
+    padding: 14px 18px; display: flex; gap: 14px; align-items: baseline;
+    border-bottom: 1px solid var(--border);
+    background: rgba(245,176,65,0.04);
+  }
+  .truck-head h2 { margin: 0; font-family: var(--font-display); font-size: 16px; color: var(--text-primary); }
+  .truck-head .meta { margin-left: auto; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary); }
+  .truck-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .truck-table th, .truck-table td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    text-align: left; vertical-align: top;
+  }
+  .truck-table th {
+    background: var(--surface-2);
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .truck-table tbody tr:hover { background: var(--surface-2); }
+  .truck-table .tk { font-weight: 600; color: var(--text-primary); }
+  .truck-table .tk .sub { display: block; font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; font-family: var(--font-mono); font-weight: 400; }
+  .truck-table .arr { font-family: var(--font-mono); color: var(--pcg-bright-blue); font-weight: 700; white-space: nowrap; }
+  .truck-table .dock {
+    display: inline-block; padding: 2px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue);
+    border: 1px solid rgba(1,153,253,0.35);
+  }
+  .truck-table .note { font-size: 11.5px; color: var(--text-secondary); max-width: 260px; }
+  .truck-table .driver { font-size: 11.5px; color: var(--text-secondary); }
+  .truck-table .driver .ph { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); margin-top: 1px; }
+  .truck-st {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700;
+  }
+  .truck-st.conf { background: rgba(61,220,132,0.18); color: var(--status-green); }
+  .truck-st.pend { background: rgba(245,176,65,0.18); color: var(--status-amber); }
+  .truck-st.trans{ background: rgba(1,153,253,0.18);  color: var(--pcg-bright-blue); }
+
+  /* Section-level "add row" button */
+  .ps-phase-add {
+    padding: 8px 18px; text-align: center; font-size: 12px;
+    color: var(--text-tertiary); cursor: pointer;
+    border-top: 1px dashed var(--border);
+  }
+  .ps-phase-add:hover { background: var(--surface-2); color: var(--pcg-bright-blue); }
 </style>
 </head>
 <body>
@@ -119,6 +224,35 @@
         <a class="btn sm ghost" id="open-sf" href="#">→ Show Flow / ROS</a>
         <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
         <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
+      </div>
+
+      <!-- Template framework banner -->
+      <div class="ps-template">
+        <div>
+          <div class="lbl">Built from template</div>
+          <div class="val">🎯 Corporate Awards · Multi-Day · GSA template v3</div>
+        </div>
+        <div class="chips" id="tmpl-chips">
+          <span class="chip on" data-t="awards">Awards Show</span>
+          <span class="chip on" data-t="ballroom">Ballroom Show</span>
+          <span class="chip on" data-t="gs">General Session</span>
+          <span class="chip"    data-t="breakouts">Multi-Room Conference</span>
+          <span class="chip"    data-t="tour">Tour · Multi-City</span>
+        </div>
+      </div>
+
+      <!-- Trucking / Logistics layer — the TD should never have to hunt for this -->
+      <div class="truck-card" id="truck-card">
+        <div class="truck-head">
+          <h2>🚚 Trucking &amp; Logistics</h2>
+          <span class="meta" id="truck-meta">Dock 2 primary · 48' clearance · key-card after 10 PM</span>
+        </div>
+        <table class="truck-table">
+          <thead>
+            <tr><th>Truck</th><th>Driver</th><th>Arrival</th><th>Dock</th><th>Origin → Destination</th><th>Status</th><th>Note</th></tr>
+          </thead>
+          <tbody id="truck-rows"></tbody>
+        </table>
       </div>
 
       <div class="ps-legend">
@@ -187,24 +321,24 @@
     { n:1, title:'Pre-Production · warehouse + design lock',
       meta: `Weeks prior · ${PCG.fmtShort(prep)} onward`,
       rows:[
-        { when: dayOf(prep, 9),                 what:'Design package locked (plot · PL · one-line)', sub:'TD sign-off on rigging plot + power one-line + audio patch. Creative package rev3 frozen.', owner:'TD', loc:'PCG Det · Design', status:'comp' },
-        { when: dayOf(prep, 13),                what:'Warehouse pick · staging begins',               sub:'Pull sheet released · j8 / JSub / Axient rack / Barco E2 staged to truck lane 2.',            owner:'Warehouse', loc:'Detroit WH', status:'comp' },
-        { when: dayOf(prep, 16),                what:'Sub-rental · 2× d&b JSub (Solotech)',           sub:'PO pending signature · delivery window 4/9 AM to warehouse staging.',                        owner:'Vendor · Logistics', loc:'Solotech Chicago', status:'risk' },
-        { when: dayOf(prep, 17),                what:'Creative V1 delivery (opener · awards)',        sub:'Opener render + Awards graphics pushed to QLab master. Sponsor loop pending client files.', owner:'Creative · Kevin Oliver', loc:'Bldg B', status:'hold' },
-        { when: dayOf(prep, 15),                what:'IATSE 720 · rigger call confirmed',             sub:'4 riggers at 6 AM · +2 on climb at 8 AM · steward call placed.',                             owner:'Crew · TSM', loc:'Local 720', status:'conf' },
+        { when: dayOf(prep, 9),                 what:'Design package locked (plot · PL · one-line)', sub:'TD sign-off on rigging plot + power one-line + audio patch. Creative package rev3 frozen.', owner:'TD', loc:'PCG Det · Design', status:'comp', links:['td','sf'] },
+        { when: dayOf(prep, 13),                what:'Warehouse pick · staging begins',               sub:'Pull sheet released · j8 / JSub / Axient rack / Barco E2 staged to truck lane 2.',            owner:'Warehouse', loc:'Detroit WH', status:'comp', links:['td'] },
+        { when: dayOf(prep, 16),                what:'Sub-rental · 2× d&b JSub (Solotech)',           sub:'PO pending signature · delivery window 4/9 AM to warehouse staging.',                        owner:'Vendor · Logistics', loc:'Solotech Chicago', status:'risk', links:['td','adv'] },
+        { when: dayOf(prep, 17),                what:'Creative V1 delivery (opener · awards)',        sub:'Opener render + Awards graphics pushed to QLab master. Sponsor loop pending client files.', owner:'Creative · Kevin Oliver', loc:'Bldg B', status:'hold', links:['sf','cp'] },
+        { when: dayOf(prep, 15),                what:'IATSE 720 · rigger call confirmed',             sub:'4 riggers at 6 AM · +2 on climb at 8 AM · steward call placed.',                             owner:'Crew · TSM', loc:'Local 720', status:'conf', links:['td','adv'] },
         { when: dayOf(prep, 14),                what:'Insurance COI filed with venue',                sub:'Certificate issued 4/3 · additional insured: Caesars Forum LLC.',                            owner:'Ops · Accounting', loc:'Remote', status:'comp' }
       ]},
     // ---------- LOAD-IN ----------
     { n:2, title:'Load-In · trucks, rigging, tech build',
       meta: `Day of load-in · ${PCG.fmtShort(loadIn)}`,
       rows:[
-        { when: dayOf(loadIn, 5, 30),           what:'Dock 2 access opens',                           sub:'Key-card released · bollards removed · venue security on deck.',                                  owner:'Venue · Security',   loc:'Dock 2', status:'conf' },
-        { when: dayOf(loadIn, 6, 0),            what:'IATSE rigger call · 4 riggers',                 sub:'Plot review · dead-hang motor prep · safety hands walkthrough.',                                   owner:'Crew · Rigging',     loc:'Ballroom grid', status:'conf' },
-        { when: dayOf(loadIn, 6, 30),           what:'Truck 1 arrives (main rig)',                    sub:'48\' · j8 / JSub / LED header / main scenic. 45-min unload window.',                              owner:'Logistics · PCG',    loc:'Dock 2', status:'conf' },
-        { when: dayOf(loadIn, 7, 0),            what:'Rigging start · motors up',                     sub:'4× 1-ton on J-Series · 2× ½-ton on LED header fly frame. Weight bridge in.',                      owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan' },
+        { when: dayOf(loadIn, 5, 30),           what:'Dock 2 access opens',                           sub:'Key-card released · bollards removed · venue security on deck.',                                  owner:'Venue · Security',   loc:'Dock 2', status:'conf', links:['adv','cp'] },
+        { when: dayOf(loadIn, 6, 0),            what:'IATSE rigger call · 4 riggers',                 sub:'Plot review · dead-hang motor prep · safety hands walkthrough.',                                   owner:'Crew · Rigging',     loc:'Ballroom grid', status:'conf', links:['td'] },
+        { when: dayOf(loadIn, 6, 30),           what:'Truck 1 arrives (main rig)',                    sub:'48\' · j8 / JSub / LED header / main scenic. 45-min unload window.',                              owner:'Logistics · PCG',    loc:'Dock 2', status:'conf', links:['adv','td'] },
+        { when: dayOf(loadIn, 7, 0),            what:'Rigging start · motors up',                     sub:'4× 1-ton on J-Series · 2× ½-ton on LED header fly frame. Weight bridge in.',                      owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan', links:['td'] },
         { when: dayOf(loadIn, 8, 0),            what:'+2 riggers on climb',                           sub:'Climb call adds two per steward approval.',                                                         owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan' },
-        { when: dayOf(loadIn, 8, 30),           what:'Truck 2 arrives (audio + video)',               sub:'Yamaha CL5 · AD4Q quad receivers · Axient rack · Barco E2.',                                       owner:'Logistics · PCG',    loc:'Dock 2', status:'plan' },
-        { when: dayOf(loadIn, 9, 0),            what:'Power tie-in · 200A (FOH dock)',                sub:'Venue electrician on-site for tie-in. House power isolated.',                                      owner:'Power · S. Vance',   loc:'FOH dock panel', status:'hold' },
+        { when: dayOf(loadIn, 8, 30),           what:'Truck 2 arrives (audio + video)',               sub:'Yamaha CL5 · AD4Q quad receivers · Axient rack · Barco E2.',                                       owner:'Logistics · PCG',    loc:'Dock 2', status:'plan', links:['adv','td'] },
+        { when: dayOf(loadIn, 9, 0),            what:'Power tie-in · 200A (FOH dock)',                sub:'Venue electrician on-site for tie-in. House power isolated.',                                      owner:'Power · S. Vance',   loc:'FOH dock panel', status:'hold', links:['adv','td'] },
         { when: dayOf(loadIn, 10, 0),           what:'Audio load-in · FOH + amp world',               sub:'Stage rack patch · FOH drive rack · system check.',                                                owner:'Audio · A1',         loc:'FOH / SL amps',  status:'plan' },
         { when: dayOf(loadIn, 10, 30),          what:'LED wall build · header + IMAG',                sub:'Header panels up · IMAG side panels stacked · Barco E2 comms in.',                                 owner:'Video · V1',         loc:'Stage deck',     status:'plan' },
         { when: dayOf(loadIn, 12, 30),          what:'Crew meal · served in BOH breakroom',           sub:'Venue catering · 62 counts · vegan + GF per pre-brief.',                                           owner:'Venue · Catering',   loc:'BOH breakroom',  status:'conf' },
@@ -215,7 +349,7 @@
     { n:3, title:'Rehearsal · tech + dress',
       meta: `${PCG.fmtShort(dayOf(loadIn, 0) ? new Date(new Date(loadIn).getTime() + 86400000).toISOString() : '')} → pre-show`,
       rows:[
-        { when: new Date(new Date(loadIn).getTime() + 86400000 + 9*3600000).toISOString(),  what:'Tech rehearsal · walk-through',     sub:'Top-of-show sequence · opener roll · walk-in music · house-out cue.',         owner:'Full crew',       loc:'Ballroom',      status:'plan' },
+        { when: new Date(new Date(loadIn).getTime() + 86400000 + 9*3600000).toISOString(),  what:'Tech rehearsal · walk-through',     sub:'Top-of-show sequence · opener roll · walk-in music · house-out cue.',         owner:'Full crew',       loc:'Ballroom',      status:'plan', links:['sf','td'] },
         { when: new Date(new Date(loadIn).getTime() + 86400000 + 13*3600000).toISOString(), what:'Department rehearsal · audio',      sub:'Mic checks · IFB path · stage monitor mixes · comms check.',                    owner:'Audio · A1',      loc:'FOH',           status:'plan' },
         { when: new Date(new Date(loadIn).getTime() + 86400000 + 14*3600000).toISOString(), what:'Dept rehearsal · video IMAG',       sub:'Camera iso checks · multiview · switcher scene build.',                         owner:'Video · V1',      loc:'FOH',           status:'plan' },
         { when: new Date(new Date(loadIn).getTime() + 86400000 + 16*3600000).toISOString(), what:'Dress rehearsal · full cast',       sub:'Full run with cast + playback · client attends.',                               owner:'Full crew + Client', loc:'Ballroom',      status:'plan' }
@@ -224,10 +358,10 @@
     { n:4, title:'Show · live execution days',
       meta: `${PCG.fmtShort(showS)} → ${PCG.fmtShort(showE)}`,
       rows:[
-        { when: showS,                                                                    what:'Day 1 · General Session opens',       sub:'House open 30 min prior · walk-in music · opener at top of show.',       owner:'Show Caller',   loc:'FOH / stage', status:'plan' },
-        { when: new Date(new Date(showS).getTime() + 86400000).toISOString(),             what:'Day 2 · Breakouts + keynotes',        sub:'Breakout rooms open · main GS afternoon block.',                           owner:'Show Caller',   loc:'Ballroom + breakouts', status:'plan' },
-        { when: new Date(new Date(showS).getTime() + 86400000 * 2).toISOString(),         what:'Day 3 · Cocktail reception · DJ patch', sub:'Ambient reinforcement · DJ patch at 18:00 · ready-room build parallel.',  owner:'Audio + Scenic', loc:'Ballroom + ready room', status:'plan' },
-        { when: showE,                                                                    what:'Day 4 · Awards show · Day-4 evening', sub:'Awards package playback · ready-room active · finale at 20:30.',           owner:'Full crew',      loc:'Ballroom',     status:'plan' }
+        { when: showS,                                                                    what:'Day 1 · General Session opens',       sub:'House open 30 min prior · walk-in music · opener at top of show.',       owner:'Show Caller',   loc:'FOH / stage', status:'plan', links:['sf','td','adv','cp'] },
+        { when: new Date(new Date(showS).getTime() + 86400000).toISOString(),             what:'Day 2 · Breakouts + keynotes',        sub:'Breakout rooms open · main GS afternoon block.',                           owner:'Show Caller',   loc:'Ballroom + breakouts', status:'plan', links:['sf','cp'] },
+        { when: new Date(new Date(showS).getTime() + 86400000 * 2).toISOString(),         what:'Day 3 · Cocktail reception · DJ patch', sub:'Ambient reinforcement · DJ patch at 18:00 · ready-room build parallel.',  owner:'Audio + Scenic', loc:'Ballroom + ready room', status:'plan', links:['td'] },
+        { when: showE,                                                                    what:'Day 4 · Awards show · Day-4 evening', sub:'Awards package playback · ready-room active · finale at 20:30.',           owner:'Full crew',      loc:'Ballroom',     status:'plan', links:['sf','td','adv','cp'] }
       ]},
     // ---------- STRIKE ----------
     { n:5, title:'Strike · load-out',
@@ -248,27 +382,129 @@
       ]}
   ];
 
-  document.getElementById('ps-phases').innerHTML = phases.map(p => `
-    <section class="ps-phase">
+  // Linked-to chip · declares cross-surface connections for each row
+  const linkCopy = {
+    adv: { lbl:'On Advance',   cls:'adv', href:`advance.html?project=${encodeURIComponent(code)}` },
+    td:  { lbl:'In TD Package',cls:'td',  href:`td-package.html?project=${encodeURIComponent(code)}` },
+    sf:  { lbl:'Ties to Show Flow', cls:'sf', href:`show-flow.html?project=${encodeURIComponent(code)}` },
+    cp:  { lbl:'Visible to Client', cls:'cp', href:`client-portal.html?project=${encodeURIComponent(code)}` }
+  };
+  function linksHtml(arr){
+    if(!arr || !arr.length) return '';
+    return `<div class="ps-links">${arr.map(k => {
+      const m = linkCopy[k]; if(!m) return '';
+      return `<a class="ps-link ${m.cls}" href="${m.href}" title="This schedule item is reflected on the linked surface">⚡ ${m.lbl}</a>`;
+    }).join('')}</div>`;
+  }
+
+  document.getElementById('ps-phases').innerHTML = phases.map((p, pi) => `
+    <section class="ps-phase" data-phase="${pi}">
       <div class="ps-phase-head">
         <div class="ps-phase-num">${p.n}</div>
         <h2>${PCG.escapeHtml(p.title)}</h2>
         <span class="meta">${PCG.escapeHtml(p.meta)}</span>
       </div>
-      ${p.rows.map(r => `
-        <div class="ps-row">
+      ${p.rows.map((r, ri) => `
+        <div class="ps-row" data-row="${pi}:${ri}">
           <div class="ps-when">${shortT(r.when)}</div>
           <div class="ps-dot ${r.status}"></div>
           <div class="ps-what">
             <strong>${PCG.escapeHtml(r.what)}</strong>
             ${r.sub ? `<div class="sub">${PCG.escapeHtml(r.sub)}</div>` : ''}
+            ${linksHtml(r.links)}
           </div>
           <span class="ps-owner">${PCG.escapeHtml(r.owner)}</span>
           <span class="ps-loc">📍 ${PCG.escapeHtml(r.loc)}</span>
           <span class="ps-status ${r.status}">${r.status === 'conf' ? 'Confirmed' : r.status === 'risk' ? 'At risk' : r.status === 'hold' ? 'Pending' : r.status === 'comp' ? 'Complete' : 'Planned'}</span>
+          <span class="ps-edit">
+            <button data-act="up"   title="Move up">↑</button>
+            <button data-act="down" title="Move down">↓</button>
+            <button data-act="dup"  title="Duplicate">⎘</button>
+            <button data-act="edit" title="Inline edit">✎</button>
+          </span>
         </div>`).join('')}
+      <div class="ps-phase-add" data-phase="${pi}">＋ Add row to ${PCG.escapeHtml(p.title.split('·')[0].trim())}</div>
     </section>
   `).join('');
+
+  // ---------- Edit interactions (demo-safe) ----------
+  // Move, duplicate, inline edit via contenteditable. State is ephemeral
+  // per-session — a real backend would persist; the wow is behavioral.
+  function rebuildAfterEdit(){ /* noop · DOM-mutation driven */ }
+  document.querySelectorAll('.ps-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]'); if(!btn) return;
+      e.stopPropagation();
+      const act = btn.dataset.act;
+      if(act === 'up'   && row.previousElementSibling && row.previousElementSibling.classList.contains('ps-row')) row.parentElement.insertBefore(row, row.previousElementSibling);
+      if(act === 'down' && row.nextElementSibling && row.nextElementSibling.classList.contains('ps-row')) row.parentElement.insertBefore(row.nextElementSibling, row);
+      if(act === 'dup'){
+        const copy = row.cloneNode(true);
+        copy.querySelector('.ps-what strong').textContent = '(copy) ' + copy.querySelector('.ps-what strong').textContent;
+        row.parentElement.insertBefore(copy, row.nextSibling);
+      }
+      if(act === 'edit'){
+        const target = row.querySelector('.ps-what strong');
+        target.setAttribute('contenteditable', 'true');
+        target.focus();
+        document.execCommand('selectAll', false, null);
+        const done = () => { target.removeAttribute('contenteditable'); target.removeEventListener('blur', done); };
+        target.addEventListener('blur', done);
+      }
+    });
+  });
+
+  // Add-row dashed buttons — drop a Planned row into the target phase
+  document.querySelectorAll('.ps-phase-add').forEach(btn => btn.addEventListener('click', () => {
+    const phase = btn.closest('.ps-phase');
+    const tpl = `
+      <div class="ps-row">
+        <div class="ps-when">New</div>
+        <div class="ps-dot plan"></div>
+        <div class="ps-what">
+          <strong contenteditable="true">New schedule item · click to rename</strong>
+          <div class="sub">Add notes…</div>
+        </div>
+        <span class="ps-owner">—</span>
+        <span class="ps-loc">📍 —</span>
+        <span class="ps-status plan">Planned</span>
+        <span class="ps-edit">
+          <button data-act="up">↑</button>
+          <button data-act="down">↓</button>
+          <button data-act="dup">⎘</button>
+          <button data-act="edit">✎</button>
+        </span>
+      </div>`;
+    btn.insertAdjacentHTML('beforebegin', tpl);
+    const added = btn.previousElementSibling;
+    added.querySelector('strong').focus();
+  }));
+
+  // ---------- Trucking / Logistics table ----------
+  // Hand-authored realistic manifest. Arrival times are relative to load-in.
+  const trucks = [
+    { id:'T1 · 48\'', kind:'Main rig', drv:'M. Alvarado', ph:'(248) 555-0101', arr: dayOf(loadIn, 6, 30), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'conf', note:'45-min unload · leads with LED header & scenic flats' },
+    { id:'T2 · 48\'', kind:'Audio + Video', drv:'D. Ellis',   ph:'(248) 555-0102', arr: dayOf(loadIn, 8, 30), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'trans', note:'CL5 + AD4Q + Barco E2 + stage rack · on-road since 04:00 ET' },
+    { id:'T3 · 26\'', kind:'Sub-rental · 2× d&b JSub', drv:'Solotech courier', ph:'(312) 555-0177', arr: dayOf(loadIn, 9, 30), dock:'Dock 2', path:'Solotech Chicago → Caesars Forum', status:'pend', note:'Sub confirm outstanding · PM pushing for 4/15 16:00 PT' },
+    { id:'SPRNT · A', kind:'Creative / playback drives', drv:'K. Oliver (PCG)', ph:'(248) 555-0157', arr: dayOf(loadIn, 10, 0), dock:'Dock 2 · side', path:'Bldg B (Creative) → Caesars Forum', status:'conf', note:'QLab master + sponsor-loop drives · 2× redundant SSD hand-carry' },
+    { id:'T4 · 26\'', kind:'Ready-room platforms', drv:'R. Fields', ph:'(248) 555-0118', arr: new Date(new Date(loadIn).getTime() + 86400000 + 14*3600000).toISOString(), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'pend', note:'CO#3 dependency · dispatch only if change order lands today' }
+  ];
+  const stLbl = { conf:'Confirmed', pend:'Pending', trans:'In transit' };
+  document.getElementById('truck-rows').innerHTML = trucks.map(t => `
+    <tr>
+      <td class="tk">${PCG.escapeHtml(t.id)}<span class="sub">${PCG.escapeHtml(t.kind)}</span></td>
+      <td class="driver">${PCG.escapeHtml(t.drv)}<span class="ph">📱 ${PCG.escapeHtml(t.ph)}</span></td>
+      <td class="arr">${shortT(t.arr)}</td>
+      <td><span class="dock">${PCG.escapeHtml(t.dock)}</span></td>
+      <td class="driver">${PCG.escapeHtml(t.path)}</td>
+      <td><span class="truck-st ${t.status}">${stLbl[t.status] || 'Planned'}</span></td>
+      <td class="note">${PCG.escapeHtml(t.note)}</td>
+    </tr>`).join('');
+
+  // Template chip toggle (demo-safe — re-applies class but keeps content)
+  document.querySelectorAll('#tmpl-chips .chip').forEach(c => c.addEventListener('click', () => {
+    c.classList.toggle('on');
+  }));
 </script>
 </body>
 </html>

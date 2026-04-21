@@ -82,6 +82,7 @@
       { id:'production-schedule', label:'Production Schedule',   href:'production-schedule.html?project=LCE-2026',  icon:'🗂', groups:'*' },
       { id:'show-flow',           label:'Show Flow · Cue Grid',  href:'show-flow.html?project=LCE-2026',            icon:'🎬', groups:'*' },
       { id:'td-package',          label:'TD Show Package',       href:'td-package.html?project=LCE-2026',           icon:'📦', groups:'*' },
+      { id:'creative-workflow',   label:'Creative Workflow',     href:'creative-workflow.html?project=LCE-2026',    icon:'🎨', groups:'*' },
       { id:'site-visit',          label:'Site Visit (guided)',   href:'site-visit.html?project=LCE-2026',           icon:'🗺', groups:'*' },
       { id:'field-capture',       label:'Field Capture (mobile)',href:'field-capture.html?project=LCE-2026',        icon:'📱', groups:'*' },
       { id:'advance',             label:'Advance (auto)',        href:'advance.html?project=LCE-2026',              icon:'⚡', groups:'*' },

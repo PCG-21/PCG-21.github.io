@@ -368,6 +368,12 @@
   <!-- LATEST UPDATE -->
   <div class="cv-update" id="cv-update" style="display:none;"></div>
 
+  <!-- WHAT CHANGED · recent deltas the client should know about -->
+  <section class="cv-section" id="cv-changed-sec">
+    <h2>What changed<span class="count">Last 48 hours</span></h2>
+    <div id="cv-changed"></div>
+  </section>
+
   <!-- WHAT HAPPENS NEXT -->
   <section class="cv-section">
     <h2>What happens next<span class="count">Your three-step view</span></h2>
@@ -620,6 +626,43 @@
   const _rtOld = renderTodos;
   window.renderTodos = function(){ _rtOld.apply(null, arguments); renderPulse(); };
   renderPulse();
+
+  // ---------- WHAT CHANGED (last 48h · client-safe deltas) ----------
+  // Mixes seed deltas with live signals pulled from sessionStorage so
+  // the portal reflects real demo activity (acks, feedback, approvals,
+  // todo completions, uploads) without exposing anything internal.
+  (function renderChanged(){
+    const seed = [
+      { ts:'2026-04-15T09:02', ico:'🕒', tone:'blue',   body:'<strong>Load-in confirmed</strong> for Apr 10 at 7 AM · credentials at venue ops from 6:30 AM.' },
+      { ts:'2026-04-14T17:40', ico:'📄', tone:'purple', body:'<strong>Advance revised (V2)</strong> — dock 2 confirmed as primary · updated dock times reflected throughout.' },
+      { ts:'2026-04-13T14:22', ico:'🎨', tone:'green',  body:'<strong>New creative proof available</strong> — Awards graphics, V3 ready for your review.' },
+      { ts:'2026-04-12T11:05', ico:'✓',  tone:'green',  body:'Your team <strong>acknowledged</strong>: "Crew meals (L+D Days 1–3) · 62 counts."' }
+    ];
+    const ack  = JSON.parse(sessionStorage.getItem(`pcg_cv_ack_${code}`) || 'null') || [];
+    const fbs  = JSON.parse(sessionStorage.getItem(`pcg_cv_fb_${code}`)  || '[]');
+    const apps = JSON.parse(sessionStorage.getItem(`pcg_cv_appr_${code}`)|| 'null') || [];
+    const ups  = JSON.parse(sessionStorage.getItem(`pcg_cv_up_${code}`)  || '[]');
+    const tds  = JSON.parse(sessionStorage.getItem(`pcg_cv_todos_${code}`)|| 'null') || [];
+
+    const live = [];
+    ack.filter(a => a.on).slice(0, 2).forEach(a => live.push({ ts: new Date().toISOString(), ico:'✓', tone:'green',  body:`Your team <strong>acknowledged</strong>: "${PCG.escapeHtml(a.t)}"` }));
+    fbs.slice(0, 2).forEach(f => live.push({ ts:f.ts, ico:'💬', tone:'blue', body:`Feedback sent to PCG: <strong>${f.choice==='great'?'🔥 Great':f.choice==='ok'?'👍 All good':'⚠ Concern'}</strong>${f.body?' — '+PCG.escapeHtml(f.body.slice(0,80)):''}` }));
+    apps.filter(a => a.status === 'approved').slice(0, 2).forEach(a => live.push({ ts: new Date().toISOString(), ico:'🖼', tone:'green', body:`You <strong>approved</strong>: ${PCG.escapeHtml(a.title)}` }));
+    ups.slice(0, 2).forEach(u => live.push({ ts:u.ts, ico:'📤', tone:'purple', body:`You uploaded <strong>${PCG.escapeHtml(u.name)}</strong> · shared with PCG team.` }));
+    tds.filter(t => t.done).slice(0, 2).forEach(t => live.push({ ts: new Date().toISOString(), ico:'✅', tone:'green', body:`Marked done: <strong>${PCG.escapeHtml(t.title)}</strong>` }));
+
+    const rows = live.concat(seed).sort((a,b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8);
+    const toneColor = { blue:'var(--pcg-bright-blue)', purple:'var(--pcg-spotlight-purple)', green:'var(--status-green)', amber:'var(--status-amber)' };
+    document.getElementById('cv-changed').innerHTML = `
+      <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+        ${rows.map(r => `
+          <div style="padding: 14px 18px; border-radius: 12px; background: rgba(15,22,40,0.7); border: 1px solid rgba(255,255,255,0.07); display: grid; grid-template-columns: 36px 1fr auto; gap: 14px; align-items: center;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: ${toneColor[r.tone]}22; color: ${toneColor[r.tone]}; display: grid; place-items: center; font-size: 16px;">${r.ico}</div>
+            <div style="color: #fff; font-size: 13.5px; line-height: 1.5;">${r.body}</div>
+            <div style="color: rgba(255,255,255,0.45); font-size: 11px; font-family: var(--font-mono); white-space: nowrap;">${PCG.ago(r.ts)}</div>
+          </div>`).join('')}
+      </div>`;
+  })();
 
   // ---------- WHAT HAPPENS NEXT (three-step client view) ----------
   (function renderWhatsNext(){
