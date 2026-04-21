@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>PCG Stage · Field Capture</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Field Capture — mobile-first quick-entry surface.
+     Designed for a phone held one-handed onsite: big buttons,
+     minimal typing, photo-first, sticky action bar. Desktop falls
+     back gracefully but the layout is optimized for narrow screens. */
+
+  body.field-mode main.main { padding-top: 0; }
+  .field-shell { max-width: 560px; margin: 0 auto; }
+
+  /* Header */
+  .fc-head {
+    background: linear-gradient(135deg, rgba(1,153,253,0.14), rgba(149,100,216,0.12));
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-md);
+    padding: 16px 18px; margin-bottom: var(--sp-4);
+  }
+  .fc-head .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: var(--r-pill);
+    background: var(--pcg-bright-blue); color: #001a2a;
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .fc-head h1 { font-family: var(--font-display); font-size: 20px; margin: 8px 0 2px; }
+  .fc-head .sub { color: var(--text-secondary); font-size: 12.5px; }
+
+  /* Quick-add grid */
+  .fc-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 10px; margin-bottom: var(--sp-4);
+  }
+  .fc-tile {
+    padding: 18px 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    display: flex; flex-direction: column; gap: 6px;
+    color: var(--text-primary); text-decoration: none; cursor: pointer;
+    min-height: 90px;
+    transition: border-color var(--t-fast), transform var(--t-fast);
+  }
+  .fc-tile:hover, .fc-tile:active { border-color: var(--pcg-bright-blue); transform: translateY(-1px); }
+  .fc-tile .ico { font-size: 26px; line-height: 1; }
+  .fc-tile .lbl { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
+  .fc-tile .nt  { font-size: 11px; color: var(--text-tertiary); line-height: 1.4; }
+
+  /* Panels */
+  .fc-panel {
+    display:none;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+    margin-bottom: var(--sp-4);
+  }
+  .fc-panel.open { display: block; }
+  .fc-panel-head {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .fc-panel-head .ico { font-size: 20px; }
+  .fc-panel-head .tt { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+  .fc-panel-head .close {
+    margin-left: auto; background: none; border: 0; color: var(--text-tertiary);
+    font-size: 22px; cursor: pointer; padding: 0 4px;
+  }
+  .fc-panel-body { padding: 14px 16px; }
+  .fc-panel textarea, .fc-panel input[type="text"] {
+    width: 100%; box-sizing: border-box;
+    background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 12px 14px; font-size: 15px; font-family: var(--font-body);
+    line-height: 1.5; outline: 0;
+  }
+  .fc-panel textarea { min-height: 110px; resize: vertical; }
+  .fc-panel textarea:focus, .fc-panel input:focus { border-color: var(--pcg-bright-blue); }
+
+  .fc-loc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .fc-loc-chip {
+    padding: 6px 10px; border-radius: var(--r-pill);
+    font-size: 12px; font-family: var(--font-display);
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-secondary); cursor: pointer; user-select: none;
+  }
+  .fc-loc-chip.on {
+    background: rgba(1,153,253,0.15); border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue);
+  }
+
+  .fc-kind-chips { display: flex; gap: 6px; margin-top: 10px; }
+  .fc-kind-chip {
+    flex: 1; padding: 10px 8px; border-radius: var(--r-sm);
+    text-align: center; border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-secondary); cursor: pointer;
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .fc-kind-chip.on.decision { background: rgba(61,220,132,0.14); color: var(--status-green); border-color: rgba(61,220,132,0.4); }
+  .fc-kind-chip.on.issue    { background: rgba(231,76,60,0.14); color: var(--status-red); border-color: rgba(231,76,60,0.4); }
+  .fc-kind-chip.on.learning { background: rgba(149,100,216,0.16); color: var(--pcg-spotlight-purple); border-color: rgba(149,100,216,0.4); }
+  .fc-kind-chip.on.note     { background: rgba(1,153,253,0.15); color: var(--pcg-bright-blue); border-color: var(--pcg-bright-blue); }
+
+  .fc-shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .fc-shot {
+    aspect-ratio: 1/1; border-radius: var(--r-sm);
+    border: 2px dashed var(--border-accent); background: transparent;
+    display: grid; place-items: center;
+    color: var(--text-secondary); font-size: 24px; cursor: pointer;
+  }
+  .fc-shot.has { background: linear-gradient(135deg, var(--surface-2), var(--surface-3)); border-style: solid; border-color: var(--border); color: var(--status-green); }
+
+  .fc-save-row {
+    display: flex; gap: 8px; margin-top: 14px;
+  }
+  .fc-save-row .btn { flex: 1; padding: 13px 14px; font-size: 14px; }
+
+  /* Sticky FAB — new capture from anywhere on page */
+  .fc-fab {
+    position: fixed; right: 18px; bottom: 18px;
+    width: 58px; height: 58px; border-radius: 50%;
+    background: var(--pcg-bright-blue); color: #001a2a;
+    display: grid; place-items: center;
+    font-size: 28px; font-weight: 700; border: 0;
+    box-shadow: 0 6px 20px rgba(1,153,253,0.4);
+    cursor: pointer; z-index: 50;
+  }
+
+  /* Feed */
+  .fc-feed-row {
+    padding: 12px 14px; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    margin-bottom: 8px;
+    display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: start;
+  }
+  .fc-feed-row .ico { font-size: 18px; }
+  .fc-feed-row .body { font-size: 13px; color: var(--text-primary); line-height: 1.45; }
+  .fc-feed-row .meta { font-size: 10.5px; color: var(--text-tertiary); margin-top: 3px; font-family: var(--font-mono); }
+  .fc-feed-row .kpill {
+    font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700; align-self: start;
+  }
+  .fc-feed-row .kpill.decision { background: rgba(61,220,132,0.16); color: var(--status-green); }
+  .fc-feed-row .kpill.issue    { background: rgba(231,76,60,0.16); color: var(--status-red); }
+  .fc-feed-row .kpill.learning { background: rgba(149,100,216,0.18); color: var(--pcg-spotlight-purple); }
+  .fc-feed-row .kpill.note     { background: rgba(1,153,253,0.16); color: var(--pcg-bright-blue); }
+  .fc-feed-row .kpill.venue    { background: rgba(245,176,65,0.16); color: var(--status-amber); }
+  .fc-feed-row .kpill.diary    { background: rgba(1,153,253,0.16); color: var(--pcg-bright-blue); }
+
+  @media (min-width: 700px) {
+    .fc-grid { grid-template-columns: repeat(4, 1fr); }
+    .fc-tile { min-height: 110px; }
+  }
+</style>
+</head>
+<body class="field-mode">
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div class="field-shell">
+
+        <div class="fc-head">
+          <span class="tag">📱 Field Mode · Onsite Capture</span>
+          <h1 id="fc-show-name">—</h1>
+          <div class="sub" id="fc-show-sub">—</div>
+        </div>
+
+        <div class="fc-grid">
+          <a class="fc-tile" data-open="note">
+            <span class="ico">📝</span>
+            <span class="lbl">Quick note</span>
+            <span class="nt">Capture · flag as Decision / Issue / Learning / Note</span>
+          </a>
+          <a class="fc-tile" data-open="venue">
+            <span class="ico">🏛</span>
+            <span class="lbl">Venue condition</span>
+            <span class="nt">Photograph pre-existing condition · before load-in</span>
+          </a>
+          <a class="fc-tile" data-open="diary">
+            <span class="ico">📓</span>
+            <span class="lbl">Diary entry</span>
+            <span class="nt">Timestamped narrative · posts to Show Diary</span>
+          </a>
+          <a class="fc-tile" id="fc-sitevisit">
+            <span class="ico">🗺</span>
+            <span class="lbl">Site visit</span>
+            <span class="nt">Launch guided walkthrough (9 steps)</span>
+          </a>
+        </div>
+
+        <!-- QUICK NOTE -->
+        <div class="fc-panel" id="panel-note">
+          <div class="fc-panel-head">
+            <span class="ico">📝</span>
+            <span class="tt">Quick note</span>
+            <button class="close" data-close>×</button>
+          </div>
+          <div class="fc-panel-body">
+            <textarea id="note-text" placeholder="What happened? One line is fine. We'll route it to the right place based on the type below."></textarea>
+            <div class="fc-kind-chips">
+              <span class="fc-kind-chip decision" data-k="decision">● Decision</span>
+              <span class="fc-kind-chip issue"    data-k="issue">● Issue</span>
+              <span class="fc-kind-chip learning" data-k="learning">● Learning</span>
+              <span class="fc-kind-chip note on"  data-k="note">● Note</span>
+            </div>
+            <div class="fc-shots" id="note-shots"></div>
+            <div class="fc-save-row">
+              <button class="btn ghost" data-close>Cancel</button>
+              <button class="btn primary" id="note-save">Save · Routes to Show</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- VENUE CONDITION -->
+        <div class="fc-panel" id="panel-venue">
+          <div class="fc-panel-head">
+            <span class="ico">🏛</span>
+            <span class="tt">Venue condition photo</span>
+            <button class="close" data-close>×</button>
+          </div>
+          <div class="fc-panel-body">
+            <div style="padding: 10px 12px; background: rgba(149,100,216,0.08); border: 1px solid rgba(149,100,216,0.3); border-left: 3px solid var(--pcg-spotlight-purple); border-radius: var(--r-sm); font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+              <strong style="color: var(--pcg-spotlight-purple);">Before PCG load-in only.</strong>
+              Photographs and notes documenting <em>pre-existing</em> condition — damage verification + venue history.
+            </div>
+            <input type="text" id="venue-cap" placeholder="e.g. Ballroom carpet stain, SL tormentor" />
+            <div class="fc-loc-chips" id="venue-locs"></div>
+            <textarea id="venue-note" placeholder="What is the pre-existing condition?" style="margin-top: 10px;"></textarea>
+            <div class="fc-shots" id="venue-shots"></div>
+            <div class="fc-save-row">
+              <button class="btn ghost" data-close>Cancel</button>
+              <button class="btn primary" id="venue-save">Save · Show + Venue record</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DIARY -->
+        <div class="fc-panel" id="panel-diary">
+          <div class="fc-panel-head">
+            <span class="ico">📓</span>
+            <span class="tt">Show Diary entry</span>
+            <button class="close" data-close>×</button>
+          </div>
+          <div class="fc-panel-body">
+            <textarea id="diary-text" placeholder="What's worth remembering from today? Freeform — this posts to the show diary, timestamped."></textarea>
+            <div class="fc-save-row">
+              <button class="btn ghost" data-close>Cancel</button>
+              <button class="btn primary" id="diary-save">Save · Posts to Show Diary</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- FEED (recent captures) -->
+        <div style="margin-top: var(--sp-4);">
+          <div class="eyebrow" style="margin-bottom: 8px;">Recent captures · this session</div>
+          <div id="fc-feed"></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Floating quick-add for fast re-entry from anywhere -->
+  <button class="fc-fab" id="fc-fab" title="Quick capture">＋</button>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'field-capture', pageTitle:'Field Capture'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code) || { code, name: 'Unknown Show', venueName: 'Venue' };
+
+  document.getElementById('fc-show-name').textContent = `${proj.name}`;
+  document.getElementById('fc-show-sub').textContent  = `${proj.code} · ${proj.venueName || ''} · onsite capture feeds straight into the Show Command Center.`;
+  document.getElementById('fc-sitevisit').href = `site-visit.html?project=${encodeURIComponent(code)}`;
+
+  const FEED_KEY = `pcg_field_${proj.code}`;
+  const feed = JSON.parse(sessionStorage.getItem(FEED_KEY) || '[]');
+  function saveFeed(){ sessionStorage.setItem(FEED_KEY, JSON.stringify(feed)); renderFeed(); }
+
+  // ---------- panels ----------
+  function openPanel(id){
+    document.querySelectorAll('.fc-panel').forEach(p => p.classList.remove('open'));
+    if(id) document.getElementById('panel-' + id).classList.add('open');
+    const el = document.getElementById('panel-' + id);
+    if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  document.querySelectorAll('.fc-tile[data-open]').forEach(t => t.addEventListener('click', (e) => { e.preventDefault(); openPanel(t.dataset.open); }));
+  document.querySelectorAll('[data-close]').forEach(c => c.addEventListener('click', () => document.querySelectorAll('.fc-panel').forEach(p => p.classList.remove('open'))));
+  document.getElementById('fc-fab').addEventListener('click', () => openPanel('note'));
+
+  // ---------- kind chips (note) ----------
+  let noteKind = 'note';
+  document.querySelectorAll('#panel-note .fc-kind-chip').forEach(c => c.addEventListener('click', () => {
+    noteKind = c.dataset.k;
+    document.querySelectorAll('#panel-note .fc-kind-chip').forEach(x => x.classList.toggle('on', x === c));
+  }));
+
+  // ---------- photo shots ----------
+  function renderShots(elId, store){
+    const el = document.getElementById(elId);
+    el.innerHTML = store.map((s, i) => `<div class="fc-shot has">✓</div>`).join('') +
+                   `<div class="fc-shot" data-add>＋</div>` +
+                   (store.length < 2 ? `<div class="fc-shot" data-add>＋</div>` : '');
+    el.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => {
+      store.push({ t: new Date().toISOString() });
+      renderShots(elId, store);
+    }));
+  }
+  const noteShots = [];  renderShots('note-shots',  noteShots);
+  const venueShots = []; renderShots('venue-shots', venueShots);
+
+  // ---------- location chips (venue) ----------
+  const LOCS = ['Dock','Ballroom','Hallway','Elevator','Backstage','BOH Storage','Pre-function','Exterior'];
+  let venueLocs = [];
+  document.getElementById('venue-locs').innerHTML = LOCS.map(l => `<span class="fc-loc-chip" data-l="${l}">${l}</span>`).join('');
+  document.querySelectorAll('#venue-locs .fc-loc-chip').forEach(c => c.addEventListener('click', () => {
+    const l = c.dataset.l;
+    if(venueLocs.includes(l)) venueLocs = venueLocs.filter(x => x !== l);
+    else venueLocs.push(l);
+    c.classList.toggle('on');
+  }));
+
+  // ---------- saves ----------
+  document.getElementById('note-save').addEventListener('click', () => {
+    const text = document.getElementById('note-text').value.trim();
+    if(!text) return;
+    feed.unshift({ t: new Date().toISOString(), kind: noteKind, body: text, photos: noteShots.length });
+    document.getElementById('note-text').value = '';
+    noteShots.length = 0; renderShots('note-shots', noteShots);
+    saveFeed();
+    openPanel(null);
+    toast(`✓ ${noteKind.charAt(0).toUpperCase()+noteKind.slice(1)} captured · routed to ${routeCopy(noteKind)}.`);
+  });
+  document.getElementById('venue-save').addEventListener('click', () => {
+    const cap = document.getElementById('venue-cap').value.trim();
+    const note = document.getElementById('venue-note').value.trim();
+    if(!cap && !note) return;
+    feed.unshift({ t: new Date().toISOString(), kind: 'venue', body: `${cap}${note?' — '+note:''}`, locs: venueLocs.slice(), photos: venueShots.length });
+    document.getElementById('venue-cap').value = '';
+    document.getElementById('venue-note').value = '';
+    venueLocs = []; document.querySelectorAll('#venue-locs .fc-loc-chip').forEach(c => c.classList.remove('on'));
+    venueShots.length = 0; renderShots('venue-shots', venueShots);
+    saveFeed();
+    openPanel(null);
+    toast('✓ Venue condition captured · saved to Show + Venue record.');
+  });
+  document.getElementById('diary-save').addEventListener('click', () => {
+    const text = document.getElementById('diary-text').value.trim();
+    if(!text) return;
+    feed.unshift({ t: new Date().toISOString(), kind: 'diary', body: text });
+    // Mirror into the show diary store used by show-center.html
+    const DIARY_KEY = `pcg_diary_${proj.code}`;
+    const existing = JSON.parse(sessionStorage.getItem(DIARY_KEY) || 'null') || [];
+    existing.unshift({ ts: new Date().toISOString(), body: text });
+    sessionStorage.setItem(DIARY_KEY, JSON.stringify(existing));
+    document.getElementById('diary-text').value = '';
+    saveFeed();
+    openPanel(null);
+    toast('✓ Diary entry posted to Show Diary.');
+  });
+
+  function routeCopy(kind){
+    if(kind === 'decision') return 'Production Log';
+    if(kind === 'issue')    return 'Risk Register';
+    if(kind === 'learning') return 'Show Diary · flagged for closeout';
+    return 'Show notes';
+  }
+
+  // ---------- feed render ----------
+  const kindIcon = { note:'📝', decision:'✓', issue:'⚠', learning:'💡', venue:'🏛', diary:'📓' };
+  function renderFeed(){
+    const el = document.getElementById('fc-feed');
+    if(!feed.length){
+      el.innerHTML = `<div class="muted" style="font-size: 12.5px; padding: 14px 0; text-align: center;">No captures yet. Tap a tile above — or the ＋ in the corner — to start.</div>`;
+      return;
+    }
+    el.innerHTML = feed.slice(0, 20).map(f => `
+      <div class="fc-feed-row">
+        <div class="ico">${kindIcon[f.kind] || '•'}</div>
+        <div>
+          <div class="body">${PCG.escapeHtml(f.body)}</div>
+          <div class="meta">${PCG.ago(f.t)}${f.photos ? ' · ' + f.photos + ' photo' + (f.photos===1?'':'s') : ''}${f.locs && f.locs.length ? ' · ' + f.locs.join(' / ') : ''}</div>
+        </div>
+        <span class="kpill ${f.kind}">${f.kind}</span>
+      </div>
+    `).join('');
+  }
+  renderFeed();
+
+  // ---------- tiny toast ----------
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background: var(--surface-1); color: var(--text-primary); padding: 10px 16px; border-radius: var(--r-pill); border: 1px solid var(--border); font-size: 13px; z-index:60; box-shadow: 0 6px 20px rgba(0,0,0,0.3); max-width: 92vw; text-align:center;';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2600);
+  }
+</script>
+</body>
+</html>

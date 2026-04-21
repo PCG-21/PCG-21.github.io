@@ -3,163 +3,457 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PCG Stage · Client Portal</title>
+<title>PCG Stage · Your Production Portal</title>
 <link rel="stylesheet" href="assets/tokens.css" />
 <link rel="stylesheet" href="assets/app.css" />
 <style>
-  /* Lightweight read-only client view. Same visual language, reduced
-     information density — this is the face PCG shows the client. */
-  .cp-banner {
-    background: linear-gradient(135deg, rgba(1,153,253,0.14), rgba(149,100,216,0.14)), var(--surface-1);
-    border: 1px solid var(--border-accent);
-    border-radius: var(--r-md);
-    padding: 28px 32px; margin-bottom: var(--sp-4);
+  /* =================================================================
+     CLIENT PORTAL · external-facing view.
+     Shares the STAGE design tokens but deliberately feels less admin
+     and more branded / consumer. Wider type, softer surfaces, fewer
+     tables, more big tiles. This is what the client sees when they
+     click the portal link from STAGE. Internal config lives at
+     client-portal-config.html (not exposed here).
+     ================================================================= */
+
+  body { background: #070d18; }
+
+  .cv-top {
+    background: linear-gradient(135deg, #0a1220 0%, #0d1830 50%, #10142a 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 14px 0;
+    position: sticky; top: 0; z-index: 40;
+  }
+  .cv-top-inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .cv-brand {
+    display:flex; align-items:center; gap: 10px;
+    font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.04em;
+    color: #fff; text-decoration: none;
+  }
+  .cv-brand-mark {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+    display: grid; place-items: center; color: #fff;
+    font-size: 15px; font-weight: 700;
+  }
+  .cv-top .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: var(--r-pill);
+    background: rgba(1,153,253,0.18); color: var(--pcg-bright-blue);
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+    border: 1px solid rgba(1,153,253,0.35);
+  }
+  .cv-client { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+  .cv-client b { color: #fff; font-weight: 600; }
+
+  .cv-main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 60px; }
+
+  /* ================= HERO ================= */
+  .cv-hero {
+    background: radial-gradient(circle at 20% 20%, rgba(1,153,253,0.18), transparent 60%),
+                radial-gradient(circle at 80% 30%, rgba(149,100,216,0.18), transparent 60%),
+                linear-gradient(160deg, #0e1930, #0a1220);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 36px 40px; margin-bottom: 22px;
     position: relative; overflow: hidden;
   }
-  .cp-banner::before {
-    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+  .cv-hero::after {
+    content:""; position:absolute; inset: 0 0 auto 0; height: 3px;
     background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
   }
-  .cp-banner h1 { font-family: var(--font-display); font-size: 28px; margin: 4px 0 2px; }
-  .cp-banner .sub { color: var(--text-secondary); font-size: var(--fs-md); }
-  .cp-preview-banner {
-    background: var(--surface-2); border: 1px dashed var(--border-accent);
-    border-radius: var(--r-sm); padding: 10px 14px;
-    font-size: 11.5px; font-family: var(--font-mono); color: var(--text-secondary);
-    margin-bottom: var(--sp-4);
+  .cv-hero .eyebrow {
+    font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--pcg-bright-blue); margin-bottom: 8px;
   }
-  .cp-preview-banner strong { color: var(--pcg-bright-blue); }
-
-  .cp-section { margin-bottom: var(--sp-5); }
-  .cp-section h2 {
-    font-family: var(--font-display); font-size: 12px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--pcg-bright-blue);
-    border-bottom: 1px solid var(--border-accent);
-    padding-bottom: 8px; margin-bottom: 14px;
+  .cv-hero h1 {
+    font-family: var(--font-display); font-size: 34px; line-height: 1.15;
+    margin: 0 0 8px; color: #fff; letter-spacing: 0.005em; max-width: 720px;
+  }
+  .cv-hero .hero-sub { color: rgba(255,255,255,0.7); font-size: 15px; max-width: 680px; line-height: 1.5; }
+  .cv-hero-row {
+    display:flex; gap: 20px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap;
+    margin-top: 28px;
+  }
+  .cv-hero-facts { display:flex; gap: 32px; flex-wrap: wrap; }
+  .cv-hero-fact {
+    font-family: var(--font-mono); font-size: 13px; color: rgba(255,255,255,0.85);
+  }
+  .cv-hero-fact span {
+    display: block; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 3px;
+  }
+  .cv-hero-status {
+    display:inline-flex; align-items:center; gap:10px; padding: 10px 16px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em;
+    font-size: 12px; text-transform: uppercase;
+  }
+  .cv-pulse {
+    width: 10px; height: 10px; border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
+    animation: cv-pulse 1.8s infinite;
+  }
+  @keyframes cv-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
+    70%  { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
   }
 
-  .cp-sched { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
-  .cp-sched table { width:100%; border-collapse: collapse; }
-  .cp-sched th, .cp-sched td { padding: 12px 16px; font-size: var(--fs-sm); border-bottom: 1px solid var(--border); text-align: left; }
-  .cp-sched th { background: var(--surface-2); font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
-  .cp-sched td:first-child { font-family: var(--font-mono); white-space: nowrap; color: var(--text-secondary); }
-  .cp-sched tr:last-child td { border-bottom: 0; }
-
-  .cp-docs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
-  .cp-doc {
-    border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1);
-    padding: 18px; display: flex; gap: 12px; align-items: flex-start;
-    transition: border-color 0.15s;
+  /* ================= LATEST UPDATE ================= */
+  .cv-update {
+    background: linear-gradient(90deg, rgba(61,220,132,0.14), rgba(61,220,132,0.04));
+    border: 1px solid rgba(61,220,132,0.25); border-left: 3px solid var(--status-green);
+    border-radius: 14px; padding: 16px 20px; margin-bottom: 22px;
+    display: grid; grid-template-columns: 42px 1fr; gap: 16px; align-items: center;
   }
-  .cp-doc:hover { border-color: var(--pcg-bright-blue); cursor: pointer; }
-  .cp-doc .ico { font-size: 28px; line-height: 1; }
-  .cp-doc .meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: 4px; }
-  .cp-doc .title { font-size: var(--fs-sm); font-weight: 600; }
+  .cv-update .ico {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: rgba(61,220,132,0.2); color: var(--status-green);
+    display: grid; place-items: center; font-size: 20px;
+  }
+  .cv-update .et { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--status-green); margin-bottom: 3px; }
+  .cv-update .bd { color: #fff; font-size: 14.5px; line-height: 1.5; }
+  .cv-update .mt { color: rgba(255,255,255,0.5); font-size: 11.5px; margin-top: 4px; font-family: var(--font-mono); }
 
-  .cp-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); }
-  .cp-contact { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 14px; background: var(--surface-1); }
-  .cp-contact .role { font-size: 10px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
-  .cp-contact .who  { font-weight: 600; font-size: var(--fs-md); margin-top: 2px; }
-  .cp-contact .meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-mono); line-height: 1.7; }
+  /* ================= SECTION HEADINGS ================= */
+  .cv-section { margin-top: 40px; }
+  .cv-section h2 {
+    font-family: var(--font-display); font-size: 13px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #fff; margin: 0 0 14px;
+    padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .cv-section h2 .count {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.5); margin-left: auto; text-transform: none;
+  }
+
+  /* ================= WHAT YOU NEED TO DO ================= */
+  .cv-todos { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .cv-todo {
+    padding: 18px 20px; border-radius: 14px;
+    background: linear-gradient(160deg, rgba(20,30,55,0.85), rgba(10,18,32,0.9));
+    border: 1px solid rgba(255,255,255,0.07);
+    display: grid; grid-template-columns: 42px 1fr auto; gap: 16px; align-items: center;
+  }
+  .cv-todo.urgent   { border-left: 3px solid var(--status-red);   }
+  .cv-todo.awaiting { border-left: 3px solid var(--status-amber); }
+  .cv-todo.fyi      { border-left: 3px solid var(--pcg-bright-blue); }
+  .cv-todo .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; background: rgba(255,255,255,0.05); }
+  .cv-todo.urgent   .ico { background: rgba(231,76,60,0.18); }
+  .cv-todo.awaiting .ico { background: rgba(245,176,65,0.18); }
+  .cv-todo.fyi      .ico { background: rgba(1,153,253,0.18); }
+  .cv-todo .tt { font-weight: 600; color: #fff; font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cv-todo .pill-t {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700;
+  }
+  .cv-todo.urgent   .pill-t { color: var(--status-red);    background: rgba(231,76,60,0.2); }
+  .cv-todo.awaiting .pill-t { color: var(--status-amber);  background: rgba(245,176,65,0.2); }
+  .cv-todo.fyi      .pill-t { color: var(--pcg-bright-blue);background: rgba(1,153,253,0.2); }
+  .cv-todo .nt { color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 5px; line-height: 1.5; }
+  .cv-todo .mt { color: rgba(255,255,255,0.45); font-size: 11.5px; margin-top: 4px; font-family: var(--font-mono); }
+  .cv-todo-btn {
+    padding: 9px 14px; border-radius: var(--r-pill); border: 0;
+    background: var(--pcg-bright-blue); color: #001a2a;
+    font-family: var(--font-display); font-size: 12px; letter-spacing: 0.04em; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+  }
+  .cv-todo-btn.ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+  .cv-todo.done { opacity: 0.55; }
+  .cv-todo.done .cv-todo-btn { background: rgba(61,220,132,0.2); color: var(--status-green); }
+
+  /* ================= SHOW FLOW / TIMELINE ================= */
+  .cv-flow {
+    background: rgba(15,22,40,0.7); border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 8px 0;
+  }
+  .cv-flow-row {
+    display: grid; grid-template-columns: 160px 14px 1fr auto; gap: 18px;
+    padding: 16px 24px; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .cv-flow-row:last-child { border-bottom: 0; }
+  .cv-flow-when { font-family: var(--font-mono); font-size: 12.5px; color: rgba(255,255,255,0.7); white-space: nowrap; }
+  .cv-flow-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--pcg-bright-blue); box-shadow: 0 0 0 3px rgba(1,153,253,0.15); }
+  .cv-flow-dot.past { background: rgba(255,255,255,0.25); box-shadow: 0 0 0 3px rgba(255,255,255,0.05); }
+  .cv-flow-dot.now  { background: var(--pcg-spotlight-purple); box-shadow: 0 0 0 4px rgba(149,100,216,0.25); animation: cv-pulse 2s infinite; }
+  .cv-flow-what { font-size: 14.5px; color: #fff; font-weight: 500; }
+  .cv-flow-meta { color: rgba(255,255,255,0.5); font-size: 11.5px; margin-top: 2px; }
+  .cv-flow-tag {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: var(--r-pill); font-weight: 700; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6);
+  }
+  .cv-flow-row.now .cv-flow-tag { background: rgba(149,100,216,0.22); color: var(--pcg-spotlight-purple); }
+  .cv-flow-row.past .cv-flow-tag { background: rgba(61,220,132,0.16); color: var(--status-green); }
+
+  /* ================= DOCUMENTS ================= */
+  .cv-docs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;
+  }
+  .cv-doc-group { margin-bottom: 22px; }
+  .cv-doc-group-title {
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.5); margin: 0 0 10px;
+  }
+  .cv-doc {
+    padding: 18px 20px; border-radius: 14px;
+    background: linear-gradient(160deg, rgba(20,30,55,0.7), rgba(10,18,32,0.9));
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #fff; text-decoration: none; cursor: pointer;
+    display: grid; grid-template-columns: 40px 1fr; gap: 14px;
+    transition: border-color var(--t-fast), transform var(--t-fast);
+  }
+  .cv-doc:hover { border-color: var(--pcg-bright-blue); transform: translateY(-1px); }
+  .cv-doc .ico { width: 40px; height: 40px; border-radius: 10px; background: rgba(1,153,253,0.14); display: grid; place-items: center; font-size: 20px; color: var(--pcg-bright-blue); }
+  .cv-doc.creative .ico { background: rgba(149,100,216,0.14); color: var(--pcg-spotlight-purple); }
+  .cv-doc.tech .ico     { background: rgba(245,176,65,0.14); color: var(--status-amber); }
+  .cv-doc .tt { font-weight: 600; font-size: 14px; }
+  .cv-doc .meta { color: rgba(255,255,255,0.5); font-size: 11.5px; margin-top: 3px; font-family: var(--font-mono); }
+  .cv-doc .state {
+    display: inline-block; margin-top: 6px;
+    padding: 2px 8px; border-radius: var(--r-pill);
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;
+  }
+  .cv-doc .state.new  { background: rgba(1,153,253,0.18);  color: var(--pcg-bright-blue); }
+  .cv-doc .state.appr { background: rgba(61,220,132,0.18); color: var(--status-green); }
+  .cv-doc .state.need { background: rgba(245,176,65,0.2);  color: var(--status-amber); }
+
+  /* ================= CONTACTS ================= */
+  .cv-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .cv-contact {
+    padding: 18px 20px; border-radius: 14px;
+    background: rgba(15,22,40,0.7); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .cv-contact .role {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-bright-blue);
+  }
+  .cv-contact .nm { font-weight: 600; font-size: 15.5px; color: #fff; margin-top: 4px; }
+  .cv-contact .cn { color: rgba(255,255,255,0.65); font-size: 11.5px; margin-top: 8px; line-height: 1.75; font-family: var(--font-mono); }
+  .cv-contact.hotline {
+    background: linear-gradient(135deg, rgba(231,76,60,0.14), rgba(10,18,32,0.9));
+    border-color: rgba(231,76,60,0.3);
+  }
+  .cv-contact.hotline .role { color: var(--status-red); }
+
+  /* ================= APPROVALS / COMMENTS / UPLOADS ================= */
+  .cv-actions-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 760px) { .cv-actions-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .cv-action-card {
+    padding: 20px; border-radius: 14px;
+    background: rgba(15,22,40,0.7); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .cv-action-card h3 { font-family: var(--font-display); font-size: 15px; color: #fff; margin: 0 0 4px; }
+  .cv-action-card .desc { color: rgba(255,255,255,0.65); font-size: 12.5px; margin-bottom: 14px; line-height: 1.5; }
+
+  .cv-approve-row {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 8px;
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+  }
+  .cv-approve-row .at { color: #fff; font-weight: 500; font-size: 13.5px; }
+  .cv-approve-row .am { color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 2px; font-family: var(--font-mono); }
+  .cv-approve-btns { display: flex; gap: 6px; }
+  .cv-btn {
+    padding: 8px 14px; border-radius: var(--r-pill); border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color: #fff; cursor: pointer;
+    font-family: var(--font-display); font-size: 11.5px; letter-spacing: 0.04em; font-weight: 600; white-space: nowrap;
+  }
+  .cv-btn.primary { background: var(--pcg-bright-blue); color: #001a2a; border-color: var(--pcg-bright-blue); }
+  .cv-btn.success { background: rgba(61,220,132,0.18); color: var(--status-green); border-color: rgba(61,220,132,0.4); }
+  .cv-btn.ghost   { background: rgba(255,255,255,0.03); }
+
+  .cv-comment-form textarea {
+    width: 100%; box-sizing: border-box;
+    background: rgba(255,255,255,0.04); color: #fff; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 12px 14px; font-size: 13.5px; font-family: var(--font-body);
+    min-height: 84px; resize: vertical; outline: 0;
+  }
+  .cv-comment-form textarea:focus { border-color: var(--pcg-bright-blue); }
+  .cv-comment-form .row { display:flex; justify-content: flex-end; margin-top: 8px; gap: 6px; }
+
+  .cv-upload {
+    border: 2px dashed rgba(255,255,255,0.2); border-radius: 10px;
+    padding: 20px; text-align: center; color: rgba(255,255,255,0.6);
+    cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast);
+    font-size: 13px;
+  }
+  .cv-upload:hover { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+  .cv-upload .big { font-size: 22px; display: block; margin-bottom: 4px; }
+  .cv-uploads { margin-top: 10px; }
+  .cv-up-row {
+    padding: 10px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; margin-top: 6px; display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center;
+    font-size: 12.5px; color: rgba(255,255,255,0.85);
+  }
+  .cv-up-row .ok { color: var(--status-green); font-size: 16px; }
+  .cv-up-row .mt { color: rgba(255,255,255,0.45); font-size: 10.5px; font-family: var(--font-mono); }
+
+  /* ================= ACKNOWLEDGE ================= */
+  .cv-ack-list { list-style: none; margin: 0; padding: 0; }
+  .cv-ack-item {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 6px;
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: center;
+    cursor: pointer;
+  }
+  .cv-ack-item .box {
+    width: 20px; height: 20px; border: 1.5px solid rgba(255,255,255,0.3); border-radius: 5px;
+    display: grid; place-items: center; font-size: 12px; color: transparent;
+  }
+  .cv-ack-item.on { background: rgba(61,220,132,0.08); border-color: rgba(61,220,132,0.3); }
+  .cv-ack-item.on .box { background: var(--status-green); border-color: var(--status-green); color: #000; }
+  .cv-ack-item .ack-t { color: #fff; font-size: 13.5px; font-weight: 500; }
+  .cv-ack-item .ack-n { color: rgba(255,255,255,0.55); font-size: 11px; margin-top: 2px; }
+  .cv-ack-item .ack-st { font-size: 11px; color: rgba(255,255,255,0.5); font-family: var(--font-mono); }
+  .cv-ack-item.on .ack-st { color: var(--status-green); }
+
+  .cv-footer {
+    margin-top: 60px; padding: 20px 0 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 11px; color: rgba(255,255,255,0.4);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+
+  /* Back-to-STAGE — clearly internal, tucked in the footer */
+  .cv-back-internal {
+    color: rgba(255,255,255,0.45); font-size: 11px; text-decoration: none;
+    border-bottom: 1px dashed rgba(255,255,255,0.3);
+  }
+  .cv-back-internal:hover { color: var(--pcg-bright-blue); border-color: var(--pcg-bright-blue); }
+
+  @media (max-width: 720px) {
+    .cv-hero { padding: 26px 22px; border-radius: 16px; }
+    .cv-hero h1 { font-size: 24px; }
+    .cv-flow-row { grid-template-columns: 100px 10px 1fr; padding: 12px 16px; }
+    .cv-flow-row .cv-flow-tag { display: none; }
+    .cv-main { padding: 20px 18px 40px; }
+  }
 </style>
 </head>
 <body>
-<div class="app">
-  <div id="app-shell"></div>
-  <main class="main">
-    <div class="container">
 
-      <div style="display:flex; align-items:center; gap: 10px; padding: 10px 14px; margin-bottom: var(--sp-4); background: linear-gradient(90deg, rgba(1,153,253,0.08), rgba(149,100,216,0.06)); border: 1px solid rgba(1,153,253,0.25); border-radius: var(--r-sm); flex-wrap: wrap;">
-        <span style="display:inline-flex; align-items:center; gap:6px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--pcg-bright-blue); color: #001a2a; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700;">
-          🔗 Client View · Auto-updated from STAGE
-        </span>
-        <span style="font-size: 12px; color: var(--text-secondary);">Your dedicated portal for this production — schedule, documents, and updates in one place.</span>
-        <a href="client-portal-config.html?project=LCE-2026" style="margin-left:auto; font-size: 11px; color: var(--text-tertiary); text-decoration: none; border-bottom: 1px dashed var(--text-tertiary);" title="STAGE users only · configure what the client sees">Internal · portal config →</a>
+<!-- Client-facing brand strip. Deliberately distinct from the STAGE rail. -->
+<div class="cv-top">
+  <div class="cv-top-inner">
+    <a class="cv-brand" href="#">
+      <span class="cv-brand-mark">P</span>
+      <span>Production Portal</span>
+    </a>
+    <span class="tag">🔗 Client View · Auto-updated from STAGE</span>
+    <span class="cv-client" id="who">Welcome, <b>—</b></span>
+  </div>
+</div>
+
+<div id="not-found" style="display:none; max-width: 560px; margin: 80px auto; padding: 40px; background: rgba(15,22,40,0.7); border-radius: 14px; text-align: center; color: #fff;">
+  Show not found. <a href="#" style="color: var(--pcg-bright-blue);" onclick="history.back();return false;">Back</a>
+</div>
+
+<div class="cv-main" id="cv-main" style="display:none;">
+
+  <!-- HERO -->
+  <div class="cv-hero" id="cv-hero"></div>
+
+  <!-- LATEST UPDATE -->
+  <div class="cv-update" id="cv-update" style="display:none;"></div>
+
+  <!-- WHAT YOU NEED TO DO -->
+  <section class="cv-section">
+    <h2>What you need to do<span class="count" id="todo-count"></span></h2>
+    <div class="cv-todos" id="cv-todos"></div>
+  </section>
+
+  <!-- SHOW FLOW -->
+  <section class="cv-section">
+    <h2>Show Flow &amp; Key Milestones<span class="count">Simplified · client-friendly</span></h2>
+    <div class="cv-flow" id="cv-flow"></div>
+  </section>
+
+  <!-- APPROVALS / COMMENTS / UPLOADS / ACKNOWLEDGE -->
+  <section class="cv-section">
+    <h2>Review &amp; Respond<span class="count">Real interactions · saves live</span></h2>
+    <div class="cv-actions-grid">
+
+      <div class="cv-action-card">
+        <h3>🖼 Approvals</h3>
+        <div class="desc">Sign off drawings, creative, and change orders. Your approval logs back to PCG instantly.</div>
+        <div id="cv-approvals"></div>
       </div>
 
-      <div id="latest-update" style="padding: 12px 16px; border-radius: var(--r-sm); background: var(--surface-1); border: 1px solid var(--border); border-left: 3px solid var(--status-green); margin-bottom: var(--sp-4); display:none;">
-        <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--status-green); margin-bottom: 4px;">● Latest update</div>
-        <div id="latest-update-body" style="font-size: var(--fs-sm); color: var(--text-primary);"></div>
+      <div class="cv-action-card">
+        <h3>💬 Comment on schedule</h3>
+        <div class="desc">Questions about the show flow above? Leave a note — your PM will respond here.</div>
+        <div class="cv-comment-form">
+          <textarea id="cv-comment" placeholder="e.g. Can we shift the dress rehearsal to 2 PM?"></textarea>
+          <div class="row"><button class="cv-btn primary" id="cv-comment-send">Send comment</button></div>
+          <div id="cv-comments" style="margin-top: 12px;"></div>
+        </div>
       </div>
 
-      <div id="not-found" style="display:none;" class="card">
-        <div class="card-body empty">Show not found. <a href="index.html">Back to portfolio →</a></div>
+      <div class="cv-action-card">
+        <h3>📤 Upload credentials / venue docs</h3>
+        <div class="desc">Share anything the PCG team needs — insurance, venue permits, sponsor logos, floor plans.</div>
+        <label class="cv-upload" for="cv-upload-in">
+          <span class="big">＋</span>
+          Drag a file or click to upload
+        </label>
+        <input type="file" id="cv-upload-in" style="display:none;" />
+        <div class="cv-uploads" id="cv-uploads"></div>
       </div>
 
-      <div id="cp-main" style="display:none;">
-        <div class="cp-banner" id="banner"></div>
+      <div class="cv-action-card">
+        <h3>✅ Acknowledge venue requirements</h3>
+        <div class="desc">Confirm the venue-side commitments for this production. These auto-flag the PCG team when you tick them.</div>
+        <ul class="cv-ack-list" id="cv-ack"></ul>
+      </div>
 
-        <div class="cp-section">
-          <h2>What you need to do</h2>
-          <div id="client-todo"></div>
-        </div>
+    </div>
+  </section>
 
-        <div class="cp-section">
-          <h2>Your Show Schedule</h2>
-          <div class="cp-sched" id="sched"></div>
-        </div>
+  <!-- CURATED DOCUMENTS -->
+  <section class="cv-section" id="sec-docs">
+    <h2>Documents<span class="count">Curated by PCG</span></h2>
 
-        <div class="cp-section">
-          <h2>Production Advance</h2>
-          <div class="cp-docs">
-            <a class="cp-doc" id="advance-link">
-              <div class="ico">📄</div>
-              <div>
-                <div class="title">Production Advance</div>
-                <div class="meta">Auto-generated · Open read-only</div>
-              </div>
-            </a>
-            <div class="cp-doc">
-              <div class="ico">📋</div>
-              <div>
-                <div class="title">Run of Show (draft)</div>
-                <div class="meta">Shared once locked · ~Apr 11</div>
-              </div>
-            </div>
-            <div class="cp-doc">
-              <div class="ico">🎨</div>
-              <div>
-                <div class="title">Creative brief</div>
-                <div class="meta">Approved · Opener + Awards</div>
-              </div>
-            </div>
-            <div class="cp-doc">
-              <div class="ico">🪪</div>
-              <div>
-                <div class="title">Credentials / badges</div>
-                <div class="meta">Pickup Apr 10 · 6:30 AM</div>
-              </div>
-            </div>
-            <div class="cp-doc">
-              <div class="ico">📑</div>
-              <div>
-                <div class="title">Insurance COI</div>
-                <div class="meta">Filed w/ venue · Apr 3</div>
-              </div>
-            </div>
-            <div class="cp-doc">
-              <div class="ico">📨</div>
-              <div>
-                <div class="title">Point-of-contact list</div>
-                <div class="meta">On-site + 24/7 hotline</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div class="cv-doc-group">
+      <div class="cv-doc-group-title">Pitches &amp; Creative</div>
+      <div class="cv-docs" id="cv-docs-creative"></div>
+    </div>
 
-        <div class="cp-section">
-          <h2>Your PCG Team</h2>
-          <div class="cp-contacts" id="contacts"></div>
-        </div>
+    <div class="cv-doc-group">
+      <div class="cv-doc-group-title">Production &amp; Technical</div>
+      <div class="cv-docs" id="cv-docs-tech"></div>
+    </div>
 
-        <div class="cp-section">
-          <h2>Recent Updates</h2>
-          <div id="updates"></div>
-        </div>
+    <div class="cv-doc-group">
+      <div class="cv-doc-group-title">Logistics &amp; Venue</div>
+      <div class="cv-docs" id="cv-docs-logistics"></div>
+    </div>
+  </section>
 
+  <!-- CONTACTS -->
+  <section class="cv-section">
+    <h2>Your PCG Team</h2>
+    <div class="cv-contacts" id="cv-contacts"></div>
+  </section>
+
+  <div class="cv-footer">
+    <div>
+      <div>PCG Production Portal · secure client view</div>
+      <div style="margin-top: 4px; color: rgba(255,255,255,0.3);">
+        Powered by STAGE · auto-updated from the PCG production platform
       </div>
     </div>
-  </main>
+    <a class="cv-back-internal" href="client-portal-config.html?project=LCE-2026">STAGE user? Open internal config →</a>
+  </div>
+
 </div>
 
 <script src="assets/data.js"></script>
@@ -169,119 +463,295 @@
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
 <script>
-  PCG.mountShell({active:'playbook', pageTitle:'Client Portal'});
+  // Mount shell hidden — the client view doesn't use the STAGE rail.
+  // We still pull PCG.api for data consistency.
+  const shell = document.getElementById('app-shell');
+  if(shell) shell.style.display = 'none';
+  const main = document.querySelector('main.main');
+  if(main){ main.style.paddingLeft = 0; main.style.paddingTop = 0; }
+  document.body.style.background = '#070d18';
 
   const code = PCG.qs('project', 'LCE-2026');
   const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
   const draft  = drafts.find(d => d.code === code);
   const proj   = draft || PCG.api.getProject(code);
+  if(!proj){ document.getElementById('not-found').style.display = 'block'; throw new Error('no project'); }
+  document.getElementById('cv-main').style.display = 'block';
 
-  if(!proj){
-    document.getElementById('not-found').style.display = 'block';
-    throw new Error('no project');
-  }
-  document.getElementById('cp-main').style.display = 'block';
-  document.getElementById('advance-link').href = `advance.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('who').innerHTML = `Welcome, <b>${PCG.escapeHtml(proj.client || 'client')}</b>`;
 
+  // ---------- HERO ----------
   const lifecycleState = (proj.show && proj.show.lifecycleState) || 'Planning';
-  const stateLabel = { InPrep:'In Production', OnShow:'Live Show', Striking:'Strike', Closing:'Wrapping Up' }[lifecycleState] || lifecycleState;
-  const stateColor = { InPrep:'#f5b041', OnShow:'#9564d8', Striking:'#f5b041' }[lifecycleState] || '#0199fd';
-  document.getElementById('banner').innerHTML = `
-    <div style="display:flex; justify-content: space-between; align-items: start; gap: 20px; flex-wrap: wrap;">
-      <div style="flex:1; min-width: 260px;">
-        <div class="eyebrow" style="font-family:var(--font-display); letter-spacing: 0.14em; font-size: 10.5px; text-transform: uppercase; color: var(--pcg-bright-blue);">Your production · PCG STAGE</div>
-        <h1>${PCG.escapeHtml(proj.name)}</h1>
-        <div class="sub">${PCG.escapeHtml(proj.venueName || '—')} · ${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
-        <div class="muted" style="font-size:var(--fs-sm); margin-top:12px;">${PCG.escapeHtml(proj.oneLiner || '')}</div>
+  const stateMap = {
+    Planning:  { lbl: 'In Planning',     color: '#0199fd' },
+    InPrep:    { lbl: 'In Production',   color: '#f5b041' },
+    OnShow:    { lbl: 'Live Show',       color: '#9564d8' },
+    Striking:  { lbl: 'Striking',        color: '#f5b041' },
+    Returning: { lbl: 'Wrapping Up',     color: '#0199fd' },
+    Closing:   { lbl: 'Closeout',        color: '#3ddc84' }
+  };
+  const st = stateMap[lifecycleState] || { lbl: lifecycleState, color: '#0199fd' };
+
+  document.getElementById('cv-hero').innerHTML = `
+    <div class="eyebrow">Your production · PCG</div>
+    <h1>${PCG.escapeHtml(proj.name)}</h1>
+    <div class="hero-sub">${PCG.escapeHtml(proj.oneLiner || '')}</div>
+    <div class="cv-hero-row">
+      <div class="cv-hero-facts">
+        <div class="cv-hero-fact"><span>Venue</span>${PCG.escapeHtml(proj.venueName || '—')}</div>
+        <div class="cv-hero-fact"><span>Load-In</span>${PCG.fmtShort(proj.dates?.loadIn)}</div>
+        <div class="cv-hero-fact"><span>Show</span>${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
       </div>
-      <div style="text-align:right;">
-        <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px;">Current status</div>
-        <div style="display:inline-flex; align-items:center; gap:8px; padding: 6px 14px; border-radius: var(--r-pill); background: ${stateColor}22; border: 1px solid ${stateColor}; color: ${stateColor}; font-family: var(--font-display); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 12px;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${stateColor}; box-shadow: 0 0 0 3px ${stateColor}33;"></span>
-          ${stateLabel}
-        </div>
+      <div class="cv-hero-status" style="background: ${st.color}22; border: 1px solid ${st.color}55; color: ${st.color};">
+        <span class="cv-pulse" style="background: ${st.color};"></span>
+        ${st.lbl}
       </div>
     </div>
   `;
 
-  // Latest update banner — highlights the most recent client-visible update.
-  const latestSeed = { ts:'2026-04-15T09:02', text:'Load-in confirmed for Apr 10 at 7 AM. Credentials available at venue ops from 6:30 AM. We\'ll send a final call sheet 24h prior.' };
-  const latestBanner = document.getElementById('latest-update');
-  latestBanner.style.display = 'block';
-  document.getElementById('latest-update-body').innerHTML = `
-    <strong>${PCG.escapeHtml(latestSeed.text)}</strong>
-    <div style="margin-top: 4px; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">Posted ${PCG.fmtShort(latestSeed.ts)} · ${new Date(latestSeed.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+  // ---------- LATEST UPDATE ----------
+  const latest = { ts:'2026-04-15T09:02', text:'Load-in confirmed for Apr 10 at 7 AM. Credentials available at venue ops from 6:30 AM. A final call sheet will be sent 24h prior.' };
+  const upEl = document.getElementById('cv-update');
+  upEl.style.display = 'grid';
+  upEl.innerHTML = `
+    <div class="ico">●</div>
+    <div>
+      <div class="et">Latest update</div>
+      <div class="bd">${PCG.escapeHtml(latest.text)}</div>
+      <div class="mt">Posted ${PCG.fmtShort(latest.ts)} · ${new Date(latest.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} by your PCG team</div>
+    </div>
   `;
 
-  // What you need to do — open requests / things on the CLIENT's plate.
-  // Keeps this portal actionable, not just informational.
-  const clientTodos = [
-    { status:'urgent',   ico:'⏳', title:'Deliver sponsor loop assets',    due:'2026-04-15', note:'Need final files by Apr 15 EOD to load in master playback.', owner:'Ryan Hoffman (client)' },
-    { status:'awaiting', ico:'📝', title:'Sign Change Order #3 · Awards ready room', due:'2026-04-16', note:'Reviewed and costed by PCG — final approval opens ready-room build.', owner:'Kevin Adams (client)' },
-    { status:'fyi',      ico:'📋', title:'Confirm catering counts for Day 4', due:'2026-04-17', note:'Vegan + GF counts sent — please confirm totals.', owner:'Kevin Adams (client)' }
+  // ---------- WHAT YOU NEED TO DO ----------
+  // Persist done-state so demoing "mark done" feels real.
+  const TODO_KEY = `pcg_cv_todos_${code}`;
+  const todos = JSON.parse(sessionStorage.getItem(TODO_KEY) || 'null') || [
+    { id:'t1', status:'urgent',   ico:'⏳', title:'Deliver sponsor loop assets', due:'2026-04-15', nt:'We need final files by EOD to load in master playback.', owner:'Ryan Hoffman', done:false },
+    { id:'t2', status:'awaiting', ico:'✍',  title:'Sign Change Order #3 · Awards ready room', due:'2026-04-16', nt:'Costed and reviewed by PCG — final approval opens the build.', owner:'Kevin Adams', done:false },
+    { id:'t3', status:'fyi',      ico:'📋', title:'Confirm catering counts for Day 4', due:'2026-04-17', nt:'Vegan + GF counts sent — please confirm totals.', owner:'Kevin Adams', done:false }
   ];
-  const todoColor = { urgent: 'var(--status-red)', awaiting: 'var(--status-amber)', fyi: 'var(--pcg-bright-blue)' };
-  const todoLbl   = { urgent: 'DUE SOON', awaiting: 'AWAITING YOU', fyi: 'FYI' };
-  document.getElementById('client-todo').innerHTML = clientTodos.map(t => `
-    <div style="display: grid; grid-template-columns: 32px 1fr auto; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1); border-left: 3px solid ${todoColor[t.status]}; margin-bottom: 10px; align-items: start;">
-      <div style="font-size: 22px; line-height: 1;">${t.ico}</div>
-      <div>
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
-          <span style="font-weight: 600; font-size: var(--fs-md); color: var(--text-primary);">${PCG.escapeHtml(t.title)}</span>
-          <span style="font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill); color: ${todoColor[t.status]}; background: ${todoColor[t.status]}22;">${todoLbl[t.status]}</span>
+  const pillLabel = { urgent:'Due Soon', awaiting:'Awaiting You', fyi:'FYI' };
+  function renderTodos(){
+    const open = todos.filter(t => !t.done).length;
+    document.getElementById('todo-count').textContent = `${open} open`;
+    document.getElementById('cv-todos').innerHTML = todos.map(t => `
+      <div class="cv-todo ${t.status} ${t.done?'done':''}">
+        <div class="ico">${t.ico}</div>
+        <div>
+          <div class="tt">${PCG.escapeHtml(t.title)} <span class="pill-t">${pillLabel[t.status]}</span></div>
+          <div class="nt">${PCG.escapeHtml(t.nt)}</div>
+          <div class="mt">Assigned to ${PCG.escapeHtml(t.owner)} · Due ${PCG.fmtShort(t.due)}</div>
         </div>
-        <div style="color: var(--text-secondary); font-size: 12.5px; margin-top: 4px; line-height: 1.5;">${PCG.escapeHtml(t.note)}</div>
-        <div style="color: var(--text-tertiary); font-size: 11px; margin-top: 4px; font-family: var(--font-mono);">Assigned to ${PCG.escapeHtml(t.owner)} · Due ${PCG.fmtShort(t.due)}</div>
+        <button class="cv-todo-btn ${t.done?'':''}" data-id="${t.id}">${t.done?'✓ Done':'Mark done'}</button>
+      </div>`).join('') || '<div style="color:rgba(255,255,255,0.5); font-size: 13px;">All clear — nothing on your side.</div>';
+    document.querySelectorAll('.cv-todo-btn').forEach(b => b.addEventListener('click', () => {
+      const t = todos.find(x => x.id === b.dataset.id); if(!t) return;
+      t.done = !t.done;
+      sessionStorage.setItem(TODO_KEY, JSON.stringify(todos));
+      renderTodos();
+    }));
+  }
+  renderTodos();
+
+  // ---------- SHOW FLOW ----------
+  // Client-appropriate, not the full PM timeline. Milestones only.
+  const today = PCG.today;
+  function fmtFull(iso){ if(!iso) return '—'; const d = new Date(iso); return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
+  const flowRows = [
+    { when: proj.dates?.prep,      lbl: 'Prep begins',                   meta: 'PCG warehouse pull · production team standing up',    tag: 'PRE-PROD' },
+    { when: proj.dates?.loadIn,    lbl: 'Load-In',                       meta: 'PCG crew onsite — dock access opens',                 tag: 'LOAD-IN' },
+    { when: proj.dates?.loadIn && new Date(proj.dates.loadIn).getTime() + 86400000 * 2, lbl: 'Dress rehearsal',  meta: 'Full cast run-through · client presence recommended', tag: 'REHEARSAL' },
+    { when: proj.dates?.showStart, lbl: 'Opening — Day 1',               meta: 'General Session opens · doors 30 min prior',          tag: 'SHOW' },
+    { when: proj.dates?.showEnd,   lbl: 'Final session',                 meta: 'Closing session · client wrap-up',                    tag: 'SHOW' },
+    { when: proj.dates?.loadOut,   lbl: 'Strike · load-out',             meta: 'Gear packed, venue returned to baseline',             tag: 'STRIKE' },
+  ].filter(r => r.when);
+  // Simple "current" marker — step nearest to today
+  const nearest = flowRows.reduce((best, r, i) => {
+    const diff = Math.abs(new Date(r.when) - today);
+    return !best || diff < best.diff ? { i, diff } : best;
+  }, null);
+  document.getElementById('cv-flow').innerHTML = flowRows.map((r, i) => {
+    const past = new Date(r.when) < today;
+    const now  = nearest && nearest.i === i && !past;
+    const rowCls = past ? 'past' : (now ? 'now' : '');
+    return `
+      <div class="cv-flow-row ${rowCls}">
+        <div class="cv-flow-when">${fmtFull(r.when)}</div>
+        <div class="cv-flow-dot ${past?'past':''} ${now?'now':''}"></div>
+        <div>
+          <div class="cv-flow-what">${PCG.escapeHtml(r.lbl)}</div>
+          <div class="cv-flow-meta">${PCG.escapeHtml(r.meta)}</div>
+        </div>
+        <div class="cv-flow-tag">${now ? 'UP NEXT' : (past ? 'DONE' : r.tag)}</div>
+      </div>`;
+  }).join('');
+
+  // ---------- APPROVALS ----------
+  const APPROVE_KEY = `pcg_cv_appr_${code}`;
+  const approvals = JSON.parse(sessionStorage.getItem(APPROVE_KEY) || 'null') || [
+    { id:'a1', title:'Stage Drawing · Main GS (Rev 3)',  meta:'Sent Apr 13 · 1 MB', status:'open' },
+    { id:'a2', title:'Change Order #3 · Awards ready room (+$18.4k)', meta:'Sent Apr 14 · requires sign-off', status:'open' },
+    { id:'a3', title:'Awards package · graphics approval',meta:'Sent Apr 12 · creative', status:'approved' }
+  ];
+  function renderApprovals(){
+    document.getElementById('cv-approvals').innerHTML = approvals.map(a => `
+      <div class="cv-approve-row">
+        <div>
+          <div class="at">${PCG.escapeHtml(a.title)}</div>
+          <div class="am">${PCG.escapeHtml(a.meta)}</div>
+        </div>
+        <div class="cv-approve-btns">
+          ${a.status === 'approved'
+            ? '<span class="cv-btn success">✓ Approved</span>'
+            : `<button class="cv-btn primary" data-a="${a.id}" data-act="approve">Approve</button>
+               <button class="cv-btn ghost"   data-a="${a.id}" data-act="comment">Comment</button>`}
+        </div>
+      </div>`).join('');
+    document.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => {
+      const a = approvals.find(x => x.id === b.dataset.a); if(!a) return;
+      if(b.dataset.act === 'approve'){ a.status = 'approved'; sessionStorage.setItem(APPROVE_KEY, JSON.stringify(approvals)); renderApprovals(); }
+      else { toast('Comment box opens here — routed to your PM.'); }
+    }));
+  }
+  renderApprovals();
+
+  // ---------- COMMENTS ----------
+  const COMMENT_KEY = `pcg_cv_cmt_${code}`;
+  const comments = JSON.parse(sessionStorage.getItem(COMMENT_KEY) || '[]');
+  function renderComments(){
+    document.getElementById('cv-comments').innerHTML = comments.length ? comments.map(c => `
+      <div class="cv-approve-row" style="grid-template-columns: 1fr;">
+        <div>
+          <div class="at">${PCG.escapeHtml(c.body)}</div>
+          <div class="am">${PCG.escapeHtml(c.who)} · ${PCG.ago(c.ts)}</div>
+        </div>
+      </div>`).join('') : '';
+  }
+  renderComments();
+  document.getElementById('cv-comment-send').addEventListener('click', () => {
+    const v = document.getElementById('cv-comment').value.trim(); if(!v) return;
+    comments.unshift({ ts: new Date().toISOString(), who: proj.client || 'Client', body: v });
+    sessionStorage.setItem(COMMENT_KEY, JSON.stringify(comments));
+    document.getElementById('cv-comment').value = '';
+    renderComments();
+    toast('✓ Comment sent to your PM.');
+  });
+
+  // ---------- UPLOADS ----------
+  const UP_KEY = `pcg_cv_up_${code}`;
+  const uploads = JSON.parse(sessionStorage.getItem(UP_KEY) || '[]');
+  function renderUploads(){
+    document.getElementById('cv-uploads').innerHTML = uploads.map(u => `
+      <div class="cv-up-row">
+        <span class="ok">✓</span>
+        <div>
+          <div>${PCG.escapeHtml(u.name)}</div>
+          <div class="mt">${u.kb} KB · uploaded ${PCG.ago(u.ts)}</div>
+        </div>
+        <span class="mt">shared with PCG</span>
+      </div>`).join('');
+  }
+  renderUploads();
+  document.getElementById('cv-upload-in').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    uploads.unshift({ name: f.name, kb: Math.max(1, Math.round(f.size / 1024)), ts: new Date().toISOString() });
+    sessionStorage.setItem(UP_KEY, JSON.stringify(uploads));
+    e.target.value = '';
+    renderUploads();
+    toast(`✓ ${f.name} uploaded · PCG team notified.`);
+  });
+
+  // ---------- ACKNOWLEDGE VENUE REQUIREMENTS ----------
+  const ACK_KEY = `pcg_cv_ack_${code}`;
+  const acks = JSON.parse(sessionStorage.getItem(ACK_KEY) || 'null') || [
+    { id:'k1', t:'Ballroom cleared and carpet shampooed by 6 AM', nt:'Venue · Event Ops · Apr 10', on:false },
+    { id:'k2', t:'Dock 2 opened and bollards removed for 7 AM call', nt:'Venue · Security', on:false },
+    { id:'k3', t:'Crew meals (L+D Days 1–3) confirmed · 62 counts', nt:'Client + Venue catering', on:true },
+    { id:'k4', t:'Crew badges pre-printed for TD pickup 6:30 AM', nt:'Venue · Security', on:false },
+    { id:'k5', t:'Awards ready room · access + power walkthrough', nt:'Client + Venue · pending', on:false }
+  ];
+  function renderAcks(){
+    document.getElementById('cv-ack').innerHTML = acks.map(a => `
+      <li class="cv-ack-item ${a.on?'on':''}" data-k="${a.id}">
+        <div class="box">${a.on?'✓':''}</div>
+        <div>
+          <div class="ack-t">${PCG.escapeHtml(a.t)}</div>
+          <div class="ack-n">${PCG.escapeHtml(a.nt)}</div>
+        </div>
+        <div class="ack-st">${a.on?'Acknowledged':'Pending you'}</div>
+      </li>`).join('');
+    document.querySelectorAll('.cv-ack-item').forEach(el => el.addEventListener('click', () => {
+      const a = acks.find(x => x.id === el.dataset.k); if(!a) return;
+      a.on = !a.on; sessionStorage.setItem(ACK_KEY, JSON.stringify(acks)); renderAcks();
+    }));
+  }
+  renderAcks();
+
+  // ---------- CURATED DOCUMENTS ----------
+  const docs = {
+    creative: [
+      { ico:'🎯', tt:'Pitch deck · Production concept', meta:'PDF · 24 pages · Mar 18', state:'appr' },
+      { ico:'🎨', tt:'Creative concept deck',          meta:'PDF · 18 pages · Apr 2',   state:'appr' },
+      { ico:'🖼', tt:'Render package · main stage',    meta:'ZIP · 8 images · Apr 8',   state:'new' },
+      { ico:'🖼', tt:'Awards ready room renders',      meta:'Preview · in progress',    state:'need' }
+    ],
+    tech: [
+      { ico:'⚡', tt:'Production Advance',            meta:'Auto-generated · live',    state:'new', href:`advance.html?project=${encodeURIComponent(code)}` },
+      { ico:'📐', tt:'Stage drawing (Rev 3)',         meta:'PDF · Apr 13 · awaiting sign-off', state:'need' },
+      { ico:'📋', tt:'Run of Show (draft)',            meta:'PDF · share once locked',  state:'need' },
+      { ico:'🎚', tt:'Rundown · cue list',            meta:'PDF · Apr 14',              state:'appr' }
+    ],
+    logistics: [
+      { ico:'📅', tt:'Master schedule PDF',           meta:'PDF · 1 page · Apr 14',     state:'appr' },
+      { ico:'🪪', tt:'Credentials & badging',         meta:'Pickup Apr 10 · 6:30 AM',   state:'new' },
+      { ico:'📑', tt:'Insurance COI',                 meta:'Filed w/ venue Apr 3',      state:'appr' },
+      { ico:'📝', tt:'Venue requirements summary',    meta:'Updated daily · live',      state:'new' }
+    ]
+  };
+  function docCard(d, cls){
+    const wrap = d.href ? `a" href="${d.href}` : 'div"';
+    return `<${wrap.startsWith('a') ? 'a href="'+d.href+'"' : 'div'} class="cv-doc ${cls||''}">
+      <div class="ico">${d.ico}</div>
+      <div>
+        <div class="tt">${PCG.escapeHtml(d.tt)}</div>
+        <div class="meta">${PCG.escapeHtml(d.meta)}</div>
+        <span class="state ${d.state}">${d.state==='appr'?'Approved':d.state==='need'?'Needs attention':'New'}</span>
       </div>
-      <a href="#" class="btn sm" style="align-self: center;">Mark done</a>
-    </div>`).join('');
+    </${d.href?'a':'div'}>`;
+  }
+  document.getElementById('cv-docs-creative').innerHTML  = docs.creative .map(d => docCard(d, 'creative')).join('');
+  document.getElementById('cv-docs-tech').innerHTML      = docs.tech     .map(d => docCard(d, 'tech')).join('');
+  document.getElementById('cv-docs-logistics').innerHTML = docs.logistics.map(d => docCard(d)).join('');
 
-  function fmtD(iso){ if(!iso) return '—'; const d = new Date(iso); return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
-
-  document.getElementById('sched').innerHTML = `
-    <table>
-      <thead><tr><th>When</th><th>Event</th></tr></thead>
-      <tbody>
-        <tr><td>${fmtD(proj.dates?.loadIn)}</td><td>Load-in begins</td></tr>
-        <tr><td>${fmtD(proj.dates?.loadIn && new Date(proj.dates.loadIn).getTime() + 86400000 * 2)}</td><td>Dress rehearsal (full cast)</td></tr>
-        <tr><td>${fmtD(proj.dates?.showStart)}</td><td>General Session opens</td></tr>
-        <tr><td>${fmtD(proj.dates?.showEnd)}</td><td>Final session closes</td></tr>
-        <tr><td>${fmtD(proj.dates?.loadOut)}</td><td>Strike / load-out</td></tr>
-      </tbody>
-    </table>`;
-
+  // ---------- CONTACTS ----------
   const pm = PCG.findPerson(proj.primaryPM);
   const td = PCG.findPerson(proj.td);
-  const showCaller = PCG.findPerson(proj.showCaller);
-  document.getElementById('contacts').innerHTML = [pm, td, showCaller].filter(Boolean).map((p,i)=>{
-    const role = i===0 ? 'Your PM' : (i===1 ? 'Technical Director' : 'Show Caller');
-    return `
-      <div class="cp-contact">
-        <div class="role">${role}</div>
-        <div class="who">${PCG.escapeHtml(p.name)}</div>
-        <div class="meta">📧 ${(p.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${p.phone || '(555) 000-0000'}</div>
-      </div>`;
-  }).concat(`
-    <div class="cp-contact">
+  const sc = PCG.findPerson(proj.showCaller);
+  const roster = [
+    pm ? { role:'Your Producer / PM',   p: pm } : null,
+    td ? { role:'Technical Director',   p: td } : null,
+    sc ? { role:'Show Caller',          p: sc } : null
+  ].filter(Boolean);
+  document.getElementById('cv-contacts').innerHTML = roster.map(r => `
+    <div class="cv-contact">
+      <div class="role">${r.role}</div>
+      <div class="nm">${PCG.escapeHtml(r.p.name)}</div>
+      <div class="cn">📧 ${(r.p.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${r.p.phone || '(555) 000-0000'}</div>
+    </div>`).concat(`
+    <div class="cv-contact hotline">
       <div class="role">24/7 Hotline</div>
-      <div class="who">PCG Production Hotline</div>
-      <div class="meta">📧 ops@pcgstage.com<br>📱 (248) 555-0199</div>
-    </div>
-  `).join('');
-
-  // Recent updates — seed from project changes / approvals / activity but
-  // strip any internal-only content (margin, risks, cost).
-  const updates = [
-    { ts:'2026-04-15T09:02', text:'Show confirmed for load-in Apr 10, 7am. Credentials available at venue ops Apr 10 from 6:30 AM.' },
-    { ts:'2026-04-14T17:40', text:'Your change order for the Awards ready room has been received and is being costed.' },
-    { ts:'2026-04-13T10:00', text:'Wireless microphone package upgraded to 16 channels to match latest rundown.' },
-    { ts:'2026-04-11T14:15', text:'Venue walkthrough complete. Dock 2 confirmed as primary load-in; dock 4 reserved for catering.' },
-  ];
-  document.getElementById('updates').innerHTML = updates.map(u => `
-    <div style="padding: 10px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 130px 1fr; gap: 14px; font-size: var(--fs-sm);">
-      <div class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.fmtShort(u.ts)} · ${new Date(u.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
-      <div>${PCG.escapeHtml(u.text)}</div>
+      <div class="nm">PCG Production Hotline</div>
+      <div class="cn">📧 ops@pcgstage.com<br>📱 (248) 555-0199</div>
     </div>`).join('');
+
+  // ---------- toast ----------
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:#0a1220; color:#fff; padding: 12px 18px; border-radius: var(--r-pill); border: 1px solid rgba(255,255,255,0.12); font-size: 13px; z-index:60; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
 </script>
 </body>
 </html>

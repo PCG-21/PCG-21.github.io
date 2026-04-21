@@ -76,6 +76,8 @@
       { id:'pm-home',       label:'Dashboard',           href:'pm-home.html',                               icon:'⌂', groups:'*' },
       { id:'pif',           label:'＋ New Show · PIF',    href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
       { id:'show-center',   label:'Show Command Center', href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
+      { id:'site-visit',    label:'Site Visit (guided)', href:'site-visit.html?project=LCE-2026',           icon:'🗺', groups:'*' },
+      { id:'field-capture', label:'Field Capture (mobile)', href:'field-capture.html?project=LCE-2026',     icon:'📱', groups:'*' },
       { id:'advance',       label:'Advance (auto)',      href:'advance.html?project=LCE-2026',              icon:'⚡', groups:'*' },
       { id:'client-portal',        label:'Client Portal (external)',  href:'client-portal.html?project=LCE-2026',        icon:'🔗', groups:'*' },
       { id:'client-portal-config', label:'↳ Portal Config (internal)', href:'client-portal-config.html?project=LCE-2026', icon:'🔧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },

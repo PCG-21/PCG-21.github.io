@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>PCG Stage · Site Visit</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Site Visit v1 — guided, mobile-friendly.
+     Designed so the same page works on a phone walking a venue
+     (stacked, big tap targets) and on a desktop in post-walk
+     cleanup (wider grid, richer tiles). No framework — just a
+     stepper driven by a simple state object. */
+
+  .sv-shell { max-width: 780px; margin: 0 auto; }
+
+  /* Landing / start */
+  .sv-start h1 { font-family: var(--font-display); margin: 0 0 8px; font-size: 28px; }
+  .sv-start .sub { color: var(--text-secondary); font-size: var(--fs-md); margin-bottom: var(--sp-4); }
+  .sv-start .mode-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 720px) { .sv-start .mode-grid { grid-template-columns: repeat(3, 1fr); } }
+  .sv-mode {
+    display: block; padding: 18px 20px;
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    background: var(--surface-1); cursor: pointer;
+    color: var(--text-primary); text-decoration: none;
+    transition: border-color var(--t-fast), transform var(--t-fast);
+  }
+  .sv-mode:hover { border-color: var(--pcg-bright-blue); transform: translateY(-1px); }
+  .sv-mode .ico { font-size: 26px; display: block; margin-bottom: 8px; }
+  .sv-mode .lbl { font-weight: 600; font-size: var(--fs-md); }
+  .sv-mode .nt  { color: var(--text-tertiary); font-size: 12px; margin-top: 4px; line-height: 1.5; }
+  .sv-mode.selected { border-color: var(--pcg-bright-blue); background: linear-gradient(135deg, rgba(1,153,253,0.08), transparent 60%), var(--surface-1); }
+
+  /* Step header / progress */
+  .sv-progress {
+    position: sticky; top: var(--topbar-h); z-index: 30;
+    background: var(--surface-0); padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--sp-4);
+  }
+  .sv-prog-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sv-prog-bar {
+    flex: 1; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden;
+    min-width: 120px;
+  }
+  .sv-prog-fill { height: 100%; background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple)); transition: width var(--t-fast); }
+  .sv-prog-text { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.08em; color: var(--text-tertiary); text-transform: uppercase; }
+  .sv-steps {
+    display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sv-step {
+    flex: 0 0 auto; padding: 5px 12px;
+    font-size: 11.5px; border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-tertiary); white-space: nowrap; cursor: pointer;
+  }
+  .sv-step.done { color: var(--status-green); border-color: rgba(61,220,132,0.3); }
+  .sv-step.on   { background: rgba(1,153,253,0.15); border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+
+  /* Step body */
+  .sv-step-card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .sv-step-head { padding: 18px 22px; border-bottom: 1px solid var(--border); }
+  .sv-step-head h2 { font-family: var(--font-display); margin: 0; font-size: 22px; }
+  .sv-step-head .ey { font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-bright-blue); }
+  .sv-step-body { padding: 18px 22px; }
+
+  /* Reuse-previous banner */
+  .sv-reuse {
+    margin-bottom: 16px; padding: 12px 14px;
+    border: 1px solid rgba(149,100,216,0.35); border-left: 3px solid var(--pcg-spotlight-purple);
+    background: rgba(149,100,216,0.06);
+    border-radius: var(--r-sm);
+    font-size: 12.5px; line-height: 1.5;
+  }
+  .sv-reuse .ey { color: var(--pcg-spotlight-purple); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; display:block; margin-bottom: 4px; }
+  .sv-reuse .prev { color: var(--text-secondary); font-style: italic; margin: 4px 0 8px; }
+  .sv-reuse .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .sv-field { margin-bottom: 14px; }
+  .sv-field label { display: block; font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px; }
+  .sv-field textarea, .sv-field input[type="text"] {
+    width: 100%; background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 12px 14px; font-size: 14px; font-family: var(--font-body);
+    line-height: 1.5; box-sizing: border-box;
+  }
+  .sv-field textarea { min-height: 100px; resize: vertical; }
+  .sv-field textarea:focus, .sv-field input:focus { outline: 0; border-color: var(--pcg-bright-blue); }
+
+  /* Photo uploader */
+  .sv-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .sv-photo {
+    aspect-ratio: 4/3; border-radius: var(--r-sm); overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+    border: 1px solid var(--border);
+    display: grid; place-items: center;
+    font-size: 28px; color: var(--text-tertiary);
+  }
+  .sv-photo .cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.82), transparent);
+    padding: 10px; color: #fff; font-size: 11px; font-family: var(--font-mono);
+  }
+  .sv-photo.add {
+    border: 2px dashed var(--border-accent); background: transparent;
+    cursor: pointer; color: var(--text-secondary); font-size: 28px;
+  }
+  .sv-photo.add:hover { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+  .sv-photo.add .cap-add {
+    position: static; background: none; padding: 0; color: inherit;
+    font-size: 11.5px; font-family: var(--font-display); letter-spacing: 0.06em;
+    text-transform: uppercase; margin-top: 4px;
+  }
+
+  /* Status chips (same as last / changed / follow-up) */
+  .sv-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .sv-chip {
+    padding: 6px 12px; border-radius: var(--r-pill);
+    font-size: 12px; font-family: var(--font-display);
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-secondary); cursor: pointer; user-select: none;
+  }
+  .sv-chip.on.same      { background: rgba(61,220,132,0.15); border-color: rgba(61,220,132,0.4); color: var(--status-green); }
+  .sv-chip.on.changed   { background: rgba(245,176,65,0.18); border-color: rgba(245,176,65,0.4); color: var(--status-amber); }
+  .sv-chip.on.followup  { background: rgba(231,76,60,0.18); border-color: rgba(231,76,60,0.4); color: var(--status-red); }
+  .sv-chip.on.save      { background: rgba(149,100,216,0.18); border-color: rgba(149,100,216,0.4); color: var(--pcg-spotlight-purple); }
+
+  /* Sticky action bar (phone-friendly) */
+  .sv-actions {
+    position: sticky; bottom: 0; z-index: 30;
+    display: flex; gap: 8px; padding: 12px 14px;
+    background: var(--surface-0); border-top: 1px solid var(--border);
+    margin-top: var(--sp-4);
+  }
+  .sv-actions .btn { flex: 1; padding: 14px 12px; font-size: 14px; }
+  .sv-actions .btn.ghost { flex: 0 0 auto; }
+
+  /* Review page */
+  .sv-review-row {
+    display: grid; grid-template-columns: 32px 1fr auto; gap: 12px;
+    padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: var(--r-sm); margin-bottom: 8px; align-items: center;
+    background: var(--surface-1);
+  }
+  .sv-review-row .ri { font-size: 20px; }
+  .sv-review-row .rt { font-weight: 600; font-size: var(--fs-sm); }
+  .sv-review-row .rs { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+
+  @media (max-width: 600px) {
+    .sv-step-head { padding: 14px 16px; }
+    .sv-step-body { padding: 14px 16px; }
+    .sv-step-head h2 { font-size: 19px; }
+    .sv-start h1 { font-size: 22px; }
+    .sv-actions { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+      <div class="sv-shell">
+
+        <!-- START SCREEN -->
+        <div class="sv-start" id="sv-start">
+          <div class="eyebrow" style="color: var(--pcg-bright-blue);">Site Visit · Field Tool</div>
+          <h1 id="start-title">Start a site visit</h1>
+          <div class="sub" id="start-sub">Guided walk-through. Works on a phone onsite — every note, photo, and watch-out is saved to the venue record for future shows.</div>
+
+          <div class="mode-grid">
+            <a class="sv-mode" data-mode="show" href="#step-1">
+              <span class="ico">📋</span>
+              <div class="lbl">New visit · for this show</div>
+              <div class="nt">Start a walk-through tied to the current show. Saves to both the show and the venue record.</div>
+            </a>
+            <a class="sv-mode" data-mode="venue" href="#step-1">
+              <span class="ico">🏛</span>
+              <div class="lbl">New visit · for the venue</div>
+              <div class="nt">Stand-alone venue walkthrough. Feeds venue intelligence for all future shows.</div>
+            </a>
+            <a class="sv-mode" data-mode="reuse" href="#step-1">
+              <span class="ico">↻</span>
+              <div class="lbl">Reuse previous venue intel</div>
+              <div class="nt">Pull last visit's notes as the starting point. Mark what changed.</div>
+            </a>
+          </div>
+
+          <div style="margin-top: var(--sp-4); padding: 14px 16px; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-sm);">
+            <div class="eyebrow" style="margin-bottom: 6px;">Last visit to this venue</div>
+            <div style="font-size: var(--fs-sm); color: var(--text-secondary); margin-bottom: 6px;" id="prev-meta">Caesars Forum · Apr 9, 2026 · J. Sharp + C. Taylor</div>
+            <div style="font-size: 12px; color: var(--text-tertiary); line-height: 1.6;">
+              Findings: Dock shared with hotel kitchen after 3 PM · Power tie-in requires venue engineer · Ballroom access blocked during afternoon turnover · Rigging limited over center chandeliers.
+            </div>
+          </div>
+        </div>
+
+        <!-- STEPPER -->
+        <div id="sv-flow" style="display:none;">
+
+          <div class="sv-progress">
+            <div class="sv-prog-row">
+              <span class="sv-prog-text" id="prog-text">Step 1 / 9</span>
+              <div class="sv-prog-bar"><div class="sv-prog-fill" id="prog-fill" style="width:0%;"></div></div>
+              <span class="sv-prog-text" id="prog-status" style="color: var(--pcg-bright-blue);">In progress</span>
+            </div>
+            <div class="sv-steps" id="sv-steps"></div>
+          </div>
+
+          <div class="sv-step-card" id="sv-card"></div>
+
+          <div class="sv-actions">
+            <button class="btn ghost" id="sv-back">← Back</button>
+            <button class="btn primary" id="sv-next">Next →</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'site-visit', pageTitle:'Site Visit'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code) || { code, name: 'Unknown Show', venueName: 'Venue' };
+
+  document.getElementById('start-title').textContent = `Site visit · ${proj.venueName || proj.name}`;
+  document.getElementById('start-sub').textContent =
+    `Guided walk-through for ${proj.name} (${proj.code}). Works on a phone onsite — notes, photos, and watch-outs save to the venue record for future shows.`;
+
+  // ----- Step definitions -----
+  // Previous visit notes (seed from the earlier Caesars Forum walk-through).
+  // Shown on each step so the PM can "mark unchanged" or override.
+  const PREV = {
+    venue:   'Caesars Forum Ballroom · centerline verified on last plot · BOH furniture still staged in room during setup.',
+    dock:    'Dock 2 primary for 48\' trucks. Dock 4 shared with hotel kitchen after 3 PM (unusable for PM load-in).',
+    power:   '200A tie-in at FOH dock panel. Power tie-in requires venue engineer approval + 24h notice. House power on separate feed.',
+    rigging: '24 points on ballroom grid, 4,500 lb beam capacity. Center chandelier positions unavailable to show motors.',
+    internet:'Show SSID LCE26-PROD · 500 Mbps dedicated VLAN. Venue IT required to issue credentials.',
+    backstage:'Green rooms in BOH pre-function. Crew breakroom on stage-right corridor. Two showers onsite.',
+    storage: 'BOH room holds venue furniture during load-in AM — venue clears before 7 AM.',
+    restrict:'No dynamic rigging after 10 PM. Ballroom access blocked during afternoon turnover (12–2 PM Day 1). Hallway corner protection missing on last visit.'
+  };
+
+  const steps = [
+    { k:'venue',    title:'Venue & Room Confirmation',     ey:'Step 1 · Venue',     prev:PREV.venue,    ph:'Verify centerline, room layout, obstructions, and house lighting assumptions.', photos:['Ballroom · SL','Ballroom · SR','Room layout sketch'] },
+    { k:'dock',     title:'Dock Access & Freight Path',    ey:'Step 2 · Dock',      prev:PREV.dock,     ph:'Dock number, clearance, pull-up restrictions, freight elevator, shared-use windows.', photos:['Dock 2 approach','Freight elevator cab','Pull-up lane'] },
+    { k:'power',    title:'Power',                         ey:'Step 3 · Power',     prev:PREV.power,    ph:'Tie-in location and amperage, venue electrician requirements, house power isolation.', photos:['Tie-in panel','House-power panel','Cable path'] },
+    { k:'rigging',  title:'Rigging',                       ey:'Step 4 · Rigging',   prev:PREV.rigging,  ph:'Beam capacity, point count, restricted zones, motor cert review requirement.', photos:['Grid overhead','Obstruction zones','Motor rigging plan'] },
+    { k:'internet', title:'Internet / Comms',              ey:'Step 5 · Comms',     prev:PREV.internet, ph:'Show SSID, VLAN, credentials source, cellular signal in back-of-house.', photos:['Venue IT office','Comms room','RF survey'] },
+    { k:'backstage',title:'Backstage / Green Rooms',       ey:'Step 6 · Backstage', prev:PREV.backstage,ph:'Green room location(s), crew breakroom, showers, furniture in place.', photos:['Green room','Crew breakroom','Shower area'] },
+    { k:'storage',  title:'Storage / Staging',             ey:'Step 7 · Storage',   prev:PREV.storage,  ph:'BOH storage capacity, access timing, what needs to clear before load-in.', photos:['BOH storage','Staging area','Venue-held furniture'] },
+    { k:'restrict', title:'Restrictions & Watch-Outs',     ey:'Step 8 · Restrictions', prev:PREV.restrict, ph:'Curfews, access windows, missing corner protection, shared-use times.', photos:['Hallway corners','After-hours signage','Shared-dock signage'], highlight:true },
+    { k:'review',   title:'Final Review & Save',           ey:'Step 9 · Review',    prev:null,          ph:'Confirm findings. Save to show + venue record. Flag follow-ups.' }
+  ];
+
+  // State per step: { notes, status (same|changed|followup), saveRecord bool, followUp bool }
+  const STATE_KEY = `pcg_sv_${proj.code}`;
+  const saved = JSON.parse(sessionStorage.getItem(STATE_KEY) || 'null');
+  const state = saved || {
+    mode: 'show',
+    step: 0,
+    data: Object.fromEntries(steps.map(s => [s.k, { notes:'', status:'', saveRecord: true, followUp: false, photos: [] }]))
+  };
+  function save(){ sessionStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+
+  // ----- Start screen -----
+  document.querySelectorAll('.sv-mode').forEach(m => m.addEventListener('click', (e) => {
+    e.preventDefault();
+    state.mode = m.dataset.mode;
+    state.step = 0;
+    if(state.mode === 'reuse'){
+      // Pre-seed notes with previous visit text + mark same-as-last
+      steps.forEach(s => {
+        if(s.prev){
+          state.data[s.k].notes = '(from last visit) ' + s.prev;
+          state.data[s.k].status = 'same';
+        }
+      });
+    }
+    save();
+    showFlow();
+  }));
+
+  function showFlow(){
+    document.getElementById('sv-start').style.display = 'none';
+    document.getElementById('sv-flow').style.display = 'block';
+    renderStep();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  // Auto-enter flow if saved state exists
+  if(saved && saved.step > 0) showFlow();
+
+  // ----- Steps pill row -----
+  function renderSteps(){
+    document.getElementById('sv-steps').innerHTML = steps.map((s, i) => {
+      const st = state.data[s.k];
+      const done = st && (st.notes || st.status) && i < state.step;
+      return `<div class="sv-step ${i===state.step?'on':(done?'done':'')}" data-i="${i}">${s.ey.split('·')[0].trim()} · ${s.title.split(/[/&]/)[0].trim()}</div>`;
+    }).join('');
+    document.querySelectorAll('.sv-step').forEach(el => el.addEventListener('click', () => {
+      state.step = +el.dataset.i; save(); renderStep();
+    }));
+    const pct = Math.round((state.step / (steps.length - 1)) * 100);
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-text').textContent = `Step ${state.step + 1} / ${steps.length}`;
+    document.getElementById('prog-status').textContent = state.step === steps.length - 1 ? 'Review' : 'In progress';
+  }
+
+  // ----- Step card render -----
+  function renderStep(){
+    renderSteps();
+    const s = steps[state.step];
+    if(s.k === 'review') return renderReview();
+    const st = state.data[s.k];
+
+    const reuseBlock = s.prev ? `
+      <div class="sv-reuse">
+        <span class="ey">From last visit</span>
+        <div class="prev">"${PCG.escapeHtml(s.prev)}"</div>
+        <div class="btns">
+          <button class="btn sm ghost" data-act="same">✓ Same as last time</button>
+          <button class="btn sm ghost" data-act="use">Use previous notes</button>
+          <button class="btn sm ghost" data-act="changed">⚠ Changed since last visit</button>
+        </div>
+      </div>` : '';
+
+    document.getElementById('sv-card').innerHTML = `
+      <div class="sv-step-head">
+        <div class="ey">${s.ey}</div>
+        <h2>${s.title}</h2>
+      </div>
+      <div class="sv-step-body">
+        ${reuseBlock}
+        <div class="sv-field">
+          <label for="sv-notes">Notes</label>
+          <textarea id="sv-notes" placeholder="${PCG.escapeHtml(s.ph)}">${PCG.escapeHtml(st.notes)}</textarea>
+        </div>
+        <div class="sv-field">
+          <label>Photos</label>
+          <div class="sv-photos" id="sv-photos"></div>
+        </div>
+        <div class="sv-chips">
+          <span class="sv-chip same      ${st.status==='same'?'on':''}"     data-s="same">✓ Same as last time</span>
+          <span class="sv-chip changed   ${st.status==='changed'?'on':''}"  data-s="changed">⚠ Changed</span>
+          <span class="sv-chip followup  ${st.followUp?'on':''}"            data-s="followup">↳ Follow up</span>
+          <span class="sv-chip save      ${st.saveRecord?'on':''}"          data-s="save">📎 Save to venue record</span>
+        </div>
+      </div>
+    `;
+
+    renderPhotos();
+
+    document.getElementById('sv-notes').addEventListener('input', (e) => { st.notes = e.target.value; save(); });
+
+    document.querySelectorAll('.sv-reuse [data-act]').forEach(b => b.addEventListener('click', (e) => {
+      const act = b.dataset.act;
+      if(act === 'same')    { st.status = 'same'; st.notes = st.notes || `Unchanged from last visit. (${s.prev})`; }
+      if(act === 'use')     { st.notes = s.prev; }
+      if(act === 'changed') { st.status = 'changed'; st.notes = (st.notes ? st.notes + '\n\n' : '') + '(Changed since last visit) '; }
+      save(); renderStep();
+      const ta = document.getElementById('sv-notes'); if(ta && act === 'changed'){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }));
+
+    document.querySelectorAll('.sv-chip[data-s]').forEach(el => el.addEventListener('click', () => {
+      const k = el.dataset.s;
+      if(k === 'same' || k === 'changed') st.status = (st.status === k ? '' : k);
+      if(k === 'followup')   st.followUp   = !st.followUp;
+      if(k === 'save')       st.saveRecord = !st.saveRecord;
+      save(); renderStep();
+    }));
+
+    const ta = document.getElementById('sv-notes');
+    if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }
+
+  function renderPhotos(){
+    const s = steps[state.step];
+    const st = state.data[s.k];
+    const tiles = (s.photos || []).map((cap, i) => {
+      const has = st.photos && st.photos[i];
+      return `<div class="sv-photo">${has ? '✓' : '📷'}<div class="cap">${PCG.escapeHtml(cap)}</div></div>`;
+    }).join('');
+    const add = `
+      <div class="sv-photo add" id="sv-photo-add">
+        ＋
+        <div class="cap-add">Add photo</div>
+      </div>`;
+    document.getElementById('sv-photos').innerHTML = tiles + add;
+    document.getElementById('sv-photo-add').addEventListener('click', () => {
+      st.photos = st.photos || [];
+      st.photos.push({ cap: `Capture #${st.photos.length + 1}`, t: new Date().toISOString() });
+      save();
+      // Append a new tile
+      const el = document.createElement('div');
+      el.className = 'sv-photo';
+      el.innerHTML = `✓<div class="cap">Capture #${st.photos.length}</div>`;
+      const add = document.getElementById('sv-photo-add');
+      add.parentElement.insertBefore(el, add);
+    });
+  }
+
+  // ----- Review step -----
+  function renderReview(){
+    const findings = steps.slice(0, -1).map(s => {
+      const st = state.data[s.k];
+      const statusCopy = st.status === 'same' ? '✓ Same' : (st.status === 'changed' ? '⚠ Changed' : '—');
+      const flags = [];
+      if(st.followUp)   flags.push('<span class="pill amber plain" style="font-size:9px;">FOLLOW-UP</span>');
+      if(st.saveRecord) flags.push('<span class="pill purple plain" style="font-size:9px;">SAVED</span>');
+      return `
+        <div class="sv-review-row">
+          <span class="ri">${s.ey.split('·')[0].trim() === 'Step 1' ? '🏛' : '📷'}</span>
+          <div>
+            <div class="rt">${PCG.escapeHtml(s.title)}</div>
+            <div class="rs">${statusCopy} · ${st.notes ? (st.notes.length > 80 ? PCG.escapeHtml(st.notes.slice(0, 78)) + '…' : PCG.escapeHtml(st.notes)) : '<em>(no notes)</em>'}</div>
+          </div>
+          <div style="display:flex; gap:4px; flex-direction:column; align-items:flex-end;">${flags.join('')}</div>
+        </div>`;
+    }).join('');
+
+    const followupCount = Object.values(state.data).filter(d => d.followUp).length;
+    const savedCount    = Object.values(state.data).filter(d => d.saveRecord).length;
+
+    document.getElementById('sv-card').innerHTML = `
+      <div class="sv-step-head">
+        <div class="ey">Step 9 · Review & Save</div>
+        <h2>Ready to save this visit?</h2>
+      </div>
+      <div class="sv-step-body">
+        <div class="sv-reuse" style="border-left-color: var(--status-green); background: rgba(61,220,132,0.06); border-color: rgba(61,220,132,0.3);">
+          <span class="ey" style="color: var(--status-green);">Summary</span>
+          <div style="font-size: 13px; color: var(--text-primary); line-height: 1.7;">
+            ${savedCount} section${savedCount===1?'':'s'} will save to <strong>${PCG.escapeHtml(proj.venueName || 'the venue')}</strong> venue record.<br>
+            ${followupCount} follow-up${followupCount===1?'':'s'} flagged for action on this show.<br>
+            Visit will be linked to <strong>${PCG.escapeHtml(proj.code)}</strong> and timestamped.
+          </div>
+        </div>
+        ${findings}
+      </div>
+    `;
+  }
+
+  // ----- Navigation buttons -----
+  document.getElementById('sv-next').addEventListener('click', () => {
+    if(state.step === steps.length - 1){
+      // Submit
+      sessionStorage.setItem(STATE_KEY, JSON.stringify(Object.assign(state, { submittedAt: new Date().toISOString() })));
+      alert(`✓ Site visit saved.\n\n• Linked to show ${proj.code}\n• Saved to venue record (${proj.venueName || 'venue'})\n• ${Object.values(state.data).filter(d => d.followUp).length} follow-up flag(s) sent to show tasks\n\nThese findings now pre-populate the next visit at this venue.`);
+      location.href = `show-center.html?project=${encodeURIComponent(proj.code)}#sec-site`;
+      return;
+    }
+    state.step = Math.min(steps.length - 1, state.step + 1);
+    save(); renderStep();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  document.getElementById('sv-back').addEventListener('click', () => {
+    if(state.step === 0){
+      document.getElementById('sv-start').style.display = 'block';
+      document.getElementById('sv-flow').style.display = 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    state.step = Math.max(0, state.step - 1);
+    save(); renderStep();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>

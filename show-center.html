@@ -610,7 +610,7 @@
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
 <script>
-  PCG.mountShell({active:'playbook', pageTitle:'Show Command Center'});
+  PCG.mountShell({active:'show-center', pageTitle:'Show Command Center'});
 
   const code = PCG.qs('project', 'LCE-2026');
   // Pull PIF-created shows from sessionStorage (client-side persistence for
@@ -1213,42 +1213,79 @@
   renderReqs();
 
   // -------- PRE-LOAD VENUE CONDITION (site/venue baseline, NOT gear) --------
-  // This is a legal / operational protection record captured at the
-  // venue BEFORE PCG touches anything — so post-show damage disputes
-  // have a verifiable baseline and so venue quirks feed the venue
-  // intelligence record for future shows.
+  // Legal/operational protection record captured at the venue BEFORE
+  // PCG touches anything. Each tile has a location tag (Dock / Ballroom
+  // / Hallway / Elevator / Backstage) and flags indicating whether it
+  // should be saved to the venue record + included on the Advance.
   const venueConditionItems = [
-    { cap:'Ballroom carpet · SL',     note:'Pre-existing stain ~18" near stage-left tormentor leg' },
-    { cap:'Dock wall · north side',   note:'Prior forklift scrape along north interior wall (pre-existing)' },
-    { cap:'Service elevator · cab',   note:'Multiple scratches and dent on back wall of freight cab (pre-existing)' },
-    { cap:'Hallway corner · west',    note:'Corner protection MISSING at elbow before ballroom — venue to install before crew arrives' },
-    { cap:'BOH storage room',         note:'Venue furniture still staged in BOH room — venue clearing before 7 AM load-in' },
-    { cap:'Ballroom ceiling · CL',    note:'House chandelier rigging points inaccessible to our motors — confirmed before plot' }
+    { cap:'Ballroom carpet · SL',     note:'Pre-existing stain ~18" near stage-left tormentor leg', loc:'Ballroom',   save:true,  inAdvance:true  },
+    { cap:'Dock wall · north side',   note:'Prior forklift scrape along north interior wall',       loc:'Dock',       save:true,  inAdvance:true  },
+    { cap:'Service elevator · cab',   note:'Multiple scratches and dent on back wall of freight cab', loc:'Elevator', save:true,  inAdvance:false },
+    { cap:'Hallway corner · west',    note:'Corner protection MISSING — venue installing before crew arrives', loc:'Hallway', save:true, inAdvance:true },
+    { cap:'BOH storage room',         note:'Venue furniture still staged in BOH — venue clearing before 7 AM', loc:'Backstage', save:true, inAdvance:false },
+    { cap:'Ballroom ceiling · CL',    note:'House chandelier points inaccessible to our motors',    loc:'Ballroom',   save:true,  inAdvance:true  }
   ];
+  const locColor = {
+    'Dock':      '#0199fd',
+    'Ballroom':  '#9564d8',
+    'Hallway':   '#f5b041',
+    'Elevator':  '#3ddc84',
+    'Backstage': '#e74c3c',
+    'BOH Storage': '#e74c3c',
+    'Pre-function': '#f5b041',
+    'Exterior':  '#999'
+  };
+
+  const fieldHref = `field-capture.html?project=${encodeURIComponent(proj.code)}`;
+  const visitHref = `site-visit.html?project=${encodeURIComponent(proj.code)}`;
+
   document.getElementById('preload').innerHTML = `
-    <div class="adv-notes" style="margin-bottom:var(--sp-3); border-left-color: var(--pcg-spotlight-purple);">
-      <strong style="color: var(--pcg-spotlight-purple);">Captured before PCG load-in — used for damage verification and venue history.</strong>
-      <div style="margin-top: 6px; font-size: 12.5px; color: var(--text-secondary);">
-        Photos and notes document ballroom, dock, elevator, hallway, floor, wall, and door condition <em>before</em> any PCG gear arrives.
-        Each record shows what was pre-existing so the venue can't attribute it to our crew — and each finding feeds the venue's long-term
-        operational record.
+    <div class="adv-notes" style="margin-bottom:var(--sp-3); border-left: 3px solid var(--pcg-spotlight-purple); background: linear-gradient(135deg, rgba(149,100,216,0.08), rgba(10,18,32,0) 70%), var(--surface-1);">
+      <strong style="color: var(--pcg-spotlight-purple); font-size: 13px;">🏛 Captured before PCG load-in — used for damage verification and venue history.</strong>
+      <div style="margin-top: 6px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6;">
+        Photos and notes document ballroom, dock, elevator, hallway, backstage, wall, floor, and door condition <em>before</em> any PCG gear arrives.
+        Each record protects against damage disputes and feeds the venue's long-term intelligence. Captured onsite from a phone via Field Capture.
+      </div>
+      <div style="margin-top: 10px; display:flex; gap: 8px; flex-wrap: wrap;">
+        <a href="${fieldHref}" class="btn sm primary" style="font-size: 12px;">📱 Open Field Capture</a>
+        <a href="${visitHref}" class="btn sm ghost"   style="font-size: 12px;">🗺 Start guided site visit</a>
       </div>
     </div>
-    <div class="photo-grid">
-      ${venueConditionItems.map(item => `
-        <div class="photo-tile" title="${PCG.escapeHtml(item.note)}">🏛
-          <div class="ph-caption" style="background: linear-gradient(0deg, rgba(0,0,0,0.88), transparent);">
-            <strong style="display:block; margin-bottom: 2px;">${PCG.escapeHtml(item.cap)}</strong>
-            <span style="font-weight: 400; opacity: 0.85; font-size: 10.5px;">${PCG.escapeHtml(item.note)}</span>
-          </div>
-        </div>`).join('')}
-    </div>
-    <div style="margin-top: var(--sp-3); display:flex; gap: 14px; flex-wrap:wrap; font-size: 11.5px;">
+    <div class="photo-grid" id="preload-tiles"></div>
+    <div style="margin-top: var(--sp-3); display:flex; gap: 10px; flex-wrap:wrap; font-size: 11.5px; align-items:center;">
       <span class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono);">Walked by · J. Sharp + C. Taylor</span>
       <span class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono);">2026-04-09 · 14:12</span>
-      <span class="v-chip" style="padding:4px 10px; background:rgba(149,100,216,0.12); border:1px solid rgba(149,100,216,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); color: var(--pcg-spotlight-purple);">✓ Saved to venue record</span>
-      <span class="v-chip" style="padding:4px 10px; background:rgba(1,153,253,0.12); border:1px solid rgba(1,153,253,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); color: var(--pcg-bright-blue);">Copy included on Advance</span>
+      <span class="v-chip" style="padding:4px 10px; background:rgba(149,100,216,0.12); border:1px solid rgba(149,100,216,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); color: var(--pcg-spotlight-purple);">✓ Saved to Caesars Forum venue record</span>
+      <span class="v-chip" style="padding:4px 10px; background:rgba(1,153,253,0.12); border:1px solid rgba(1,153,253,0.35); border-radius: var(--r-pill); font-family: var(--font-mono); color: var(--pcg-bright-blue);">📄 ${venueConditionItems.filter(i=>i.inAdvance).length} items on Advance</span>
+      <span style="margin-left:auto; font-size: 11px; color: var(--text-tertiary);">Click any tile to toggle advance inclusion.</span>
     </div>`;
+
+  function renderPreloadTiles(){
+    document.getElementById('preload-tiles').innerHTML = venueConditionItems.map((item, idx) => {
+      const tone = locColor[item.loc] || '#888';
+      return `
+        <div class="photo-tile" data-i="${idx}" title="${PCG.escapeHtml(item.note)}" style="border: 1px solid var(--border); border-radius: var(--r-sm); cursor: pointer;">
+          🏛
+          <span style="position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: var(--r-pill); background: ${tone}22; color: ${tone}; border: 1px solid ${tone}66; font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;">📍 ${item.loc}</span>
+          <span style="position: absolute; top: 8px; right: 8px; display:flex; gap: 4px;">
+            ${item.save      ? '<span title="Saved to venue record" style="padding: 3px 6px; background: rgba(149,100,216,0.22); color: #fff; border-radius: var(--r-pill); font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; font-weight: 700;">VENUE</span>' : ''}
+            ${item.inAdvance ? '<span title="Included on Advance"     style="padding: 3px 6px; background: rgba(1,153,253,0.25);  color: #fff; border-radius: var(--r-pill); font-size: 9.5px; font-family: var(--font-display); letter-spacing: 0.06em; font-weight: 700;">ADVANCE</span>' : ''}
+          </span>
+          <div class="ph-caption" style="background: linear-gradient(0deg, rgba(0,0,0,0.88), transparent);">
+            <strong style="display:block; margin-bottom: 2px;">${PCG.escapeHtml(item.cap)}</strong>
+            <span style="font-weight: 400; opacity: 0.88; font-size: 10.5px;">${PCG.escapeHtml(item.note)}</span>
+          </div>
+        </div>`;
+    }).join('');
+    document.querySelectorAll('#preload-tiles .photo-tile').forEach(el => {
+      el.addEventListener('click', () => {
+        const i = +el.dataset.i;
+        venueConditionItems[i].inAdvance = !venueConditionItems[i].inAdvance;
+        renderPreloadTiles();
+      });
+    });
+  }
+  renderPreloadTiles();
 
   // -------- DOMAINS (upgraded · owner + constraints + key requirements + risks) --------
   const domains = [
