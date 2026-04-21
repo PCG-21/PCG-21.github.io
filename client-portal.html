@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Client Portal</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Lightweight read-only client view. Same visual language, reduced
+     information density — this is the face PCG shows the client. */
+  .cp-banner {
+    background: linear-gradient(135deg, rgba(1,153,253,0.14), rgba(149,100,216,0.14)), var(--surface-1);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-md);
+    padding: 28px 32px; margin-bottom: var(--sp-4);
+    position: relative; overflow: hidden;
+  }
+  .cp-banner::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .cp-banner h1 { font-family: var(--font-display); font-size: 28px; margin: 4px 0 2px; }
+  .cp-banner .sub { color: var(--text-secondary); font-size: var(--fs-md); }
+  .cp-preview-banner {
+    background: var(--surface-2); border: 1px dashed var(--border-accent);
+    border-radius: var(--r-sm); padding: 10px 14px;
+    font-size: 11.5px; font-family: var(--font-mono); color: var(--text-secondary);
+    margin-bottom: var(--sp-4);
+  }
+  .cp-preview-banner strong { color: var(--pcg-bright-blue); }
+
+  .cp-section { margin-bottom: var(--sp-5); }
+  .cp-section h2 {
+    font-family: var(--font-display); font-size: 12px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--pcg-bright-blue);
+    border-bottom: 1px solid var(--border-accent);
+    padding-bottom: 8px; margin-bottom: 14px;
+  }
+
+  .cp-sched { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+  .cp-sched table { width:100%; border-collapse: collapse; }
+  .cp-sched th, .cp-sched td { padding: 12px 16px; font-size: var(--fs-sm); border-bottom: 1px solid var(--border); text-align: left; }
+  .cp-sched th { background: var(--surface-2); font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .cp-sched td:first-child { font-family: var(--font-mono); white-space: nowrap; color: var(--text-secondary); }
+  .cp-sched tr:last-child td { border-bottom: 0; }
+
+  .cp-docs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+  .cp-doc {
+    border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1);
+    padding: 18px; display: flex; gap: 12px; align-items: flex-start;
+    transition: border-color 0.15s;
+  }
+  .cp-doc:hover { border-color: var(--pcg-bright-blue); cursor: pointer; }
+  .cp-doc .ico { font-size: 28px; line-height: 1; }
+  .cp-doc .meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: 4px; }
+  .cp-doc .title { font-size: var(--fs-sm); font-weight: 600; }
+
+  .cp-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); }
+  .cp-contact { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 14px; background: var(--surface-1); }
+  .cp-contact .role { font-size: 10px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+  .cp-contact .who  { font-weight: 600; font-size: var(--fs-md); margin-top: 2px; }
+  .cp-contact .meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-mono); line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="cp-preview-banner">
+        <strong>CLIENT PREVIEW</strong> — This is the read-only view your client sees. No margin, quote, risk, or operational-internals data is exposed.
+      </div>
+
+      <div id="not-found" style="display:none;" class="card">
+        <div class="card-body empty">Show not found. <a href="index.html">Back to portfolio →</a></div>
+      </div>
+
+      <div id="cp-main" style="display:none;">
+        <div class="cp-banner" id="banner"></div>
+
+        <div class="cp-section">
+          <h2>Your Show Schedule</h2>
+          <div class="cp-sched" id="sched"></div>
+        </div>
+
+        <div class="cp-section">
+          <h2>Production Advance</h2>
+          <div class="cp-docs">
+            <a class="cp-doc" id="advance-link">
+              <div class="ico">📄</div>
+              <div>
+                <div class="title">Production Advance</div>
+                <div class="meta">Auto-generated · Open read-only</div>
+              </div>
+            </a>
+            <div class="cp-doc">
+              <div class="ico">📋</div>
+              <div>
+                <div class="title">Run of Show (draft)</div>
+                <div class="meta">Shared once locked · ~Apr 11</div>
+              </div>
+            </div>
+            <div class="cp-doc">
+              <div class="ico">🎨</div>
+              <div>
+                <div class="title">Creative brief</div>
+                <div class="meta">Approved · Opener + Awards</div>
+              </div>
+            </div>
+            <div class="cp-doc">
+              <div class="ico">🪪</div>
+              <div>
+                <div class="title">Credentials / badges</div>
+                <div class="meta">Pickup Apr 10 · 6:30 AM</div>
+              </div>
+            </div>
+            <div class="cp-doc">
+              <div class="ico">📑</div>
+              <div>
+                <div class="title">Insurance COI</div>
+                <div class="meta">Filed w/ venue · Apr 3</div>
+              </div>
+            </div>
+            <div class="cp-doc">
+              <div class="ico">📨</div>
+              <div>
+                <div class="title">Point-of-contact list</div>
+                <div class="meta">On-site + 24/7 hotline</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cp-section">
+          <h2>Your PCG Team</h2>
+          <div class="cp-contacts" id="contacts"></div>
+        </div>
+
+        <div class="cp-section">
+          <h2>Recent Updates</h2>
+          <div id="updates"></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'playbook', pageTitle:'Client Portal'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code);
+
+  if(!proj){
+    document.getElementById('not-found').style.display = 'block';
+    throw new Error('no project');
+  }
+  document.getElementById('cp-main').style.display = 'block';
+  document.getElementById('advance-link').href = `advance.html?project=${encodeURIComponent(code)}`;
+
+  document.getElementById('banner').innerHTML = `
+    <div class="eyebrow" style="font-family:var(--font-display); letter-spacing: 0.14em; font-size: 10.5px; text-transform: uppercase; color: var(--pcg-bright-blue);">Your production · PCG STAGE</div>
+    <h1>${PCG.escapeHtml(proj.name)}</h1>
+    <div class="sub">${PCG.escapeHtml(proj.venueName || '—')} · ${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
+    <div class="muted" style="font-size:var(--fs-sm); margin-top:12px;">${PCG.escapeHtml(proj.oneLiner || '')}</div>
+  `;
+
+  function fmtD(iso){ if(!iso) return '—'; const d = new Date(iso); return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
+
+  document.getElementById('sched').innerHTML = `
+    <table>
+      <thead><tr><th>When</th><th>Event</th></tr></thead>
+      <tbody>
+        <tr><td>${fmtD(proj.dates?.loadIn)}</td><td>Load-in begins</td></tr>
+        <tr><td>${fmtD(proj.dates?.loadIn && new Date(proj.dates.loadIn).getTime() + 86400000 * 2)}</td><td>Dress rehearsal (full cast)</td></tr>
+        <tr><td>${fmtD(proj.dates?.showStart)}</td><td>General Session opens</td></tr>
+        <tr><td>${fmtD(proj.dates?.showEnd)}</td><td>Final session closes</td></tr>
+        <tr><td>${fmtD(proj.dates?.loadOut)}</td><td>Strike / load-out</td></tr>
+      </tbody>
+    </table>`;
+
+  const pm = PCG.findPerson(proj.primaryPM);
+  const td = PCG.findPerson(proj.td);
+  const showCaller = PCG.findPerson(proj.showCaller);
+  document.getElementById('contacts').innerHTML = [pm, td, showCaller].filter(Boolean).map((p,i)=>{
+    const role = i===0 ? 'Your PM' : (i===1 ? 'Technical Director' : 'Show Caller');
+    return `
+      <div class="cp-contact">
+        <div class="role">${role}</div>
+        <div class="who">${PCG.escapeHtml(p.name)}</div>
+        <div class="meta">📧 ${(p.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${p.phone || '(555) 000-0000'}</div>
+      </div>`;
+  }).concat(`
+    <div class="cp-contact">
+      <div class="role">24/7 Hotline</div>
+      <div class="who">PCG Production Hotline</div>
+      <div class="meta">📧 ops@pcgstage.com<br>📱 (248) 555-0199</div>
+    </div>
+  `).join('');
+
+  // Recent updates — seed from project changes / approvals / activity but
+  // strip any internal-only content (margin, risks, cost).
+  const updates = [
+    { ts:'2026-04-15T09:02', text:'Show confirmed for load-in Apr 10, 7am. Credentials available at venue ops Apr 10 from 6:30 AM.' },
+    { ts:'2026-04-14T17:40', text:'Your change order for the Awards ready room has been received and is being costed.' },
+    { ts:'2026-04-13T10:00', text:'Wireless microphone package upgraded to 16 channels to match latest rundown.' },
+    { ts:'2026-04-11T14:15', text:'Venue walkthrough complete. Dock 2 confirmed as primary load-in; dock 4 reserved for catering.' },
+  ];
+  document.getElementById('updates').innerHTML = updates.map(u => `
+    <div style="padding: 10px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 130px 1fr; gap: 14px; font-size: var(--fs-sm);">
+      <div class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.fmtShort(u.ts)} · ${new Date(u.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+      <div>${PCG.escapeHtml(u.text)}</div>
+    </div>`).join('');
+</script>
+</body>
+</html>

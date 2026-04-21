@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Show Command Center</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* -------- Show Command Center v1 ---------
+     Single-page command surface for a Show. Everything the PM / TD
+     / Producer needs while running a show in one scroll: live chat,
+     tasks, scope, timeline, risks, production log, diary, site
+     visit, venue intel, venue reqs, pre-load photos, domain owners,
+     creative, activity. -------------------- */
+
+  .scc-header {
+    background: linear-gradient(180deg, rgba(1,153,253,0.08) 0%, rgba(10,18,32,0) 100%), var(--surface-1);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+    position: relative; overflow: hidden;
+  }
+  .scc-header::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .scc-header h1 { margin: 2px 0; font-family: var(--font-display); }
+  .scc-meta-row {
+    display:flex; flex-wrap:wrap; gap: 14px; align-items:center;
+    font-size: var(--fs-sm); color: var(--text-secondary);
+    margin-top: 8px;
+  }
+  .scc-meta-row .mi { display:inline-flex; align-items:center; gap: 4px; }
+  .scc-meta-row .mi .k { color: var(--text-tertiary); font-family: var(--font-display); text-transform: uppercase; font-size: 10px; letter-spacing: 0.08em; }
+
+  .scc-tabs {
+    position: sticky; top: var(--topbar-h);
+    background: var(--surface-0);
+    z-index: 40;
+    display:flex; gap: 2px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--sp-4);
+    padding: 4px 0;
+  }
+  .scc-tab {
+    padding: 8px 14px; border-radius: var(--r-sm) var(--r-sm) 0 0;
+    font-size: var(--fs-sm); color: var(--text-secondary); cursor: pointer;
+    border: 1px solid transparent; border-bottom: 0;
+    background: transparent; font-family: var(--font-display);
+  }
+  .scc-tab:hover { color: var(--text-primary); background: var(--surface-2); }
+  .scc-tab.on { color: var(--pcg-bright-blue); background: var(--surface-1); border-color: var(--border-accent); }
+
+  .scc-section { margin-bottom: var(--sp-5); scroll-margin-top: calc(var(--topbar-h) + 80px); }
+
+  /* Communication / Slack-like */
+  .chat-wrap { display: grid; grid-template-columns: 180px 1fr; gap: var(--sp-3); min-height: 420px; }
+  .chat-channels { border-right: 1px solid var(--border); padding-right: var(--sp-3); }
+  .chat-channel {
+    padding: 8px 10px; border-radius: var(--r-sm); cursor: pointer;
+    font-size: var(--fs-sm); color: var(--text-secondary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .chat-channel:hover { background: var(--surface-2); color: var(--text-primary); }
+  .chat-channel.on { background: rgba(1,153,253,0.12); color: var(--pcg-bright-blue); }
+  .chat-channel .cnt { margin-left:auto; font-size: 10px; background: var(--surface-3); padding: 1px 6px; border-radius: var(--r-pill); color: var(--text-tertiary); }
+  .chat-thread { display: flex; flex-direction: column; gap: 10px; }
+  .chat-day { text-align: center; font-size: 10px; font-family: var(--font-display); color: var(--text-tertiary); margin: 10px 0 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .chat-msg { display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: start; }
+  .chat-avatar {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--pcg-confident-blue), var(--pcg-spotlight-purple));
+    color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  }
+  .chat-head { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-sm); }
+  .chat-head .who { font-weight: 600; color: var(--text-primary); }
+  .chat-head .ts  { font-size: 10px; color: var(--text-tertiary); font-family: var(--font-mono); }
+  .chat-body { font-size: var(--fs-sm); color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; }
+  .chat-body code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .chat-compose { margin-top: 12px; display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .chat-compose input {
+    flex: 1; background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 10px 12px; font-size: var(--fs-sm); font-family: var(--font-body);
+  }
+  .chat-compose input:focus { outline: 0; border-color: var(--pcg-bright-blue); }
+
+  /* Tasks */
+  .task-phase { margin-bottom: var(--sp-4); }
+  .task-phase h4 { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+  .task-row {
+    display: grid; grid-template-columns: 20px 1fr auto auto auto; gap: 10px;
+    padding: 8px 10px; border-radius: var(--r-sm);
+    border: 1px solid transparent;
+    align-items: center;
+  }
+  .task-row:hover { background: var(--surface-2); }
+  .task-row.done .t-title { text-decoration: line-through; color: var(--text-tertiary); }
+  .task-row.overdue { border-color: rgba(231, 76, 60, 0.3); background: rgba(231, 76, 60, 0.06); }
+  .task-check {
+    width: 16px; height: 16px; border: 1.5px solid var(--border-accent); border-radius: 4px;
+    display: grid; place-items: center; cursor: pointer; font-size: 11px;
+  }
+  .task-check.checked { background: var(--status-green); border-color: var(--status-green); color: #000; }
+  .t-title { font-size: var(--fs-sm); }
+  .t-due   { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+  .t-owner { font-size: 11px; color: var(--text-secondary); }
+
+  /* Scope board */
+  .scope-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+  .scope-col { border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1); padding: 12px 14px; }
+  .scope-col h4 { margin: 0 0 8px; font-size: var(--fs-sm); font-family: var(--font-display); letter-spacing: 0.04em; }
+  .scope-col ul { margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--text-secondary); }
+  .scope-col li { padding: 4px 0; border-bottom: 1px dashed var(--border); }
+  .scope-col li:last-child { border-bottom: 0; }
+
+  /* Timeline */
+  .tl-row {
+    display: grid; grid-template-columns: 120px 12px 1fr auto; gap: 14px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    align-items: center; font-size: var(--fs-sm);
+  }
+  .tl-row:last-child { border-bottom: 0; }
+  .tl-when { font-family: var(--font-mono); color: var(--text-secondary); }
+  .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pcg-bright-blue); }
+  .tl-dot.past { background: var(--text-tertiary); }
+  .tl-dot.now  { background: var(--pcg-spotlight-purple); box-shadow: 0 0 0 4px rgba(149,100,216,0.2); }
+
+  /* Risk register */
+  .risk-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: var(--r-sm); margin-bottom: 8px; }
+  .risk-row.sev-high { border-left: 3px solid var(--status-red); }
+  .risk-row.sev-medium { border-left: 3px solid var(--status-amber); }
+  .risk-row.sev-low { border-left: 3px solid var(--pcg-bright-blue); }
+  .risk-row .rmit { grid-column: 1/-1; font-size: 11.5px; color: var(--text-secondary); border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 4px; }
+
+  /* Production Log + Diary */
+  .log-entry {
+    border-left: 2px solid var(--pcg-bright-blue);
+    padding: 6px 12px; margin-bottom: 12px;
+    background: var(--surface-1);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  }
+  .log-ts { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); display: block; margin-bottom: 3px; }
+  .log-title { font-weight: 600; font-size: var(--fs-sm); }
+  .log-body { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
+
+  /* Domain ownership grid */
+  .dom-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); }
+  .dom-card { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 14px; background: var(--surface-1); }
+  .dom-card h4 { margin: 0 0 6px; font-size: var(--fs-sm); display: flex; align-items: center; gap: 6px; }
+  .dom-owner { font-size: var(--fs-sm); color: var(--text-primary); font-weight: 500; }
+  .dom-note  { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
+
+  /* Site visit / condition log photos */
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .photo-tile {
+    aspect-ratio: 4/3; border-radius: var(--r-sm); overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+    border: 1px solid var(--border);
+    display: grid; place-items: center;
+    font-size: 32px; color: var(--text-tertiary);
+  }
+  .photo-tile .ph-caption {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.8), transparent);
+    padding: 10px; color: #fff; font-size: 11px; font-family: var(--font-mono);
+  }
+
+  /* Venue requirements */
+  .req-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-2); }
+  .req-card { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px 14px; background: var(--surface-1); }
+  .req-card .ico { font-size: 20px; display: block; margin-bottom: 4px; }
+  .req-card .lbl { font-family: var(--font-display); font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+  .req-card .val { font-size: var(--fs-sm); color: var(--text-primary); margin-top: 2px; font-weight: 500; }
+
+  /* Activity */
+  .fd-row { display: grid; grid-template-columns: 100px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+  .fd-row:last-child { border-bottom: 0; }
+  .fd-when { font-family: var(--font-mono); color: var(--text-tertiary); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div id="notFound" style="display:none;" class="card">
+        <div class="card-body empty">Show not found. <a href="index.html">Back to portfolio →</a></div>
+      </div>
+
+      <div id="scc-main" style="display:none;">
+        <!-- HEADER -->
+        <div class="scc-header" id="scc-header"></div>
+
+        <!-- TABS -->
+        <div class="scc-tabs" id="scc-tabs"></div>
+
+        <!-- SECTIONS (all rendered — tabs scroll-jump) -->
+        <section class="scc-section" id="sec-pulse">
+          <div class="card">
+            <div class="card-header"><div class="title">Pulse · Today on this show</div></div>
+            <div class="card-body" id="pulse"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-comm">
+          <div class="card">
+            <div class="card-header"><div class="title">💬 Communication</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Slack-style internal chat · Scoped to this show</span></div>
+            <div class="card-body">
+              <div class="chat-wrap">
+                <div class="chat-channels" id="chat-channels"></div>
+                <div>
+                  <div class="chat-thread" id="chat-thread"></div>
+                  <div class="chat-compose">
+                    <input id="chat-input" placeholder="Message #general…" />
+                    <button class="btn primary" id="chat-send">Send</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-tasks">
+          <div class="card">
+            <div class="card-header"><div class="title">☑ Checklist · Tasks</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="task-counts"></span></div>
+            <div class="card-body" id="tasks"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-scope">
+          <div class="card">
+            <div class="card-header"><div class="title">🎛 Operational Scope</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">What we're actually doing · not the quote</span></div>
+            <div class="card-body"><div class="scope-board" id="scope"></div></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-timeline">
+          <div class="card">
+            <div class="card-header"><div class="title">🕒 Timeline</div></div>
+            <div class="card-body" id="timeline"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-risks">
+          <div class="card">
+            <div class="card-header"><div class="title">⚠ Risk Register</div></div>
+            <div class="card-body" id="risks"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-log">
+          <div class="card">
+            <div class="card-header"><div class="title">📋 Production Log</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Meetings · Decisions · Action items</span></div>
+            <div class="card-body" id="prodlog"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-diary">
+          <div class="card">
+            <div class="card-header"><div class="title">📓 Show Diary</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Timestamped, freeform</span></div>
+            <div class="card-body">
+              <div id="diary"></div>
+              <div style="margin-top:var(--sp-3); display:flex; gap:8px;">
+                <input id="diary-input" class="" style="flex:1; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); padding:8px 10px; color:var(--text-primary); font-size:var(--fs-sm);" placeholder="Add a diary note…" />
+                <button class="btn primary" id="diary-add">Log Entry</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-site">
+          <div class="card">
+            <div class="card-header"><div class="title">📷 Site Visit</div></div>
+            <div class="card-body" id="sitevisit"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-venue">
+          <div class="card">
+            <div class="card-header"><div class="title">🏛 Venue Intelligence</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Dock · Power · Rigging</span></div>
+            <div class="card-body" id="venueIntel"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-reqs">
+          <div class="card">
+            <div class="card-header"><div class="title">🍽 Venue Requirements</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Tables · Catering · Trash · Access</span></div>
+            <div class="card-body"><div class="req-grid" id="venueReqs"></div></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-preload">
+          <div class="card">
+            <div class="card-header"><div class="title">📸 Pre-Load Condition Log</div></div>
+            <div class="card-body" id="preload"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-domain">
+          <div class="card">
+            <div class="card-header"><div class="title">🧭 Domain Ownership</div></div>
+            <div class="card-body"><div class="dom-grid" id="domains"></div></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-creative">
+          <div class="card">
+            <div class="card-header"><div class="title">🎨 Creative Management</div></div>
+            <div class="card-body" id="creative"></div>
+          </div>
+        </section>
+
+        <section class="scc-section" id="sec-activity">
+          <div class="card">
+            <div class="card-header"><div class="title">⎈ Activity Feed</div></div>
+            <div class="card-body" id="activity"></div>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'playbook', pageTitle:'Show Command Center'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  // Pull PIF-created shows from sessionStorage (client-side persistence for
+  // PIF-driven creation demo). Falls through to the seeded project on miss.
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code);
+
+  if(!proj){
+    document.getElementById('notFound').style.display = 'block';
+    throw new Error('no project');
+  }
+  document.getElementById('scc-main').style.display = 'block';
+
+  // -------- HEADER --------
+  const pm = PCG.findPerson(proj.primaryPM);
+  const td = PCG.findPerson(proj.td);
+  const creative = PCG.findPerson(proj.creativeLead);
+  const statusLabel = (proj.show && proj.show.lifecycleState) || (proj.status || 'Draft');
+  document.getElementById('scc-header').innerHTML = `
+    <div style="display:flex; align-items:start; gap: var(--sp-3); flex-wrap:wrap;">
+      <div style="flex:1; min-width:280px;">
+        <div class="eyebrow">Show Command Center · <span class="mono">${PCG.escapeHtml(proj.code)}</span></div>
+        <h1>${PCG.escapeHtml(proj.name)}</h1>
+        <div class="muted" style="font-size:var(--fs-sm); margin-top:4px;">${PCG.escapeHtml(proj.oneLiner || '')}</div>
+        <div class="scc-meta-row">
+          <span class="mi"><span class="k">Venue</span> ${PCG.escapeHtml(proj.venueName || '—')}</span>
+          <span class="mi"><span class="k">Load-in</span> <span class="mono">${PCG.fmtShort(proj.dates?.loadIn)}</span></span>
+          <span class="mi"><span class="k">Show</span> <span class="mono">${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</span></span>
+          <span class="mi"><span class="k">Client</span> ${PCG.escapeHtml(proj.client || '—')}</span>
+          <span class="mi"><span class="k">PM</span> ${pm ? PCG.escapeHtml(pm.name) : '—'}</span>
+          ${td ? `<span class="mi"><span class="k">TD</span> ${PCG.escapeHtml(td.name)}</span>` : ''}
+          ${creative ? `<span class="mi"><span class="k">Creative</span> ${PCG.escapeHtml(creative.name)}</span>` : ''}
+          <span class="mi">${PCG.lifecyclePill(statusLabel)}</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${proj.quoteNo ? `<a class="btn sm ghost" href="quote.html?id=q.LCE-2026.v3">§ Source quote · ${PCG.escapeHtml(proj.quoteNo)}</a>` : ''}
+        <a class="btn sm ghost" href="client-portal.html?project=${encodeURIComponent(proj.code)}">🔗 Client portal</a>
+        <a class="btn primary" href="advance.html?project=${encodeURIComponent(proj.code)}">⚡ Generate Advance</a>
+      </div>
+    </div>`;
+
+  // -------- TABS --------
+  const tabs = [
+    ['pulse',    'Pulse'],
+    ['comm',     '💬 Comms'],
+    ['tasks',    '☑ Tasks'],
+    ['scope',    '🎛 Scope'],
+    ['timeline', '🕒 Timeline'],
+    ['risks',    '⚠ Risks'],
+    ['log',      '📋 Prod Log'],
+    ['diary',    '📓 Diary'],
+    ['site',     '📷 Site Visit'],
+    ['venue',    '🏛 Venue'],
+    ['reqs',     '🍽 Reqs'],
+    ['preload',  '📸 Pre-Load'],
+    ['domain',   '🧭 Domains'],
+    ['creative', '🎨 Creative'],
+    ['activity', '⎈ Activity'],
+  ];
+  document.getElementById('scc-tabs').innerHTML = tabs.map(([id, lbl], i) =>
+    `<a class="scc-tab ${i===0?'on':''}" data-tab="${id}" href="#sec-${id}">${lbl}</a>`
+  ).join('');
+  document.querySelectorAll('.scc-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.scc-tab').forEach(x => x.classList.toggle('on', x === t));
+    });
+  });
+
+  // -------- PULSE --------
+  const attn = (proj.attention || []).length;
+  const risks = (proj.risks || []).filter(r => r.status === 'open').length;
+  const appr  = (proj.approvals || []).filter(a => a.status === 'pending').length;
+  const days  = proj.dates?.loadIn ? Math.ceil((new Date(proj.dates.loadIn) - PCG.today) / 86400000) : null;
+  document.getElementById('pulse').innerHTML = `
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:var(--sp-3);">
+      <div class="kpi ${attn>0?'amber':''}"><div class="label">Attention</div><div class="value">${attn}</div><div class="sub">items needing action</div></div>
+      <div class="kpi ${risks>2?'red':'amber'}"><div class="label">Open Risks</div><div class="value">${risks}</div><div class="sub">unresolved</div></div>
+      <div class="kpi ${appr>0?'blue':''}"><div class="label">Pending Approvals</div><div class="value">${appr}</div><div class="sub">on this show</div></div>
+      <div class="kpi ${days!=null&&days<7?'amber':''}"><div class="label">Days to Load-In</div><div class="value">${days!=null?days:'—'}</div><div class="sub">${PCG.fmtShort(proj.dates?.loadIn)}</div></div>
+    </div>
+    ${(proj.attention||[]).length ? `
+    <div style="margin-top:var(--sp-3);">
+      <div class="eyebrow" style="margin-bottom:6px;">What needs you now</div>
+      ${(proj.attention||[]).map(a=>`
+        <div class="attn-item ${a.kind==='red'?'red':(a.kind==='amber'?'':'blue')}">
+          <div>
+            <div class="ttl">${PCG.escapeHtml(a.title)}</div>
+            <div class="meta">Owner: ${PCG.escapeHtml(PCG.findPerson(a.owner)?.name || a.owner)} · Due ${PCG.fmtShort(a.due)}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+  `;
+
+  // -------- COMMUNICATION --------
+  // Seed a set of demo channels and messages; pick up any user-added messages
+  // from sessionStorage so demo chat feels interactive.
+  const CHAT_KEY = `pcg_chat_${proj.code}`;
+  const seedChat = {
+    general: [
+      { t:'2026-04-15T09:02', who:'J. Springer', body:'Morning team — walkthrough at 1pm with venue. Bring rigging plot + power one-line.' },
+      { t:'2026-04-15T09:14', who:'C. Taylor', body:'Copy. I\'ll pull the rigging plot + motor cert sheet from the shared drive.' },
+      { t:'2026-04-15T10:38', who:'K. Oliver', body:'Client just sent sponsor loop files. Dropping into /creative now.' },
+      { t:'2026-04-15T11:21', who:'STAGE · System', body:'Change Order #3 (Awards ready room) · approval requested from B. White.' },
+      { t:'2026-04-15T13:47', who:'J. Sharp', body:'Walkthrough: dock 4 blocked by catering truck until 5pm tomorrow. Shifting load-in to dock 2.' },
+    ],
+    client: [
+      { t:'2026-04-14T16:22', who:'Kevin Adams (client)', body:'Can we add an awards ready room? Need it for Day 4.' },
+      { t:'2026-04-14T16:45', who:'J. Springer', body:'Yes — sending a change order this afternoon. Estimate ~$18k all-in with power walkthrough.' },
+      { t:'2026-04-14T17:10', who:'Kevin Adams (client)', body:'Approved — send the CO. Thanks Jeff.' },
+      { t:'2026-04-15T08:02', who:'Ryan Hoffman (client)', body:'Wireless count bumped 12→16. AD4Q quad okay?' },
+    ],
+    rigging: [
+      { t:'2026-04-13T11:00', who:'C. Taylor', body:'Rigger dead-hang approved for J-Series. 4 arrays, 24 J8, 12 JSub. Motor cert attached.' },
+      { t:'2026-04-15T09:30', who:'IATSE 720 · Steward', body:'Call confirmed: 4 riggers at 6am, +2 on climb at 8am.' },
+    ],
+    power: [
+      { t:'2026-04-14T14:12', who:'S. Vance', body:'200A tie-in at FOH dock. 100A spurs to amp world + LED processor. One-line drafted.' },
+      { t:'2026-04-16T10:00', who:'C. Taylor', body:'Need power spec for ready room ASAP — walkthrough this PM.' },
+    ],
+  };
+  const chat = JSON.parse(sessionStorage.getItem(CHAT_KEY) || 'null') || seedChat;
+  let activeChannel = 'general';
+  function renderChannels(){
+    document.getElementById('chat-channels').innerHTML = Object.keys(seedChat).map(ch=>`
+      <div class="chat-channel ${ch===activeChannel?'on':''}" data-ch="${ch}">
+        <span>#</span>${ch}<span class="cnt">${(chat[ch]||[]).length}</span>
+      </div>`).join('');
+    document.querySelectorAll('.chat-channel').forEach(el=>{
+      el.addEventListener('click', ()=>{ activeChannel = el.dataset.ch; renderChannels(); renderThread(); document.getElementById('chat-input').placeholder = `Message #${activeChannel}…`; });
+    });
+  }
+  function renderThread(){
+    const msgs = (chat[activeChannel]||[]);
+    let last = '';
+    document.getElementById('chat-thread').innerHTML = msgs.map(m=>{
+      const d = new Date(m.t); const day = d.toDateString();
+      const dayMark = day !== last ? `<div class="chat-day">${day}</div>` : '';
+      last = day;
+      const initials = m.who.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      return `${dayMark}
+        <div class="chat-msg">
+          <div class="chat-avatar">${initials}</div>
+          <div>
+            <div class="chat-head"><span class="who">${PCG.escapeHtml(m.who)}</span><span class="ts">${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span></div>
+            <div class="chat-body">${PCG.escapeHtml(m.body)}</div>
+          </div>
+        </div>`;
+    }).join('') || '<div class="empty">No messages yet.</div>';
+  }
+  renderChannels(); renderThread();
+  document.getElementById('chat-send').addEventListener('click', ()=>{
+    const v = document.getElementById('chat-input').value.trim();
+    if(!v) return;
+    (chat[activeChannel] ||= []).push({ t: new Date().toISOString(), who: (PCG.user?.name || 'You'), body: v });
+    sessionStorage.setItem(CHAT_KEY, JSON.stringify(chat));
+    document.getElementById('chat-input').value = '';
+    renderChannels(); renderThread();
+    const thread = document.getElementById('chat-thread');
+    thread.scrollTop = thread.scrollHeight;
+  });
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if(e.key === 'Enter') document.getElementById('chat-send').click();
+  });
+
+  // -------- TASKS --------
+  const TASK_KEY = `pcg_tasks_${proj.code}`;
+  const seedTasks = [
+    { phase:'Pre-Production', title:'Client kickoff call complete', owner:'p.jspringer', due:'2026-04-05', done:true },
+    { phase:'Pre-Production', title:'Venue walkthrough scheduled', owner:'p.jsharp', due:'2026-04-08', done:true },
+    { phase:'Pre-Production', title:'Quote approved and signed',   owner:'p.bwhit', due:'2026-04-10', done:true },
+    { phase:'Pre-Production', title:'Departmental scope locks',    owner:'p.ctaylor', due:'2026-04-12', done:true },
+    { phase:'Pre-Load',       title:'Rigging plot signed off',     owner:'p.ctaylor', due:'2026-04-09', done:true },
+    { phase:'Pre-Load',       title:'Power one-line delivered to venue', owner:'p.svance', due:'2026-04-11', done:true },
+    { phase:'Pre-Load',       title:'Crew call confirmed with IATSE 720', owner:'p.ctaylor', due:'2026-04-13', done:false },
+    { phase:'Pre-Load',       title:'Sub-rental: 2x d&b JSub',     owner:'p.svance', due:'2026-04-15', done:false },
+    { phase:'Pre-Load',       title:'Sponsor loop PPT received',   owner:'p.koliver', due:'2026-04-16', done:false },
+    { phase:'Load-In',        title:'Truck 1 unloaded at dock 2',  owner:'p.ctaylor', due:'2026-04-10', done:false },
+    { phase:'Load-In',        title:'Video wall calibration',      owner:'p.jsharp', due:'2026-04-11', done:false },
+    { phase:'Load-In',        title:'Audio system tuning',         owner:'p.svance', due:'2026-04-11', done:false },
+    { phase:'Show',           title:'Day 1 GS rehearsal',          owner:'p.jgerber', due:'2026-04-13', done:false },
+    { phase:'Show',           title:'Awards night',                owner:'p.jgerber', due:'2026-04-14', done:false },
+    { phase:'Strike',         title:'Client sign-off walkaround',  owner:'p.jspringer', due:'2026-04-15', done:false },
+    { phase:'Strike',         title:'Return gear manifest logged', owner:'p.ctaylor', due:'2026-04-20', done:false },
+  ];
+  const tasks = JSON.parse(sessionStorage.getItem(TASK_KEY) || 'null') || seedTasks;
+  function renderTasks(){
+    const phases = {}; tasks.forEach(t => (phases[t.phase] ||= []).push(t));
+    const totalDone = tasks.filter(t=>t.done).length;
+    document.getElementById('task-counts').textContent = `${totalDone} / ${tasks.length} complete`;
+    document.getElementById('tasks').innerHTML = Object.keys(phases).map(ph=>{
+      return `<div class="task-phase"><h4>${ph}</h4>${phases[ph].map((t,idx)=>{
+        const globalIdx = tasks.indexOf(t);
+        const overdue = !t.done && t.due && new Date(t.due) < PCG.today;
+        return `
+          <div class="task-row ${t.done?'done':''} ${overdue?'overdue':''}" data-i="${globalIdx}">
+            <div class="task-check ${t.done?'checked':''}">${t.done?'✓':''}</div>
+            <div class="t-title">${PCG.escapeHtml(t.title)}</div>
+            <div class="t-due">${PCG.fmtShort(t.due)}</div>
+            <div class="t-owner">${PCG.escapeHtml(PCG.findPerson(t.owner)?.name || t.owner || '—')}</div>
+            <div>${overdue?'<span class="pill red plain" style="font-size:9px;">OVERDUE</span>':''}</div>
+          </div>`;
+      }).join('')}</div>`;
+    }).join('');
+    document.querySelectorAll('.task-row').forEach(r => r.addEventListener('click', () => {
+      const i = +r.dataset.i;
+      tasks[i].done = !tasks[i].done;
+      sessionStorage.setItem(TASK_KEY, JSON.stringify(tasks));
+      renderTasks();
+    }));
+  }
+  renderTasks();
+
+  // -------- SCOPE --------
+  const scopeDomains = [
+    { name:'Video',     items:['Barco E2 4K screen management','4x HD camera package (2x Fujinon long lens)','LED header + split fabric traveler','ProPresenter primary + Qlab for playback'] },
+    { name:'Audio',     items:['d&b J-Series line array (4x flown, 24x J8, 12x JSub)','Yamaha CL5 FOH + stage rack','Axient Digital wireless — 16ch upgraded','DJ patch for cocktail reception'] },
+    { name:'Lighting',  items:['ETC Ion XE at FOH','20x Mac Auras, 12x Source Four LED','Floor package for Awards night','Ambient wash for cocktail'] },
+    { name:'Rigging',   items:['4 dead-hang motors · J-Series arrays','LED header fly frame (1,200 lbs)','Truss crossover w/ spot truss','IATSE 720 rigger call'] },
+    { name:'Power',     items:['200A tie-in · FOH dock','100A spur · amp world','100A spur · LED processor','Distro 60A/50A for ready room (TBD)'] },
+    { name:'Staging',   items:['Marquee stage set (32\' × 24\', 48" deck)','Thrust w/ stairs SR','Podium + confidence monitors','Ready room platforms (Awards night)'] },
+    { name:'Creative',  items:['Opener package (client-branded)','Sponsor loop (pending client files)','Award show package (approved)','Recovery room graphics (TBD)'] },
+  ];
+  document.getElementById('scope').innerHTML = scopeDomains.map(d => `
+    <div class="scope-col">
+      <h4>${d.name}</h4>
+      <ul>${d.items.map(i=>`<li>${PCG.escapeHtml(i)}</li>`).join('')}</ul>
+    </div>`).join('');
+
+  // -------- TIMELINE --------
+  const tlRows = [
+    { when: proj.dates?.prep,      label: 'Prep begins',      kind:'prep' },
+    { when: proj.dates?.loadIn,    label: 'Load-In',          kind:'loadIn' },
+    { when: proj.dates?.loadIn && new Date(proj.dates.loadIn).getTime() + 86400000 * 2, label: 'Rehearsals',    kind:'reh' },
+    { when: proj.dates?.showStart, label: 'Show Start',       kind:'show' },
+    { when: proj.dates?.showEnd,   label: 'Show End',         kind:'show' },
+    { when: proj.dates?.loadOut,   label: 'Strike / Load-Out',kind:'strike' },
+    { when: proj.dates?.ret,       label: 'Gear Return',      kind:'return' },
+  ].filter(r => r.when);
+  document.getElementById('timeline').innerHTML = tlRows.map(r => {
+    const dt = new Date(r.when);
+    const past = dt < PCG.today;
+    const soon = Math.abs(dt - PCG.today) < 86400000;
+    return `
+      <div class="tl-row">
+        <div class="tl-when">${PCG.fmtShort(r.when)} ${dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+        <div class="tl-dot ${past?'past':''} ${soon?'now':''}"></div>
+        <div>${r.label}</div>
+        <div><span class="pill plain ${soon?'purple':(past?'gray':'blue')}">${soon?'TODAY':(past?'DONE':'UPCOMING')}</span></div>
+      </div>`;
+  }).join('');
+
+  // -------- RISKS --------
+  const risksList = proj.risks || [];
+  document.getElementById('risks').innerHTML = risksList.length ? risksList.map(r => `
+    <div class="risk-row sev-${r.sev}">
+      <div><strong>${PCG.escapeHtml(r.title)}</strong></div>
+      <div><span class="pill plain ${r.sev==='high'?'red':(r.sev==='medium'?'amber':'blue')}">${(r.sev||'').toUpperCase()}</span></div>
+      <div class="t-owner">${PCG.escapeHtml(PCG.findPerson(r.owner)?.name || r.owner)}</div>
+      <div><span class="pill plain ${r.status==='open'?'amber':'gray'}">${(r.status||'').toUpperCase()}</span></div>
+      ${r.mitigation ? `<div class="rmit">Mitigation: ${PCG.escapeHtml(r.mitigation)}</div>` : ''}
+    </div>`).join('') : '<div class="empty">No open risks.</div>';
+
+  // -------- PRODUCTION LOG --------
+  const logs = [
+    { ts:'2026-04-15T08:30', title:'Morning production huddle', body:'Reviewed overnight changes. Decision: Priya Shah confirmed as A1; Mike Chen covers SAE only. Action: J. Springer to notify client.' },
+    { ts:'2026-04-14T17:40', title:'Client change meeting', body:'Added Awards ready room (Day 4 evening). Est +$18,400. Creative to start graphics tomorrow. Power walkthrough Wed PM.' },
+    { ts:'2026-04-13T10:00', title:'Scope lock · V4', body:'Wireless upgraded 12→16ch. AD4Q receivers added. Flex updated. Additional channel plan sent to Ryan Hoffman.' },
+    { ts:'2026-04-11T14:15', title:'Venue walkthrough', body:'Dock 4 confirmed blocked 4/10 AM by catering load. Load-in shifts to dock 2. Rigging centerline verified against ballroom plot.' },
+  ];
+  document.getElementById('prodlog').innerHTML = logs.map(l=>`
+    <div class="log-entry">
+      <span class="log-ts">${PCG.fmtDate(l.ts, {time:true})}</span>
+      <div class="log-title">${PCG.escapeHtml(l.title)}</div>
+      <div class="log-body">${PCG.escapeHtml(l.body)}</div>
+    </div>`).join('');
+
+  // -------- DIARY --------
+  const DIARY_KEY = `pcg_diary_${proj.code}`;
+  const diary = JSON.parse(sessionStorage.getItem(DIARY_KEY) || 'null') || [
+    { ts:'2026-04-15T14:12', body:'Caesars security flagged a secondary door during walkthrough — rigger call may need +15 min buffer for credentials.' },
+    { ts:'2026-04-14T19:02', body:'Ready room walkthrough pushed to Wed PM — venue couldn\'t open the space tonight. Flagging to C. Taylor.' },
+    { ts:'2026-04-13T22:10', body:'Client seems happy with V4 wireless plan. Ryan Hoffman asked about spare handheld — I\'d bring one as a runner.' },
+  ];
+  function renderDiary(){
+    document.getElementById('diary').innerHTML = diary.map(d=>`
+      <div class="log-entry" style="border-left-color: var(--pcg-spotlight-purple);">
+        <span class="log-ts">${PCG.fmtDate(d.ts, {time:true})}</span>
+        <div class="log-body">${PCG.escapeHtml(d.body)}</div>
+      </div>`).join('');
+  }
+  renderDiary();
+  document.getElementById('diary-add').addEventListener('click', ()=>{
+    const v = document.getElementById('diary-input').value.trim();
+    if(!v) return;
+    diary.unshift({ ts: new Date().toISOString(), body: v });
+    sessionStorage.setItem(DIARY_KEY, JSON.stringify(diary));
+    document.getElementById('diary-input').value = '';
+    renderDiary();
+  });
+
+  // -------- SITE VISIT --------
+  document.getElementById('sitevisit').innerHTML = `
+    <div style="display:flex; gap: 12px; margin-bottom: var(--sp-3); flex-wrap:wrap;">
+      <div class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Visit · 2026-04-11 · J. Sharp + C. Taylor</div>
+      <div class="v-chip" style="padding:4px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 11px;">Duration: 2h 40m</div>
+    </div>
+    <div class="log-body" style="margin-bottom: var(--sp-3);">Walked the full load-in path with venue ops lead. Ballroom centerline verified, dock assignments finalized, and ceiling obstructions photographed. Rigging dead-hang points align with plot within 4". Caterer load window confirmed 5pm→7pm on dock 4 which pushes us to dock 2 for the 7am rigger call.</div>
+    <div class="photo-grid">
+      ${['Dock 2 approach','Ballroom stage-left','Ceiling rigging points','Power tie-in (FOH)','Ready room location','Venue ops office'].map((cap,i)=>`
+        <div class="photo-tile">📷<div class="ph-caption">${cap}</div></div>`).join('')}
+    </div>`;
+
+  // -------- VENUE INTELLIGENCE --------
+  document.getElementById('venueIntel').innerHTML = `
+    <div class="dom-grid">
+      <div class="dom-card">
+        <h4>🚚 Dock</h4>
+        <div class="dom-note">Docks 1–4 at ballroom level. Dock 2 is primary for us (48' truck clearance). Dock 4 is blocked by catering on load-in AM — shift trucks to 2. Door clearance 10'6". Pull-up lane restricted after 7pm — schedule strike accordingly.</div>
+      </div>
+      <div class="dom-card">
+        <h4>⚡ Power</h4>
+        <div class="dom-note">200A tie-in at FOH dock panel. Ballroom house power on separate feed — do not share. Ready room power spec TBD — walkthrough Wed 4/16 PM. Venue electrician requires 24h notice for tie-in.</div>
+      </div>
+      <div class="dom-card">
+        <h4>⛓ Rigging</h4>
+        <div class="dom-note">4,500 lb beam capacity. 24 fixed points mapped; 4 dead-hang motors approved for J-Series. No dynamic rigging after 10pm. Rigger cert review required before first climb — venue safety hands.</div>
+      </div>
+      <div class="dom-card">
+        <h4>🛗 Access</h4>
+        <div class="dom-note">Freight elevator ballroom floor ↔ dock level. 10' × 6' cab, 5,000 lb limit. Key card required after 10pm — request from venue ops day-of.</div>
+      </div>
+    </div>`;
+
+  // -------- VENUE REQUIREMENTS --------
+  const reqs = [
+    { ico:'🪑', lbl:'Tables',   val:'12x 6ft, 4x rounds (sponsor reception)' },
+    { ico:'🍴', lbl:'Catering', val:'Crew meals: L+D Days 1–3. Vegan + GF counts sent.' },
+    { ico:'🗑', lbl:'Trash',    val:'Strike day: 4x bins near dock 2. Hauling at 10pm.' },
+    { ico:'🕒', lbl:'Access',   val:'Load-in 7am. Soft access from 5am with venue ops.' },
+    { ico:'🧹', lbl:'Cleaning', val:'Nightly sweep by venue. Final clean after strike.' },
+    { ico:'🔌', lbl:'Wi-Fi',    val:'Show SSID: LCE26-PROD · 500 Mbps dedicated VLAN' },
+    { ico:'🚪', lbl:'Badging',  val:'Crew badges pre-printed · TD picks up at ops 4/10' },
+    { ico:'🚻', lbl:'Restrooms',val:'Nearest crew RR on stage-right pre-function' },
+  ];
+  document.getElementById('venueReqs').innerHTML = reqs.map(r=>`
+    <div class="req-card">
+      <span class="ico">${r.ico}</span>
+      <div class="lbl">${r.lbl}</div>
+      <div class="val">${PCG.escapeHtml(r.val)}</div>
+    </div>`).join('');
+
+  // -------- PRE-LOAD --------
+  document.getElementById('preload').innerHTML = `
+    <div class="muted" style="font-size:var(--fs-sm); margin-bottom:var(--sp-3);">Photos + notes captured before gear leaves the warehouse. Reference for condition disputes + insurance.</div>
+    <div class="photo-grid">
+      ${['J-Series arrays · pre-load','JSub stack · 12 units','Amp world · serial docs','LED header · panel audit','Motor cert · signed','Truck 1 · manifest'].map((cap,i)=>`
+        <div class="photo-tile">📸<div class="ph-caption">${cap}</div></div>`).join('')}
+    </div>
+    <div style="margin-top: var(--sp-3); font-size:var(--fs-sm); color: var(--text-secondary);">
+      <strong>Notes:</strong> All d&b J-Series visually inspected. 1x JSub (s/n #A-2240) showed minor cabinet scuff — documented. All motors tested to 125% load; cert sheet attached to rigging packet.
+    </div>`;
+
+  // -------- DOMAINS --------
+  const domains = [
+    { name:'Rigging',   ico:'⛓', owner:'p.ctaylor', note:'Plot signed off. Motors certified. IATSE call confirmed.' },
+    { name:'Power',     ico:'⚡', owner:'p.svance',  note:'One-line delivered to venue. Ready room spec outstanding.' },
+    { name:'Logistics', ico:'🚚', owner:'p.mduda',   note:'2 trucks on dock 2 at 7am. Return logistics scheduled 4/20.' },
+    { name:'Creative',  ico:'🎨', owner:'p.koliver', note:'Opener + Awards approved. Sponsor loop + Ready room graphics in flight.' },
+  ];
+  document.getElementById('domains').innerHTML = domains.map(d => {
+    const p = PCG.findPerson(d.owner);
+    return `<div class="dom-card">
+      <h4>${d.ico} ${d.name}</h4>
+      <div class="dom-owner">${p ? PCG.escapeHtml(p.name) : d.owner}</div>
+      <div class="dom-note">${PCG.escapeHtml(d.note)}</div>
+    </div>`;
+  }).join('');
+
+  // -------- CREATIVE --------
+  const creativeRows = [
+    { piece:'Opener package',         status:'Approved',   ts:'2026-04-10', note:'Final render delivered. In master playback.' },
+    { piece:'Award show graphics',    status:'Approved',   ts:'2026-04-12', note:'Client sign-off received. Loaded to QLab.' },
+    { piece:'Sponsor loop',           status:'In Progress',ts:'2026-04-15', note:'Files received today — 25 sponsor assets. Assembly in progress.' },
+    { piece:'Ready room graphics',    status:'Pending',    ts:'—',          note:'Awaiting client direction on recovery room branding.' },
+    { piece:'Lower-third templates',  status:'Approved',   ts:'2026-04-09', note:'Template locked; name plates generated from rundown.' },
+  ];
+  document.getElementById('creative').innerHTML = `
+    <table class="pcg-table">
+      <thead><tr><th>Piece</th><th>Status</th><th>Updated</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${creativeRows.map(r => `
+          <tr>
+            <td><strong>${PCG.escapeHtml(r.piece)}</strong></td>
+            <td><span class="pill plain ${r.status==='Approved'?'green':(r.status==='Pending'?'gray':'blue')}">${r.status.toUpperCase()}</span></td>
+            <td class="mono">${PCG.fmtShort(r.ts) || '—'}</td>
+            <td>${PCG.escapeHtml(r.note)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // -------- ACTIVITY --------
+  const activity = (proj.activity || []).concat([
+    { ts: new Date().toISOString(), actor: 'STAGE · System', text: 'Show Command Center opened' },
+  ]).sort((a,b)=> new Date(b.ts) - new Date(a.ts));
+  document.getElementById('activity').innerHTML = activity.length ? activity.map(a=>`
+    <div class="fd-row">
+      <div class="fd-when">${PCG.ago(a.ts)}</div>
+      <div><span style="color:var(--pcg-bright-blue);">${PCG.escapeHtml(a.actor)}</span> — ${PCG.escapeHtml(a.text)}</div>
+    </div>`).join('') : '<div class="empty">No activity yet.</div>';
+
+  // Highlight active tab on scroll (intersection observer)
+  const sections = tabs.map(([id]) => document.getElementById(`sec-${id}`));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting && e.intersectionRatio > 0.2){
+        const id = e.target.id.replace('sec-', '');
+        document.querySelectorAll('.scc-tab').forEach(t => t.classList.toggle('on', t.dataset.tab === id));
+      }
+    });
+  }, { threshold: [0.2, 0.5] });
+  sections.forEach(s => s && io.observe(s));
+</script>
+</body>
+</html>

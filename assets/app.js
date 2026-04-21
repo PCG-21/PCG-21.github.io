@@ -85,9 +85,12 @@
 
     // -------- 3. PROJECTS (post-award operations) --------
     { label:'Projects', items:[
-      { id:'portfolio',    label:'Portfolio',          href:'index.html',                        icon:'▦', groups:'*' },
-      { id:'projects',     label:'All Projects',       href:'projects.html',                     icon:'▤', groups:'*' },
-      { id:'tours',        label:'Tours',              href:'tours.html',                        icon:'🚌', groups:'*' },
+      { id:'portfolio',     label:'Portfolio',            href:'index.html',                                  icon:'▦', groups:'*' },
+      { id:'projects',      label:'All Projects',         href:'projects.html',                               icon:'▤', groups:'*' },
+      { id:'tours',         label:'Tours',                href:'tours.html',                                  icon:'🚌', groups:'*' },
+      { id:'show-center',   label:'Show Command Center',  href:'show-center.html?project=LCE-2026',           icon:'◈', groups:'*' },
+      { id:'advance',       label:'Advance (auto)',       href:'advance.html?project=LCE-2026',               icon:'⚡', groups:'*' },
+      { id:'client-portal', label:'Client Portal',        href:'client-portal.html?project=LCE-2026',         icon:'🔗', groups:'*' },
       { id:'playbook',     label:'Playbook (demo)',    href:'playbook.html?project=LCE-2026',    icon:'☰', groups:'*' },
       { id:'workback',     label:'Workback · Handoff', href:'workback.html?project=LCE-2026',    icon:'⇄', groups:[PCG.GROUPS.ADMIN, PCG.GROUPS.DIRECTORS, PCG.GROUPS.SCHEDULING, PCG.GROUPS.TSMS, PCG.GROUPS.AE] },
       { id:'checklist',    label:'Checklists',         href:'checklist.html?project=LCE-2026',   icon:'☑', groups:'*' },

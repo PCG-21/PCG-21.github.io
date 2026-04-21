@@ -607,7 +607,51 @@
       const code = 'PGM-'+(working.projectName||'NEW').replace(/[^A-Z]/gi,'').slice(0,4).toUpperCase()+'-'+new Date().getFullYear().toString().slice(-2);
       alert(`✓ Program PIF submitted.\n\nWould create:\n• Program entity (${code})\n• ${(working.programChildren||[]).length} Project records (all linked via programId)\n• Shared rate card + PO rules applied across children\n\n→ Opens program dashboard for AE.`);
     } else {
-      alert(`✓ Show PIF submitted.\n\nWould create:\n• Project record with auto projectCode\n• Quote skeleton (cloned from ${working.priorProjectRef||'blank'})\n• Workback schedule from ${working.showType} template\n• Routed to ${(working.departments||[]).length} department directors\n\n→ Opens project playbook.`);
+      // Show PIF → create a demo Show entity in sessionStorage so the
+      // Show Command Center can render it. Persists for the session.
+      const code = 'SHOW-'+(working.projectName||'NEW').replace(/[^A-Z]/gi,'').slice(0,4).toUpperCase()+'-'+new Date().getFullYear().toString().slice(-2);
+      const client = (PCG.api.getClients ? PCG.api.getClients() : []).find(c => c.id === working.clientId);
+      const venue  = (PCG.venues || []).find(v => v.id === working.venueId);
+      const show = {
+        code,
+        name: working.projectName || 'Untitled Show',
+        client: client ? client.name : (working.clientContactName || '—'),
+        clientId: working.clientId || '',
+        venueId: working.venueId || '',
+        venueName: venue ? venue.name : '',
+        showType: working.showType || 'GeneralSession',
+        status: 'in-prep',
+        health: 'amber',
+        primaryPM: working.pmId || PCG.user.id,
+        pmId: working.pmId || PCG.user.id,
+        aeId: working.aeId || PCG.user.id,
+        oneLiner: working.notes || `PIF-created show · ${working.showType || 'GeneralSession'}.`,
+        dates: {
+          prep:      working.dates?.prep      || working.dates?.loadIn || new Date(Date.now() + 7*86400000).toISOString().slice(0,10),
+          loadIn:    working.dates?.loadIn    || new Date(Date.now() + 14*86400000).toISOString(),
+          showStart: working.dates?.showStart || new Date(Date.now() + 17*86400000).toISOString(),
+          showEnd:   working.dates?.showEnd   || new Date(Date.now() + 19*86400000).toISOString(),
+          loadOut:   working.dates?.loadOut   || new Date(Date.now() + 19*86400000 + 18*3600000).toISOString(),
+          ret:       working.dates?.ret      || new Date(Date.now() + 24*86400000).toISOString(),
+        },
+        attention: [
+          { kind:'blue', title:'Complete scope lock with department directors', owner: working.pmId || PCG.user.id, due: new Date(Date.now() + 5*86400000).toISOString() },
+          { kind:'blue', title:'Book venue walkthrough', owner: working.pmId || PCG.user.id, due: new Date(Date.now() + 3*86400000).toISOString() },
+        ],
+        risks: [],
+        approvals: [],
+        changes: [],
+        activity: [
+          { ts: new Date().toISOString(), actor: PCG.user?.name || 'You', text: `Show created from PIF (${code}) · routed to ${(working.departments||[]).length} departments` }
+        ],
+        show: { lifecycleState: 'InPrep' },
+        createdFromPIF: true,
+        createdAt: new Date().toISOString()
+      };
+      const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+      drafts.push(show);
+      sessionStorage.setItem('pcg_demo_shows', JSON.stringify(drafts));
+      location.href = `show-center.html?project=${encodeURIComponent(code)}`;
     }
   });
 

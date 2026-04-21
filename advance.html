@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PCG Stage · Advance</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Advance document — clean, print-ready, professional.
+     Styled like a finished handout, not a web page. */
+  .adv-shell {
+    max-width: 980px; margin: 0 auto;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .adv-hero {
+    padding: 32px 40px; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, rgba(1,153,253,0.12), rgba(149,100,216,0.12)), var(--surface-1);
+    border-bottom: 1px solid var(--border);
+  }
+  .adv-hero::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
+  }
+  .adv-hero .eyebrow { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pcg-bright-blue); }
+  .adv-hero h1 { font-family: var(--font-display); font-size: 34px; margin: 6px 0 4px; letter-spacing: 0.01em; }
+  .adv-hero .sub { color: var(--text-secondary); font-size: var(--fs-md); }
+  .adv-hero .dates { margin-top: 14px; display: flex; gap: 24px; flex-wrap: wrap; font-family: var(--font-mono); font-size: var(--fs-sm); }
+  .adv-hero .dates div span { display:block; font-size: 10px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+  .adv-body { padding: 28px 40px; }
+  .adv-section { margin-bottom: 36px; }
+  .adv-section h2 {
+    font-family: var(--font-display); font-size: 13px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--pcg-bright-blue);
+    border-bottom: 1px solid var(--border-accent);
+    padding-bottom: 8px; margin-bottom: 14px;
+  }
+  .adv-grid { display: grid; grid-template-columns: 180px 1fr; gap: 14px 24px; font-size: var(--fs-sm); }
+  .adv-grid .k { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10.5px; color: var(--text-tertiary); padding-top: 3px; }
+  .adv-grid .v { color: var(--text-primary); line-height: 1.6; }
+  .adv-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .adv-contact {
+    border: 1px solid var(--border); border-radius: var(--r-sm); padding: 14px;
+    background: var(--surface-0);
+  }
+  .adv-contact .role { font-size: 10px; color: var(--text-tertiary); font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+  .adv-contact .who  { font-weight: 600; font-size: var(--fs-md); margin-top: 2px; }
+  .adv-contact .meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-mono); line-height: 1.7; }
+  .adv-schedule { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+  .adv-schedule table { width:100%; border-collapse: collapse; }
+  .adv-schedule th, .adv-schedule td { padding: 10px 14px; font-size: var(--fs-sm); border-bottom: 1px solid var(--border); text-align: left; }
+  .adv-schedule th { background: var(--surface-2); font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .adv-schedule td:first-child { font-family: var(--font-mono); white-space: nowrap; color: var(--text-secondary); }
+  .adv-schedule tr:last-child td { border-bottom: 0; }
+  .adv-notes { background: var(--surface-0); border: 1px solid var(--border); border-left: 3px solid var(--pcg-bright-blue); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 14px 18px; font-size: var(--fs-sm); line-height: 1.6; }
+  .adv-footer { padding: 20px 40px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-tertiary); display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .adv-toolbar { display:flex; align-items:center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  .adv-toolbar .right { margin-left:auto; display:flex; gap: var(--sp-2); }
+  @media print {
+    .no-print, nav, #app-shell, .adv-toolbar { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .adv-shell { border: 0; }
+    .adv-hero, .adv-body, .adv-footer { background: #fff !important; color: #000 !important; }
+    .adv-hero h1, .adv-section h2 { color: #000 !important; }
+    .adv-hero .eyebrow, .adv-section h2 { color: #0066aa !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell"></div>
+  <main class="main">
+    <div class="container">
+
+      <div class="adv-toolbar no-print">
+        <a class="btn sm ghost" id="back-link" href="#">← Back to Show</a>
+        <span class="muted" style="font-size: var(--fs-xs);">Advance · auto-generated from show data</span>
+        <div class="right">
+          <button class="btn sm ghost" onclick="window.print()">⎙ Print / PDF</button>
+          <button class="btn sm" id="send-client">📧 Send to client</button>
+        </div>
+      </div>
+
+      <div class="adv-shell" id="adv"></div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/permissions.js"></script>
+<script src="assets/engines.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/seed.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  PCG.mountShell({active:'playbook', pageTitle:'Advance'});
+
+  const code = PCG.qs('project', 'LCE-2026');
+  const drafts = JSON.parse(sessionStorage.getItem('pcg_demo_shows') || '[]');
+  const draft  = drafts.find(d => d.code === code);
+  const proj   = draft || PCG.api.getProject(code);
+  if(!proj){ document.getElementById('adv').innerHTML = '<div class="empty">Project not found.</div>'; throw new Error('no project'); }
+
+  document.getElementById('back-link').href = `show-center.html?project=${encodeURIComponent(code)}`;
+  document.getElementById('send-client').addEventListener('click', () => {
+    alert(`✓ Advance sent.\n\nStaged for distribution:\n• Client (${proj.client || 'primary contact'})\n• Venue ops (${proj.venueName || '—'})\n• Freight / logistics vendor\n\nA signed PDF copy archives to the Show Book.`);
+  });
+
+  const pm = PCG.findPerson(proj.primaryPM);
+  const td = PCG.findPerson(proj.td);
+  const creative = PCG.findPerson(proj.creativeLead);
+  const showCaller = PCG.findPerson(proj.showCaller);
+
+  function fmtD(iso){ if(!iso) return '—'; const d = new Date(iso); return `${d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
+
+  document.getElementById('adv').innerHTML = `
+    <div class="adv-hero">
+      <div class="eyebrow">Production Advance · ${PCG.escapeHtml(proj.code)}</div>
+      <h1>${PCG.escapeHtml(proj.name)}</h1>
+      <div class="sub">${PCG.escapeHtml(proj.venueName || '')} · Prepared by PCG Production Operations</div>
+      <div class="dates">
+        <div><span>Prep</span> ${PCG.fmtShort(proj.dates?.prep)}</div>
+        <div><span>Load-In</span> ${fmtD(proj.dates?.loadIn)}</div>
+        <div><span>Show</span> ${PCG.fmtShort(proj.dates?.showStart)} → ${PCG.fmtShort(proj.dates?.showEnd)}</div>
+        <div><span>Load-Out</span> ${fmtD(proj.dates?.loadOut)}</div>
+        <div><span>Return</span> ${PCG.fmtShort(proj.dates?.ret)}</div>
+      </div>
+    </div>
+
+    <div class="adv-body">
+
+      <!-- OVERVIEW -->
+      <div class="adv-section">
+        <h2>Overview</h2>
+        <div class="adv-grid">
+          <div class="k">Client</div><div class="v">${PCG.escapeHtml(proj.client || '—')}<br><span class="muted" style="font-size: 11.5px;">${PCG.escapeHtml(proj.clientAddress || '')}</span></div>
+          <div class="k">Venue</div><div class="v">${PCG.escapeHtml(proj.venueName || '—')}</div>
+          <div class="k">Show type</div><div class="v">${PCG.escapeHtml(proj.showType || '—')}</div>
+          <div class="k">One-liner</div><div class="v">${PCG.escapeHtml(proj.oneLiner || '—')}</div>
+          <div class="k">Project code</div><div class="v mono">${PCG.escapeHtml(proj.code)}</div>
+          ${proj.quoteNo ? `<div class="k">Source quote</div><div class="v mono">${PCG.escapeHtml(proj.quoteNo)}</div>` : ''}
+        </div>
+      </div>
+
+      <!-- CONTACTS -->
+      <div class="adv-section">
+        <h2>Key Contacts</h2>
+        <div class="adv-contacts">
+          ${pm ? `
+            <div class="adv-contact">
+              <div class="role">Project Manager</div>
+              <div class="who">${PCG.escapeHtml(pm.name)}</div>
+              <div class="meta">📧 ${(pm.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${pm.phone || '(555) 000-0000'}</div>
+            </div>`:''}
+          ${td ? `
+            <div class="adv-contact">
+              <div class="role">Technical Director</div>
+              <div class="who">${PCG.escapeHtml(td.name)}</div>
+              <div class="meta">📧 ${(td.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${td.phone || '(555) 000-0000'}</div>
+            </div>`:''}
+          ${showCaller ? `
+            <div class="adv-contact">
+              <div class="role">Show Caller</div>
+              <div class="who">${PCG.escapeHtml(showCaller.name)}</div>
+              <div class="meta">📧 ${(showCaller.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${showCaller.phone || '(555) 000-0000'}</div>
+            </div>`:''}
+          ${creative ? `
+            <div class="adv-contact">
+              <div class="role">Creative Lead</div>
+              <div class="who">${PCG.escapeHtml(creative.name)}</div>
+              <div class="meta">📧 ${(creative.email||'').toLowerCase() || 'email@pcg.co'}<br>📱 ${creative.phone || '(555) 000-0000'}</div>
+            </div>`:''}
+          <div class="adv-contact">
+            <div class="role">Venue Ops</div>
+            <div class="who">Venue Ops Desk</div>
+            <div class="meta">📧 ops@${(proj.venueName||'venue').toLowerCase().replace(/[^a-z]/g,'').slice(0,8) || 'venue'}.com<br>📱 (702) 555-0140</div>
+          </div>
+          <div class="adv-contact">
+            <div class="role">PCG 24/7 Ops</div>
+            <div class="who">PCG Production Hotline</div>
+            <div class="meta">📧 ops@pcgstage.com<br>📱 (248) 555-0199</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHEDULE -->
+      <div class="adv-section">
+        <h2>Schedule</h2>
+        <div class="adv-schedule">
+          <table>
+            <thead><tr><th>When</th><th>Event</th><th>Who</th></tr></thead>
+            <tbody>
+              <tr><td>${fmtD(proj.dates?.prep)}</td><td>Prep begins · warehouse pull</td><td>PCG Warehouse · Load Team</td></tr>
+              <tr><td>${fmtD(proj.dates?.loadIn)}</td><td>Truck call · dock 2</td><td>IATSE 720 rigger call + PCG crew</td></tr>
+              <tr><td>${fmtD(proj.dates?.loadIn && new Date(proj.dates.loadIn).getTime() + 86400000)}</td><td>Calibration + tech rehearsal</td><td>PCG tech team</td></tr>
+              <tr><td>${fmtD(proj.dates?.loadIn && new Date(proj.dates.loadIn).getTime() + 86400000 * 2)}</td><td>Dress rehearsal (full cast)</td><td>Client production + PCG</td></tr>
+              <tr><td>${fmtD(proj.dates?.showStart)}</td><td>General Session · Day 1</td><td>Full show crew</td></tr>
+              <tr><td>${fmtD(proj.dates?.showEnd)}</td><td>Final session close</td><td>Full show crew</td></tr>
+              <tr><td>${fmtD(proj.dates?.loadOut)}</td><td>Load-out · strike</td><td>Strike crew + IATSE</td></tr>
+              <tr><td>${fmtD(proj.dates?.ret)}</td><td>Gear return · warehouse check-in</td><td>PCG Warehouse</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DOCK ACCESS -->
+      <div class="adv-section">
+        <h2>Dock Access</h2>
+        <div class="adv-notes">
+          <strong>Primary dock:</strong> Dock 2 (direct ballroom-level access). <strong>Clearance:</strong> 48' truck, 10'6" door. <strong>Load-in window:</strong> 7:00 AM – 2:00 PM (catering holds dock 4 until 7 PM on Day 1). <strong>Strike:</strong> Dock access until 10:00 PM; no pull-up lane activity after.<br><br>
+          Freight elevator (10' × 6', 5,000 lb limit) runs between dock and ballroom. Key-card required after 10 PM — request day-of from venue ops desk.
+        </div>
+      </div>
+
+      <!-- POWER -->
+      <div class="adv-section">
+        <h2>Power</h2>
+        <div class="adv-grid">
+          <div class="k">Main service</div><div class="v">200A tie-in at FOH dock panel (venue-provided).</div>
+          <div class="k">Amp world</div><div class="v">100A spur from FOH, dedicated feed.</div>
+          <div class="k">LED processor</div><div class="v">100A spur, isolated from audio bus.</div>
+          <div class="k">Cocktail / ready room</div><div class="v">Distro TBD — walkthrough Wed PM.</div>
+          <div class="k">House power</div><div class="v">On separate feed — <strong>do not share</strong>.</div>
+          <div class="k">Tie-in cutover</div><div class="v">Venue electrician on-site for tie-in; 24h notice required.</div>
+        </div>
+      </div>
+
+      <!-- RIGGING -->
+      <div class="adv-section">
+        <h2>Rigging</h2>
+        <div class="adv-grid">
+          <div class="k">Dead-hang points</div><div class="v">24 fixed points on ballroom grid. Beam capacity 4,500 lb.</div>
+          <div class="k">Motors</div><div class="v">4 × 1-ton motors (J-Series arrays). 2 × ½-ton (LED header).</div>
+          <div class="k">Certifications</div><div class="v">All motors tested to 125%. Cert sheets included in rigging packet.</div>
+          <div class="k">Call</div><div class="v">4 riggers at 6:00 AM. +2 on climb at 8:00 AM (IATSE 720).</div>
+          <div class="k">Restrictions</div><div class="v">No dynamic rigging after 10 PM. Venue rigger cert review before first climb.</div>
+        </div>
+      </div>
+
+      <!-- STAGING -->
+      <div class="adv-section">
+        <h2>Staging</h2>
+        <div class="adv-grid">
+          <div class="k">Main stage</div><div class="v">32' × 24' × 48" — Marquee set (LED header + split fabric traveler).</div>
+          <div class="k">Thrust</div><div class="v">SR thrust, 8' × 8' × 48", stairs to floor.</div>
+          <div class="k">Podium</div><div class="v">Downstage center, with confidence monitors.</div>
+          <div class="k">Awards Day 4</div><div class="v">Ready room platforms (TBD dimensions, walkthrough Wed PM).</div>
+          <div class="k">Crossover</div><div class="v">Behind upstage drop; 4' min clearance both wings.</div>
+        </div>
+      </div>
+
+      <!-- VENUE EXPECTATIONS -->
+      <div class="adv-section">
+        <h2>Venue Expectations</h2>
+        <div class="adv-notes">
+          <strong>Crew meals:</strong> Lunch + dinner provided Days 1–3. Vegan + GF counts sent 4/13.<br>
+          <strong>Trash haul:</strong> 4 bins staged near dock 2; venue hauls at 10 PM strike.<br>
+          <strong>Cleaning:</strong> Nightly sweep by venue staff. Final clean follows strike.<br>
+          <strong>Wi-Fi:</strong> SSID <code>LCE26-PROD</code> · 500 Mbps dedicated production VLAN. Password at venue ops.<br>
+          <strong>Badging:</strong> Crew badges pre-printed; TD picks up from venue ops on ${PCG.fmtShort(proj.dates?.loadIn)} at 6:30 AM.<br>
+          <strong>Quiet hours:</strong> No stage noise after 11 PM per venue contract.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="adv-footer">
+      <div>Generated ${new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})} · PCG STAGE v1</div>
+      <div>This advance is auto-generated from the Show Command Center. Edits flow back to the source.</div>
+    </div>
+  `;
+</script>
+</body>
+</html>
