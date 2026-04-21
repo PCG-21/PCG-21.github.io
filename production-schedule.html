@@ -209,6 +209,70 @@
     border-top: 1px dashed var(--border);
   }
   .ps-phase-add:hover { background: var(--surface-2); color: var(--pcg-bright-blue); }
+
+  /* Dependency warning chip · shown inline on rows that have downstream dependencies */
+  .ps-dep {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 4px; padding: 3px 10px; border-radius: var(--r-pill);
+    background: rgba(245,176,65,0.1); color: var(--status-amber);
+    border: 1px solid rgba(245,176,65,0.35);
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  .ps-dep::before { content: "🔗"; font-size: 10px; }
+
+  /* Prominent "Open in Show Flow" action · bigger, brand-tinted */
+  .ps-link.sf {
+    padding: 5px 12px; font-size: 10.5px;
+    background: var(--pcg-bright-blue); color: #001a2a;
+    border-color: var(--pcg-bright-blue);
+    box-shadow: 0 2px 8px rgba(1,153,253,0.25);
+  }
+  .ps-link.sf:hover { filter: brightness(1.08); }
+
+  /* Downstream reaction toast · confirms cross-surface effects on edit */
+  .ps-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    min-width: 320px; max-width: 560px; padding: 14px 18px;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(1,153,253,0.16), rgba(149,100,216,0.12) 70%), var(--surface-1);
+    border: 1px solid var(--pcg-bright-blue);
+    box-shadow: 0 10px 30px rgba(1,153,253,0.25);
+    color: var(--text-primary);
+    z-index: 80;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+  }
+  .ps-toast.on { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .ps-toast .ey {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--pcg-bright-blue); margin-bottom: 6px;
+  }
+  .ps-toast .ln {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 0; font-size: 12px; color: var(--text-primary);
+  }
+  .ps-toast .ln::before { content: "⚡"; color: var(--pcg-bright-blue); }
+
+  /* Truck row emphasis · critical = border glow */
+  .truck-table tr.critical {
+    background: linear-gradient(90deg, rgba(231,76,60,0.06), transparent 80%);
+    box-shadow: inset 3px 0 0 var(--status-red);
+  }
+  .truck-table tr.critical .tk .sub::after {
+    content: " · LATE CONFIRM"; color: var(--status-red); font-weight: 700;
+  }
+  .truck-table .driver .ph { color: var(--pcg-bright-blue); font-weight: 600; }
+  .truck-table .dock-conflict {
+    display: inline-block; margin-top: 3px; padding: 2px 7px; border-radius: var(--r-pill);
+    background: rgba(231,76,60,0.14); color: var(--status-red);
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+  }
+  .truck-table .load-priority {
+    display: inline-block; padding: 2px 7px; border-radius: var(--r-pill);
+    background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue);
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    margin-left: 6px;
+  }
 </style>
 </head>
 <body>
@@ -347,11 +411,11 @@
       rows:[
         { when: dayOf(loadIn, 5, 30),           what:'Dock 2 access opens',                           sub:'Key-card released · bollards removed · venue security on deck.',                                  owner:'Venue · Security',   loc:'Dock 2', status:'conf', links:['adv','cp'] },
         { when: dayOf(loadIn, 6, 0),            what:'IATSE rigger call · 4 riggers',                 sub:'Plot review · dead-hang motor prep · safety hands walkthrough.',                                   owner:'Crew · Rigging',     loc:'Ballroom grid', status:'conf', links:['td'] },
-        { when: dayOf(loadIn, 6, 30),           what:'Truck 1 arrives (main rig)',                    sub:'48\' · j8 / JSub / LED header / main scenic. 45-min unload window.',                              owner:'Logistics · PCG',    loc:'Dock 2', status:'conf', links:['adv','td'] },
-        { when: dayOf(loadIn, 7, 0),            what:'Rigging start · motors up',                     sub:'4× 1-ton on J-Series · 2× ½-ton on LED header fly frame. Weight bridge in.',                      owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan', links:['td'] },
+        { when: dayOf(loadIn, 6, 30),           what:'Truck 1 arrives (main rig)',                    sub:'48\' · j8 / JSub / LED header / main scenic. 45-min unload window.',                              owner:'Logistics · PCG',    loc:'Dock 2', status:'conf', links:['adv','td'], dep:'Changing this affects rig start · Advance dock times · Client Portal load-in milestone.' },
+        { when: dayOf(loadIn, 7, 0),            what:'Rigging start · motors up',                     sub:'4× 1-ton on J-Series · 2× ½-ton on LED header fly frame. Weight bridge in.',                      owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan', links:['td'], dep:'Changing this pushes rehearsal start · LD + audio focus blocks depend on rig being up.' },
         { when: dayOf(loadIn, 8, 0),            what:'+2 riggers on climb',                           sub:'Climb call adds two per steward approval.',                                                         owner:'Crew · Rigging',     loc:'Ballroom grid', status:'plan' },
         { when: dayOf(loadIn, 8, 30),           what:'Truck 2 arrives (audio + video)',               sub:'Yamaha CL5 · AD4Q quad receivers · Axient rack · Barco E2.',                                       owner:'Logistics · PCG',    loc:'Dock 2', status:'plan', links:['adv','td'] },
-        { when: dayOf(loadIn, 9, 0),            what:'Power tie-in · 200A (FOH dock)',                sub:'Venue electrician on-site for tie-in. House power isolated.',                                      owner:'Power · S. Vance',   loc:'FOH dock panel', status:'hold', links:['adv','td'] },
+        { when: dayOf(loadIn, 9, 0),            what:'Power tie-in · 200A (FOH dock)',                sub:'Venue electrician on-site for tie-in. House power isolated.',                                      owner:'Power · S. Vance',   loc:'FOH dock panel', status:'hold', links:['adv','td'], dep:'Blocks audio + video load-in · venue engineer requires 24h notice if this moves.' },
         { when: dayOf(loadIn, 10, 0),           what:'Audio load-in · FOH + amp world',               sub:'Stage rack patch · FOH drive rack · system check.',                                                owner:'Audio · A1',         loc:'FOH / SL amps',  status:'plan' },
         { when: dayOf(loadIn, 10, 30),          what:'LED wall build · header + IMAG',                sub:'Header panels up · IMAG side panels stacked · Barco E2 comms in.',                                 owner:'Video · V1',         loc:'Stage deck',     status:'plan' },
         { when: dayOf(loadIn, 12, 30),          what:'Crew meal · served in BOH breakroom',           sub:'Venue catering · 62 counts · vegan + GF per pre-brief.',                                           owner:'Venue · Catering',   loc:'BOH breakroom',  status:'conf' },
@@ -362,7 +426,7 @@
     { n:3, title:'Rehearsal · tech + dress',
       meta: `${PCG.fmtShort(dayOf(loadIn, 0) ? new Date(new Date(loadIn).getTime() + 86400000).toISOString() : '')} → pre-show`,
       rows:[
-        { when: new Date(new Date(loadIn).getTime() + 86400000 + 9*3600000).toISOString(),  what:'Tech rehearsal · walk-through',     sub:'Top-of-show sequence · opener roll · walk-in music · house-out cue.',         owner:'Full crew',       loc:'Ballroom',      status:'plan', links:['sf','td'] },
+        { when: new Date(new Date(loadIn).getTime() + 86400000 + 9*3600000).toISOString(),  what:'Tech rehearsal · walk-through',     sub:'Top-of-show sequence · opener roll · walk-in music · house-out cue.',         owner:'Full crew',       loc:'Ballroom',      status:'plan', links:['sf','td'], dep:'Ties to Show Flow opener + GSA-020 block · changing this affects cast call time.' },
         { when: new Date(new Date(loadIn).getTime() + 86400000 + 13*3600000).toISOString(), what:'Department rehearsal · audio',      sub:'Mic checks · IFB path · stage monitor mixes · comms check.',                    owner:'Audio · A1',      loc:'FOH',           status:'plan' },
         { when: new Date(new Date(loadIn).getTime() + 86400000 + 14*3600000).toISOString(), what:'Dept rehearsal · video IMAG',       sub:'Camera iso checks · multiview · switcher scene build.',                         owner:'Video · V1',      loc:'FOH',           status:'plan' },
         { when: new Date(new Date(loadIn).getTime() + 86400000 + 16*3600000).toISOString(), what:'Dress rehearsal · full cast',       sub:'Full run with cast + playback · client attends.',                               owner:'Full crew + Client', loc:'Ballroom',      status:'plan' }
@@ -371,7 +435,7 @@
     { n:4, title:'Show · live execution days',
       meta: `${PCG.fmtShort(showS)} → ${PCG.fmtShort(showE)}`,
       rows:[
-        { when: showS,                                                                    what:'Day 1 · General Session opens',       sub:'House open 30 min prior · walk-in music · opener at top of show.',       owner:'Show Caller',   loc:'FOH / stage', status:'plan', links:['sf','td','adv','cp'] },
+        { when: showS,                                                                    what:'Day 1 · General Session opens',       sub:'House open 30 min prior · walk-in music · opener at top of show.',       owner:'Show Caller',   loc:'FOH / stage', status:'plan', links:['sf','td','adv','cp'], dep:'Client Portal milestone + Show Flow GSA-020 GO · any move ripples everywhere.' },
         { when: new Date(new Date(showS).getTime() + 86400000).toISOString(),             what:'Day 2 · Breakouts + keynotes',        sub:'Breakout rooms open · main GS afternoon block.',                           owner:'Show Caller',   loc:'Ballroom + breakouts', status:'plan', links:['sf','cp'] },
         { when: new Date(new Date(showS).getTime() + 86400000 * 2).toISOString(),         what:'Day 3 · Cocktail reception · DJ patch', sub:'Ambient reinforcement · DJ patch at 18:00 · ready-room build parallel.',  owner:'Audio + Scenic', loc:'Ballroom + ready room', status:'plan', links:['td'] },
         { when: showE,                                                                    what:'Day 4 · Awards show · Day-4 evening', sub:'Awards package playback · ready-room active · finale at 20:30.',           owner:'Full crew',      loc:'Ballroom',     status:'plan', links:['sf','td','adv','cp'] }
@@ -429,6 +493,7 @@
           <div class="ps-what">
             <strong>${PCG.escapeHtml(r.what)}</strong>
             ${r.sub ? `<div class="sub">${PCG.escapeHtml(r.sub)}</div>` : ''}
+            ${r.dep ? `<span class="ps-dep" title="Dependency · downstream effect">${PCG.escapeHtml(r.dep)}</span>` : ''}
             ${linksHtml(r.links, r.what)}
           </div>
           <span class="ps-owner">${PCG.escapeHtml(r.owner)}</span>
@@ -501,23 +566,66 @@
   // ---------- Trucking / Logistics table ----------
   // Hand-authored realistic manifest. Arrival times are relative to load-in.
   const trucks = [
-    { id:'T1 · 48\'', kind:'Main rig', drv:'M. Alvarado', ph:'(248) 555-0101', arr: dayOf(loadIn, 6, 30), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'conf', note:'45-min unload · leads with LED header & scenic flats' },
-    { id:'T2 · 48\'', kind:'Audio + Video', drv:'D. Ellis',   ph:'(248) 555-0102', arr: dayOf(loadIn, 8, 30), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'trans', note:'CL5 + AD4Q + Barco E2 + stage rack · on-road since 04:00 ET' },
-    { id:'T3 · 26\'', kind:'Sub-rental · 2× d&b JSub', drv:'Solotech courier', ph:'(312) 555-0177', arr: dayOf(loadIn, 9, 30), dock:'Dock 2', path:'Solotech Chicago → Caesars Forum', status:'pend', note:'Sub confirm outstanding · PM pushing for 4/15 16:00 PT' },
-    { id:'SPRNT · A', kind:'Creative / playback drives', drv:'K. Oliver (PCG)', ph:'(248) 555-0157', arr: dayOf(loadIn, 10, 0), dock:'Dock 2 · side', path:'Bldg B (Creative) → Caesars Forum', status:'conf', note:'QLab master + sponsor-loop drives · 2× redundant SSD hand-carry' },
-    { id:'T4 · 26\'', kind:'Ready-room platforms', drv:'R. Fields', ph:'(248) 555-0118', arr: new Date(new Date(loadIn).getTime() + 86400000 + 14*3600000).toISOString(), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'pend', note:'CO#3 dependency · dispatch only if change order lands today' }
+    { id:'T1 · 48\'',  priority:1, kind:'Main rig',                drv:'M. Alvarado',     ph:'(248) 555-0101', arr: dayOf(loadIn, 6, 30), dock:'Dock 2',       path:'Detroit WH → Caesars Forum',  status:'conf',  note:'45-min unload · leads with LED header & scenic flats' },
+    { id:'T2 · 48\'',  priority:2, kind:'Audio + Video',           drv:'D. Ellis',        ph:'(248) 555-0102', arr: dayOf(loadIn, 8, 30), dock:'Dock 2',       path:'Detroit WH → Caesars Forum',  status:'trans', note:'CL5 + AD4Q + Barco E2 + stage rack · on-road since 04:00 ET' },
+    { id:'T3 · 26\'',  priority:3, kind:'Sub-rental · 2× d&b JSub',drv:'Solotech courier',ph:'(312) 555-0177', arr: dayOf(loadIn, 9, 30), dock:'Dock 2',       path:'Solotech Chicago → Caesars Forum', status:'pend', note:'Sub confirm outstanding · PM pushing for 4/15 16:00 PT', critical:true, conflict:'Dock 4 catering window overlaps · stay on 2' },
+    { id:'SPRNT · A',  priority:4, kind:'Creative / playback drives', drv:'K. Oliver (PCG)',ph:'(248) 555-0157', arr: dayOf(loadIn, 10, 0), dock:'Dock 2 · side', path:'Bldg B (Creative) → Caesars Forum', status:'conf', note:'QLab master + sponsor-loop drives · 2× redundant SSD hand-carry' },
+    { id:'T4 · 26\'',  priority:5, kind:'Ready-room platforms',    drv:'R. Fields',       ph:'(248) 555-0118', arr: new Date(new Date(loadIn).getTime() + 86400000 + 14*3600000).toISOString(), dock:'Dock 2', path:'Detroit WH → Caesars Forum', status:'pend', note:'CO#3 dependency · dispatch only if change order lands today' }
   ];
   const stLbl = { conf:'Confirmed', pend:'Pending', trans:'In transit' };
   document.getElementById('truck-rows').innerHTML = trucks.map(t => `
-    <tr>
-      <td class="tk">${PCG.escapeHtml(t.id)}<span class="sub">${PCG.escapeHtml(t.kind)}</span></td>
+    <tr class="${t.critical?'critical':''}">
+      <td class="tk">${PCG.escapeHtml(t.id)}<span class="load-priority">P${t.priority}</span><span class="sub">${PCG.escapeHtml(t.kind)}</span></td>
       <td class="driver">${PCG.escapeHtml(t.drv)}<span class="ph">📱 ${PCG.escapeHtml(t.ph)}</span></td>
       <td class="arr">${shortT(t.arr)}</td>
-      <td><span class="dock">${PCG.escapeHtml(t.dock)}</span></td>
+      <td>
+        <span class="dock">${PCG.escapeHtml(t.dock)}</span>
+        ${t.conflict ? `<div class="dock-conflict" title="Dock conflict · plan accordingly">⚠ ${PCG.escapeHtml(t.conflict)}</div>` : ''}
+      </td>
       <td class="driver">${PCG.escapeHtml(t.path)}</td>
       <td><span class="truck-st ${t.status}">${stLbl[t.status] || 'Planned'}</span></td>
       <td class="note">${PCG.escapeHtml(t.note)}</td>
     </tr>`).join('');
+
+  // ---------- Downstream reaction toast ----------
+  // Any user edit on a Schedule row (move, duplicate, inline edit, add)
+  // flashes a confirming toast: "⚡ Advance updated · TD Package marked
+  // changed · Client milestone shifted". This is the biggest
+  // "holy shit, it's one system" moment in the demo.
+  function scheduleToast(rowText){
+    let toast = document.getElementById('ps-toast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'ps-toast';
+      toast.className = 'ps-toast';
+      document.body.appendChild(toast);
+    }
+    const lines = [
+      'Advance updated · dock &amp; schedule times refreshed',
+      'TD Package marked changed · priority delta logged',
+      'Client Portal milestone shifted · "What changed" feed updated',
+      'Show Flow rehearsal block linked · cue times stay in sync'
+    ];
+    toast.innerHTML = `
+      <div class="ey">⚡ Change propagated across the system</div>
+      ${rowText ? `<div class="ln" style="font-weight: 600; color: #fff;">"${PCG.escapeHtml(rowText.slice(0, 70))}"</div>` : ''}
+      ${lines.map(l => `<div class="ln">${l}</div>`).join('')}
+    `;
+    toast.classList.add('on');
+    clearTimeout(scheduleToast._t);
+    scheduleToast._t = setTimeout(() => toast.classList.remove('on'), 3400);
+  }
+  // Fire the toast on every row edit action
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.ps-row [data-act]'); if(!btn) return;
+    const row = btn.closest('.ps-row');
+    const title = row && row.querySelector('.ps-what strong') ? row.querySelector('.ps-what strong').textContent : 'Schedule row';
+    scheduleToast(title);
+  });
+  // Also fire on "Add row" dashed buttons
+  document.querySelectorAll('.ps-phase-add').forEach(btn => btn.addEventListener('click', () => {
+    scheduleToast('New schedule item');
+  }));
 
   // Template chip toggle (demo-safe — re-applies class but keeps content)
   document.querySelectorAll('#tmpl-chips .chip').forEach(c => c.addEventListener('click', () => {

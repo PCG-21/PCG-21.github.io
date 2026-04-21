@@ -239,6 +239,43 @@
   .sf-cols .cb.on {
     background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); border-color: rgba(1,153,253,0.35);
   }
+  .sf-presets {
+    display: inline-flex; gap: 6px; flex-wrap: wrap; padding: 4px 8px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill);
+  }
+  .sf-presets .pb {
+    padding: 4px 12px; border-radius: var(--r-pill);
+    font-size: 11.5px; font-family: var(--font-display); letter-spacing: 0.04em;
+    background: transparent; border: 1px solid transparent; color: var(--text-tertiary);
+    cursor: pointer; font-weight: 600;
+  }
+  .sf-presets .pb.on {
+    background: rgba(149,100,216,0.16); color: var(--pcg-spotlight-purple); border-color: rgba(149,100,216,0.4);
+  }
+
+  /* Recovery / contingency panel · always visible in fullscreen */
+  .fs-recovery {
+    margin: 0 40px 16px; padding: 12px 16px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(231,76,60,0.10), transparent 70%);
+    border: 1px solid rgba(231,76,60,0.3);
+    border-left: 3px solid var(--status-red);
+    display: none;
+  }
+  body.sf-fs .fs-recovery { display: block; }
+  .fs-recovery .ey {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--status-red); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .fs-recovery ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 20px; }
+  .fs-recovery li {
+    font-size: 12.5px; color: rgba(255,255,255,0.85); line-height: 1.5;
+    padding-left: 16px; position: relative;
+  }
+  .fs-recovery li::before {
+    content: "↺"; color: var(--status-red); position: absolute; left: 0; top: 0;
+    font-family: var(--font-mono);
+  }
   .col-hidden-Audio    .dept.c-Audio    , .col-hidden-Audio    th.c-Audio    { display: none; }
   .col-hidden-Video    .dept.c-Video    , .col-hidden-Video    th.c-Video    { display: none; }
   .col-hidden-Lighting .dept.c-Lighting , .col-hidden-Lighting th.c-Lighting { display: none; }
@@ -497,6 +534,13 @@
         <div class="sf-mode" id="sf-mode" title="Build Mode lets department leads build and edit cue notes. Live Show Mode pins the current cue and drives the show caller's run.">
           <button class="edit on" data-m="edit">🛠 Build Mode</button>
           <button class="live"    data-m="live">● Live Show Mode</button>
+        </div>
+        <div class="sf-presets" id="sf-presets" title="Quick column visibility presets. Tap a focus — only that department's columns stay on.">
+          <button class="pb on" data-preset="all">All</button>
+          <button class="pb"    data-preset="audio">🎚 Audio focus</button>
+          <button class="pb"    data-preset="video">🎥 Video focus</button>
+          <button class="pb"    data-preset="lighting">💡 Lighting focus</button>
+          <button class="pb"    data-preset="scenic">🧱 Scenic focus</button>
         </div>
         <div class="sf-cols" id="sf-cols" title="Hide / show department columns. Preference is saved per show.">
           <button class="cb on" data-col="Audio">Audio</button>
@@ -853,7 +897,40 @@
     colState[b.dataset.col] = !colState[b.dataset.col];
     sessionStorage.setItem(COLS_KEY, JSON.stringify(colState));
     applyCols();
-    if(document.body.classList.contains('sf-fs')) renderFS(); // keep fullscreen in sync
+    // Clear preset "on" state when a user hand-toggles a column
+    document.querySelectorAll('#sf-presets .pb').forEach(p => p.classList.toggle('on', p.dataset.preset === 'all' && Object.values(colState).every(Boolean)));
+    if(document.body.classList.contains('sf-fs')) renderFS();
+  }));
+
+  // ==============================================================
+  // QUICK FILTER PRESETS · one-click column visibility.
+  // Persists via the same COLS_KEY so every mode respects the pick.
+  // ==============================================================
+  const PRESETS = {
+    all:      { Audio:true,  Video:true,  Lighting:true,  LED:true,  Scenic:true,  Note:true },
+    audio:    { Audio:true,  Video:false, Lighting:false, LED:false, Scenic:false, Note:true },
+    video:    { Audio:false, Video:true,  Lighting:false, LED:true,  Scenic:false, Note:true },
+    lighting: { Audio:false, Video:false, Lighting:true,  LED:true,  Scenic:false, Note:true },
+    scenic:   { Audio:false, Video:false, Lighting:false, LED:false, Scenic:true,  Note:true }
+  };
+  // Auto-detect which preset matches current state (or none)
+  function detectPreset(){
+    return Object.keys(PRESETS).find(k =>
+      COLS.every(c => PRESETS[k][c] === !!colState[c])
+    ) || '';
+  }
+  function markPreset(){
+    const cur = detectPreset();
+    document.querySelectorAll('#sf-presets .pb').forEach(p => p.classList.toggle('on', p.dataset.preset === cur));
+  }
+  markPreset();
+  document.querySelectorAll('#sf-presets .pb').forEach(p => p.addEventListener('click', () => {
+    const preset = PRESETS[p.dataset.preset]; if(!preset) return;
+    Object.assign(colState, preset);
+    sessionStorage.setItem(COLS_KEY, JSON.stringify(colState));
+    applyCols();
+    markPreset();
+    if(document.body.classList.contains('sf-fs')) renderFS();
   }));
 
   // ==============================================================
@@ -912,6 +989,11 @@
       </div>
     </div>
 
+    <div class="fs-recovery">
+      <div class="ey">🛟 Recovery / Contingency · if this cue fails</div>
+      <ul id="fs-recovery-list"></ul>
+    </div>
+
     <div class="fs-body">
       <div class="fs-dept-grid" id="fs-depts"></div>
     </div>
@@ -961,6 +1043,45 @@
     document.getElementById('fs-next-title').textContent = next ? stripHtml(next.r.name) : 'End of show';
     document.getElementById('fs-stby-code').textContent  = stby ? stby.r.cue + ' · ' + stby.r.t : '—';
     document.getElementById('fs-stby-title').textContent = stby ? stripHtml(stby.r.name) : '—';
+
+    // Recovery / contingency notes · seeded per cue type so the caller
+    // has a fallback ready if the GO fails. Generic heuristic by section.
+    const recov = document.getElementById('fs-recovery-list');
+    if(recov){
+      const secKey = now.s.title.toLowerCase();
+      const cueCode = now.r.cue || '';
+      let lines;
+      if(secKey.includes('pre-show')){
+        lines = [
+          'If walk-in music fails → run House playlist B from backup iPad (FOH desk).',
+          'If IMAG doesn\'t go dark on countdown → cut to color bars + hold stinger.',
+          'If countdown slate misfires → Barco preset 1 (sponsor loop) · announce 30-sec delay.'
+        ];
+      } else if(secKey.includes('opener')){
+        lines = [
+          'If opener video drops → cut to IMAG live + LD preset 04 · CEO enters dry.',
+          'If CEO mic (1) cuts → SC calls Spare 1 (handheld) · A1 hot-patches on the fly.',
+          'If follow-spot misses → LD drops to podium wash + warns SR spot before next cue.'
+        ];
+      } else if(secKey.includes('awards')){
+        lines = [
+          'If winner playback fails → host covers live · V1 rolls Cat-X slate from master.',
+          'If winner mic hand-off fumbles → IFB kicks host for verbal bridge · retry on cue.',
+          'If trophy hand-off delays → stretch award slate · LD holds podium wash 15s.'
+        ];
+      } else if(secKey.includes('closing')){
+        lines = [
+          'If outro video fails → LD pushes house wash up · walk-out playlist manual.',
+          'If walk-out music drops → stage rack backup playlist B · usher assist at doors.'
+        ];
+      } else {
+        lines = [
+          'Default → Show Caller holds call · audio ducks -6dB · V1 swaps to safe preset.',
+          'Recovery bed always ready on QLab · lower-thirds frozen on last good state.'
+        ];
+      }
+      recov.innerHTML = lines.map(l => `<li>${PCG.escapeHtml(l)}</li>`).join('');
+    }
 
     // Department cells grid — honors column visibility
     const cellsHtml = COLS.map(col => {

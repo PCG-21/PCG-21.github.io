@@ -426,44 +426,70 @@
         </div>`;
     }
 
+    // Reasons for each at-risk show · demo-safe but operationally real
+    const atRiskReason = (p) => {
+      const attn = (p.attention || []);
+      if(attn.find(a => /sub-rental|jsub/i.test(a.title))) return 'Sub-rental JSub confirm still open';
+      if(attn.find(a => /ready\s*room|awards/i.test(a.title)))return 'Ready-room power spec unknown · CO dependency';
+      if(attn.find(a => /power/i.test(a.title)))             return 'Power tie-in still unconfirmed';
+      if(attn.find(a => /loop|sponsor/i.test(a.title)))      return 'Client sponsor loop content late';
+      if((p.approvals||[]).filter(a => a.status==='pending').length) return 'Client approval pending on CO';
+      return 'Attention items not yet cleared';
+    };
+
     const strip = document.getElementById('dc-strip');
+    // Reorder · urgency first: Breaking → Decide → Client → Changed → Upcoming
     strip.innerHTML =
-      col('blue', '◎ Changed since yesterday', changes.length,
-        changes.slice(0, 3).map(c => `
-          <div style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border);">
+      // 1. SHOWS AT RISK · what is breaking right now
+      col('red', '⛔ What is breaking', atRisk.length,
+        atRisk.slice(0, 3).map(p => {
+          const r = showsWithR.find(x => x.p === p)?.r;
+          const tone = r && r.overall === 'Blocked' ? 'var(--status-red)' : r && r.overall === 'Red' ? 'var(--status-red)' : 'var(--status-amber)';
+          return `
+          <a href="show-center.html?project=${p.code}" style="display:grid; grid-template-columns: 60px 10px 1fr; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none; align-items: center;">
+            <span class="mono" style="color: ${tone}; font-size: 11px; font-weight: 700;">${PCG.escapeHtml(p.code)}</span>
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${tone};"></span>
+            <span>
+              <span style="color: var(--text-primary); font-weight: 600;">${PCG.escapeHtml(p.name)}</span>
+              <span style="display: block; font-size: 10.5px; color: var(--text-tertiary); margin-top: 1px;">${PCG.escapeHtml(atRiskReason(p))}</span>
+            </span>
+          </a>`;}).join('') || '<div class="muted" style="font-size: 11.5px; padding: 4px 0;">Every show green · nothing actively breaking.</div>')
+      +
+      // 2. NEEDS DECISION TODAY · sharper tags
+      col('amber', '⚡ Needs decision today', decisions.length,
+        decisions.slice(0, 4).map(d => `
+          <a href="show-center.html?project=${d.code}#sec-decisions" style="display:grid; grid-template-columns: 60px 1fr auto; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none; align-items: center;">
+            <span class="mono" style="color: ${d.urgent?'var(--status-red)':'var(--text-tertiary)'}; font-size: 11px;">${PCG.escapeHtml(d.code)}</span>
+            <span style="color: var(--text-primary);">${d.urgent?'<b>':''}${PCG.escapeHtml(d.t)}${d.urgent?'</b>':''}</span>
+            <span style="font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: var(--r-pill); ${d.urgent?'background: rgba(231,76,60,0.2); color: var(--status-red);':'background: rgba(245,176,65,0.18); color: var(--status-amber);'}">${d.urgent?'Decide today':'Blocking'}</span>
+          </a>`).join('') || '<div class="muted" style="font-size: 11.5px; padding: 4px 0;">No open decisions · inbox zero.</div>')
+      +
+      // 3. WAITING ON CLIENT · pending-client tag
+      col('purple', '⏳ Waiting on client', wc.length,
+        wc.slice(0, 3).map(w => `
+          <a href="client-portal-config.html?project=${w.code}" style="display:grid; grid-template-columns: 60px 1fr auto; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none; align-items: center;">
+            <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(w.code)}</span>
+            <span style="color: var(--text-primary);">${PCG.escapeHtml(w.t)}${w.since?` <span class="muted" style="font-size: 10.5px;">· since ${PCG.fmtShort(w.since)}</span>`:''}</span>
+            <span style="font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: var(--r-pill); background: rgba(149,100,216,0.18); color: var(--pcg-spotlight-purple);">Pending client</span>
+          </a>`).join('') || '<div class="muted" style="font-size: 11.5px; padding: 4px 0;">No items waiting on client.</div>')
+      +
+      // 4. CHANGED OVERNIGHT
+      col('blue', '◎ Changed overnight', changes.length,
+        changes.slice(0, 4).map(c => `
+          <div style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--border);">
             <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(c.code)}</span>
             <span style="color: var(--text-primary);">${PCG.escapeHtml(c.t)}</span>
           </div>`).join(''))
       +
-      col('red', '⚠ Needs decision today', decisions.length,
-        decisions.slice(0, 4).map(d => `
-          <a href="show-center.html?project=${d.code}#sec-decisions" style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none;">
-            <span class="mono" style="color: ${d.urgent?'var(--status-red)':'var(--text-tertiary)'}; font-size: 11px;">${PCG.escapeHtml(d.code)}</span>
-            <span style="color: var(--text-primary);">${d.urgent?'<b>':''}${PCG.escapeHtml(d.t)}${d.urgent?'</b>':''}</span>
-          </a>`).join(''))
-      +
-      col('purple', '⏳ Waiting on client', wc.length,
-        wc.slice(0, 3).map(w => `
-          <a href="client-portal-config.html?project=${w.code}" style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none;">
-            <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(w.code)}</span>
-            <span style="color: var(--text-primary);">${PCG.escapeHtml(w.t)}${w.since?` <span class="muted" style="font-size: 10.5px;">· since ${PCG.fmtShort(w.since)}</span>`:''}</span>
-          </a>`).join(''))
-      +
-      col('amber', '● Shows at risk', atRisk.length,
-        atRisk.slice(0, 3).map(p => `
-          <a href="show-center.html?project=${p.code}" style="display:grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); text-decoration: none;">
-            <span class="mono" style="color: var(--status-amber); font-size: 11px;">${PCG.escapeHtml(p.code)}</span>
-            <span style="color: var(--text-primary);">${PCG.escapeHtml(p.name)} <span class="muted" style="font-size: 10.5px;">· ${(p.attention||[]).length} attn</span></span>
-          </a>`).join(''))
-      +
-      col('green', '📅 Upcoming pressure · 7d', press.length,
+      // 5. UPCOMING PRESSURE · 7d
+      col('green', '📅 Pressure · next 7 days', press.length,
         press.slice(0, 4).map(e => `
-          <div style="display:grid; grid-template-columns: 22px 60px 1fr auto; gap: 6px; padding: 4px 0; font-size: 12px; border-bottom: 1px dashed var(--border); align-items: center;">
+          <div style="display:grid; grid-template-columns: 22px 60px 1fr auto; gap: 6px; padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--border); align-items: center;">
             <span style="font-size: 14px;">${e.ic}</span>
             <span class="mono" style="color: var(--text-tertiary); font-size: 11px;">${PCG.escapeHtml(e.code)}</span>
             <span style="color: var(--text-primary);">${PCG.escapeHtml(e.t)}</span>
             <span class="mono" style="color: var(--pcg-bright-blue); font-size: 11px; font-weight: 700;">${PCG.fmtShort(e.when)}</span>
-          </div>`).join(''));
+          </div>`).join('') || '<div class="muted" style="font-size: 11.5px; padding: 4px 0;">Clear runway · nothing inside 7 days.</div>');
   })();
 </script>
 </body>
