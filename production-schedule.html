@@ -226,6 +226,13 @@
         <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
       </div>
 
+      <!-- Version / change awareness -->
+      <div style="margin-bottom: var(--sp-3); padding: 8px 14px; border-radius: var(--r-sm); background: rgba(245,176,65,0.06); border: 1px dashed rgba(245,176,65,0.35); font-size: 11.5px; color: var(--text-secondary); display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+        <span style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; color: var(--status-amber); text-transform: uppercase;">⏱ Updated 22m ago</span>
+        <span><strong>Last change:</strong> CO #3 approved · T4 (ready-room platforms) released from hold</span>
+        <span style="margin-left:auto; font-family: var(--font-mono);">v3.2 · J. Springer · 4/15 09:14</span>
+      </div>
+
       <!-- Cross-surface · this page is the spine everything downstream echoes -->
       <div style="margin-bottom: var(--sp-3); padding: 10px 14px; border-radius: var(--r-sm); background: linear-gradient(90deg, rgba(1,153,253,0.08), transparent 80%); border: 1px dashed rgba(1,153,253,0.35); font-size: 12px; color: var(--text-secondary); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
         <span class="sys-nudge">⚡ Every edit flows downstream</span>
@@ -395,12 +402,17 @@
     sf:  { lbl:'Ties to Show Flow', cls:'sf', href:`show-flow.html?project=${encodeURIComponent(code)}` },
     cp:  { lbl:'Visible to Client', cls:'cp', href:`client-portal.html?project=${encodeURIComponent(code)}` }
   };
-  function linksHtml(arr){
-    if(!arr || !arr.length) return '';
-    return `<div class="ps-links">${arr.map(k => {
+  function linksHtml(arr, rowText){
+    const chips = (arr || []).map(k => {
       const m = linkCopy[k]; if(!m) return '';
       return `<a class="ps-link ${m.cls}" href="${m.href}" title="This schedule item is reflected on the linked surface">⚡ ${m.lbl}</a>`;
-    }).join('')}</div>`;
+    });
+    // "Open in Show Flow →" button appears on rehearsal / show / outro rows
+    if(/rehears|general session|show |awards|opener|closing|top of show/i.test(rowText || '')){
+      chips.push(`<a class="ps-link sf" href="${linkCopy.sf.href}" title="Jump to the cue grid for this block" style="font-weight: 700;">🎬 Open in Show Flow →</a>`);
+    }
+    if(!chips.length) return '';
+    return `<div class="ps-links">${chips.join('')}</div>`;
   }
 
   document.getElementById('ps-phases').innerHTML = phases.map((p, pi) => `
@@ -417,7 +429,7 @@
           <div class="ps-what">
             <strong>${PCG.escapeHtml(r.what)}</strong>
             ${r.sub ? `<div class="sub">${PCG.escapeHtml(r.sub)}</div>` : ''}
-            ${linksHtml(r.links)}
+            ${linksHtml(r.links, r.what)}
           </div>
           <span class="ps-owner">${PCG.escapeHtml(r.owner)}</span>
           <span class="ps-loc">📍 ${PCG.escapeHtml(r.loc)}</span>

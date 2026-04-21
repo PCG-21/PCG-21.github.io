@@ -433,6 +433,55 @@
     background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
     font-family: var(--font-mono); font-size: 10.5px;
   }
+
+  /* -------- PRINT / PDF LAYOUT --------
+     Strips chrome · renders a clean cue grid a TD / show caller can
+     print and carry. Black-on-white, small gutters, tight type. */
+  @media print {
+    @page { size: landscape; margin: 0.35in; }
+    body { background: #fff !important; color: #000 !important; font-size: 10pt; }
+    #app-shell, .topbar, .rail, .story-strip, .sf-hero, .sf-toolbar,
+    .sf-legend, .live-bar, .fs-shell, .main::before, .no-print { display: none !important; }
+    .main { padding: 0 !important; }
+    .container { max-width: none !important; padding: 0 !important; }
+    .sf-section {
+      break-inside: avoid; page-break-inside: avoid;
+      background: transparent !important; border: 0 !important;
+      margin-bottom: 18pt;
+    }
+    .sf-section-head {
+      background: transparent !important; border-bottom: 1.5pt solid #000 !important;
+      padding: 4pt 0 !important;
+    }
+    .sf-section-head h2 { color: #000 !important; font-size: 13pt; }
+    .sf-section-head .meta, .sf-section-head .dur, .sf-section-head .live-tag { display: none !important; }
+    .sf-grid {
+      font-size: 9pt; color: #000 !important; border: 1pt solid #000;
+    }
+    .sf-grid thead th {
+      background: #eef !important; color: #000 !important;
+      border-bottom: 1pt solid #000; padding: 4pt 6pt !important;
+      position: static !important;
+    }
+    .sf-grid td {
+      border-bottom: 0.5pt solid #999; padding: 4pt 6pt !important;
+      color: #000 !important; background: transparent !important;
+    }
+    .sf-grid tr.cue-standby td { background: #fff6e6 !important; }
+    .sf-grid tr.cue-go td      { background: #eaffef !important; }
+    .sf-grid .cue-t { color: #003a7a !important; }
+    .sf-grid td.dept[contenteditable], .sf-grid td.dept:hover { background: transparent !important; outline: 0 !important; }
+    .gocue, .sbcue {
+      background: transparent !important; color: #000 !important;
+      border: 1pt solid #000; font-size: 8pt; padding: 1pt 3pt;
+    }
+    /* Print header band (seeded client / show / date) */
+    body::before {
+      content: "PCG · SHOW FLOW · " attr(data-print-title);
+      display: block; font-family: monospace; font-size: 9pt; letter-spacing: 0.08em;
+      color: #000; border-bottom: 0.5pt solid #000; padding: 4pt 0; margin-bottom: 10pt;
+    }
+  }
 </style>
 </head>
 <body>
@@ -445,8 +494,8 @@
 
       <div class="sf-toolbar">
         <span class="muted">Show-day execution · cue-by-cue · show caller drives this · operators react</span>
-        <div class="sf-mode" id="sf-mode" title="Edit Mode lets department leads tweak cue notes. Live Show Mode pins the current cue and drives the show caller's run.">
-          <button class="edit on" data-m="edit">✎ Edit Mode</button>
+        <div class="sf-mode" id="sf-mode" title="Build Mode lets department leads build and edit cue notes. Live Show Mode pins the current cue and drives the show caller's run.">
+          <button class="edit on" data-m="edit">🛠 Build Mode</button>
           <button class="live"    data-m="live">● Live Show Mode</button>
         </div>
         <div class="sf-cols" id="sf-cols" title="Hide / show department columns. Preference is saved per show.">
@@ -458,6 +507,7 @@
           <button class="cb on" data-col="Note">Note</button>
         </div>
         <button class="btn sm primary" id="fs-enter" title="Throw on a screen and run the show">⛶ Go full-screen</button>
+        <button class="btn sm ghost"   id="sf-print" title="Landscape cue sheet · TD / crew hand-out">⎙ Print / Export PDF</button>
         <a class="btn sm ghost" id="open-ps" href="#">→ Production Schedule</a>
         <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
         <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
@@ -488,9 +538,10 @@
       </div>
 
       <!-- Cross-surface — operator edits surface in the TD Package summary -->
-      <div style="margin-bottom: var(--sp-4); padding: 10px 14px; border-radius: var(--r-sm); background: linear-gradient(90deg, rgba(149,100,216,0.08), transparent 80%); border: 1px dashed rgba(149,100,216,0.35); font-size: 12px; color: var(--text-secondary); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-        <span class="sys-nudge purple">⚡ Department edits go live</span>
-        <span>Every cell operators edit here rolls up to the <a href="td-package.html?project=LCE-2026" style="color: var(--pcg-bright-blue);">TD Show Package</a> cue summary. Standby + GO in full-screen mirror to every caller on the same show.</span>
+      <div style="margin-bottom: var(--sp-4); padding: 12px 16px; border-radius: var(--r-md); background: linear-gradient(90deg, rgba(149,100,216,0.12), rgba(1,153,253,0.06) 80%); border: 1px solid rgba(149,100,216,0.35); border-left: 3px solid var(--pcg-spotlight-purple); display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <span class="sys-nudge purple">⚡ This drives the TD Package</span>
+        <span style="font-size: 12.5px; color: var(--text-primary); flex: 1; min-width: 260px;">Every cell operators edit here rolls up to the <strong>TD Show Package</strong> cue summary. STBY / GO from Live mode mirrors to every caller on the same show.</span>
+        <a class="btn sm ghost" href="td-package.html?project=LCE-2026" style="font-size: 11.5px;">Open TD Package →</a>
       </div>
 
       <div id="sf-sections"></div>
@@ -516,6 +567,16 @@
   document.getElementById('open-ps').href  = `production-schedule.html?project=${encodeURIComponent(code)}`;
   document.getElementById('open-td').href  = `td-package.html?project=${encodeURIComponent(code)}`;
   document.getElementById('open-ctr').href = `show-center.html?project=${encodeURIComponent(code)}`;
+
+  // Seed the print header band + wire the Print button.
+  document.body.setAttribute('data-print-title',
+    `${proj.code} · ${proj.name || 'Show'} · ${proj.venueName || ''}`);
+  document.getElementById('sf-print').addEventListener('click', () => {
+    // Exit fullscreen before printing · otherwise some browsers refuse.
+    if(document.fullscreenElement){ try { document.exitFullscreen(); } catch(e){} }
+    document.body.classList.remove('sf-fs');
+    setTimeout(() => window.print(), 120);
+  });
 
   // ---------- HERO ----------
   document.getElementById('sf-hero').innerHTML = `

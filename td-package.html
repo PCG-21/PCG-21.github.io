@@ -170,6 +170,12 @@
   <main class="main">
     <div class="container">
 
+      <div class="no-print" style="max-width: 1000px; margin: 0 auto 10px; padding: 8px 14px; border-radius: var(--r-sm); background: rgba(245,176,65,0.06); border: 1px dashed rgba(245,176,65,0.35); font-size: 11.5px; color: var(--text-secondary); display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+        <span style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; color: var(--status-amber); text-transform: uppercase;">⏱ Updated 14m ago</span>
+        <span><strong>Last change:</strong> Awards creative V3 approved · loaded to Barco E2 preset 9</span>
+        <span style="margin-left:auto; font-family: var(--font-mono);">v1.3 · auto-generated · 4/15 09:22</span>
+      </div>
+
       <div class="td-toolbar no-print">
         <a class="btn sm ghost" id="back-link" href="#">← Back to Show Command Center</a>
         <span class="muted" style="font-size: var(--fs-xs);">TD / Crew execution packet · distinct from the client Advance</span>
@@ -517,7 +523,10 @@
 
       <!-- ROS SUMMARY -->
       <div class="td-section" id="td-ros">
-        <h2>Show Flow · summary cue list <span class="repo">Pulled from Show Flow</span></h2>
+        <h2>
+          Show Flow · summary cue list
+          <a href="show-flow.html?project=LCE-2026" style="margin-left: auto; font-size: 11px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; border-radius: var(--r-pill); background: var(--pcg-bright-blue); color: #001a2a; text-decoration: none; font-weight: 700;">🎬 View full cue grid →</a>
+        </h2>
         <div class="td-ros">
           <table>
             <thead><tr><th>Time</th><th>Cue</th><th>What happens</th><th>Note</th></tr></thead>

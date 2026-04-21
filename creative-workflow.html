@@ -273,17 +273,19 @@
     { k:'install',  lbl:'Install Ready' }
   ];
 
-  // Creative pieces · realistic corporate-awards mix
+  // Creative pieces · realistic corporate-awards mix.
+  // `impacts` declares downstream surfaces this piece materially
+  // moves so each card can show "⚡ Impacts X / Blocks Y" chips.
   const CW_KEY = `pcg_creative_${proj.code}`;
   const seed = [
-    { id:'p1', ico:'🎬', t:'Opener package',             nt:'30-sec client-branded opener · QLab master locked. Final render delivered.',                    stage:'approved', appr:'appr', tags:['playback','QLab'],     due:'2026-04-10', owner:'K. Oliver', depends:'Finishes before tech rehearsal · on master drive for T2 load-in.' },
-    { id:'p2', ico:'🏆', t:'Awards show graphics',       nt:'Category slates · winner-name reveal package · trophy lower-thirds. Client sign-off 4/12.',     stage:'approved', appr:'appr', tags:['playback','Day 4'],     due:'2026-04-12', owner:'K. Oliver', depends:'Unblocks Awards cue build in Show Flow · V1 loaded to E2 preset 9.' },
-    { id:'p3', ico:'📺', t:'Sponsor loop (25 assets)',   nt:'Client files received 4/15 (late) · assembly in progress. Will ride into Day-1 pre-show.',     stage:'build',    appr:'pend', tags:['playback','Day 1'],     due:'2026-04-16', owner:'K. Oliver', depends:'Tight · if misses 4/16 cutoff, Day-1 pre-show runs placeholder + swap-in cue.' },
-    { id:'p4', ico:'🖼', t:'Ready-room environment graphics', nt:'Awaiting client direction on recovery-room branding. Blocked on CO#3 approval.',         stage:'intake',   appr:'none', tags:['scenic','Day 4'],       due:'2026-04-17', owner:'K. Oliver', depends:'BLOCKED · no brief yet. Ready-room build dead without this.', blocked:true },
-    { id:'p5', ico:'🏷', t:'Speaker name plates',        nt:'Designing from current rundown · will lock once RSVPs final.',                                 stage:'design',   appr:'pend', tags:['scenic','playback'],    due:'2026-04-14', owner:'K. Oliver', depends:'Locks onto lower-third template · changes mean LD cue re-program.' },
-    { id:'p6', ico:'🪧', t:'Stage scenic · Marquee set', nt:'CAD rev3 · LED header fly frame + split traveler. Fabrication tracking.',                     stage:'build',    appr:'appr', tags:['scenic','fabrication'], due:'2026-04-09', owner:'L. Wu',     depends:'Ships with Truck 1 · any fab slip moves load-in start.' },
-    { id:'p7', ico:'📐', t:'Stage drawing (rev 3)',      nt:'Client review requested · pending sign-off. Blocking for Rigging final.',                     stage:'review',   appr:'pend', tags:['approval','handoff'],   due:'2026-04-13', owner:'TD · C. Taylor', depends:'Gates rigging plot finalize. Hold plot releases if not signed by 4/13.' },
-    { id:'p8', ico:'🎨', t:'Lower-third templates',      nt:'Template locked · name plates generated from rundown.',                                        stage:'approved', appr:'appr', tags:['playback'],              due:'2026-04-09', owner:'K. Oliver', depends:'Feeds every speaker intro cue · now reusable across days.' }
+    { id:'p1', ico:'🎬', t:'Opener package',             nt:'30-sec client-branded opener · QLab master locked. Final render delivered.',                    stage:'approved', appr:'appr', tags:['playback','QLab'],     due:'2026-04-10', owner:'K. Oliver', depends:'Finishes before tech rehearsal · on master drive for T2 load-in.',                                          impacts:['flow','td'] },
+    { id:'p2', ico:'🏆', t:'Awards show graphics',       nt:'Category slates · winner-name reveal package · trophy lower-thirds. Client sign-off 4/12.',     stage:'approved', appr:'appr', tags:['playback','Day 4'],     due:'2026-04-12', owner:'K. Oliver', depends:'Unblocks Awards cue build in Show Flow · V1 loaded to E2 preset 9.',                                         impacts:['flow','portal'] },
+    { id:'p3', ico:'📺', t:'Sponsor loop (25 assets)',   nt:'Client files received 4/15 (late) · assembly in progress. Will ride into Day-1 pre-show.',     stage:'build',    appr:'pend', tags:['playback','Day 1'],     due:'2026-04-16', owner:'K. Oliver', depends:'Tight · if misses 4/16 cutoff, Day-1 pre-show runs placeholder + swap-in cue.',                              impacts:['schedule','flow','approval'] },
+    { id:'p4', ico:'🖼', t:'Ready-room environment graphics', nt:'Awaiting client direction on recovery-room branding. Blocked on CO#3 approval.',         stage:'intake',   appr:'none', tags:['scenic','Day 4'],       due:'2026-04-17', owner:'K. Oliver', depends:'BLOCKED · no brief yet. Ready-room build dead without this.',                                               impacts:['schedule','td','approval'], blocked:true },
+    { id:'p5', ico:'🏷', t:'Speaker name plates',        nt:'Designing from current rundown · will lock once RSVPs final.',                                 stage:'design',   appr:'pend', tags:['scenic','playback'],    due:'2026-04-14', owner:'K. Oliver', depends:'Locks onto lower-third template · changes mean LD cue re-program.',                                         impacts:['flow'] },
+    { id:'p6', ico:'🪧', t:'Stage scenic · Marquee set', nt:'CAD rev3 · LED header fly frame + split traveler. Fabrication tracking.',                     stage:'build',    appr:'appr', tags:['scenic','fabrication'], due:'2026-04-09', owner:'L. Wu',     depends:'Ships with Truck 1 · any fab slip moves load-in start.',                                                       impacts:['schedule','td'] },
+    { id:'p7', ico:'📐', t:'Stage drawing (rev 3)',      nt:'Client review requested · pending sign-off. Blocking for Rigging final.',                     stage:'review',   appr:'pend', tags:['approval','handoff'],   due:'2026-04-13', owner:'TD · C. Taylor', depends:'Gates rigging plot finalize. Hold plot releases if not signed by 4/13.',                                 impacts:['schedule','td','approval'] },
+    { id:'p8', ico:'🎨', t:'Lower-third templates',      nt:'Template locked · name plates generated from rundown.',                                        stage:'approved', appr:'appr', tags:['playback'],              due:'2026-04-09', owner:'K. Oliver', depends:'Feeds every speaker intro cue · now reusable across days.',                                                   impacts:['flow'] }
   ];
   const pieces = JSON.parse(sessionStorage.getItem(CW_KEY) || 'null') || seed;
 
@@ -307,7 +309,32 @@
 
   function renderPieces(){
     const apprCopy = { pend:'Pending', appr:'Approved', rev:'Revision', none:'—' };
-    document.getElementById('cw-pieces').innerHTML = pieces.map(p => `
+    // Impact chip labels · describe the cross-surface consequence
+    // rather than just listing a linked page.
+    const impactCopy = {
+      schedule: { lbl:'⚡ Impacts Schedule', cls:'dep',  href:p => `production-schedule.html?project=${encodeURIComponent(proj.code)}` },
+      td:       { lbl:'⚡ Blocks TD Package', cls:'blk', href:p => `td-package.html?project=${encodeURIComponent(proj.code)}` },
+      flow:     { lbl:'⚡ Drives Show Flow',  cls:'dep',  href:p => `show-flow.html?project=${encodeURIComponent(proj.code)}` },
+      portal:   { lbl:'⚡ Visible to Client', cls:'dep',  href:p => `client-portal.html?project=${encodeURIComponent(proj.code)}` },
+      approval: { lbl:'⚡ Pending Client Approval', cls:'blk', href:p => `client-portal.html?project=${encodeURIComponent(proj.code)}` }
+    };
+
+    document.getElementById('cw-pieces').innerHTML = pieces.map(p => {
+      // Only show "Blocks TD Package" when the piece is actually blocking TD
+      // (blocked / intake / revision / pending-in-build). Otherwise show "Feeds TD Package".
+      const blocksTD = (p.impacts || []).includes('td') && (p.blocked || p.stage === 'intake' || p.appr === 'rev' || (p.appr === 'pend' && p.stage !== 'approved'));
+      const tdChip = (p.impacts || []).includes('td')
+        ? `<a href="td-package.html?project=${encodeURIComponent(proj.code)}" class="cw-tag ${blocksTD?'blk':'dep'}" style="text-decoration:none;">⚡ ${blocksTD ? 'Blocks' : 'Feeds'} TD Package</a>`
+        : '';
+      const apprChip = (p.impacts || []).includes('approval') && p.appr === 'pend'
+        ? `<a href="client-portal.html?project=${encodeURIComponent(proj.code)}" class="cw-tag blk" style="text-decoration:none;">⚡ Pending Client Approval</a>`
+        : '';
+      const otherChips = (p.impacts || []).filter(k => k !== 'td' && k !== 'approval').map(k => {
+        const m = impactCopy[k]; if(!m) return '';
+        return `<a href="${m.href(p)}" class="cw-tag ${m.cls}" style="text-decoration:none;">${m.lbl}</a>`;
+      }).join('');
+
+      return `
       <div class="cw-piece st-${p.stage}">
         <div class="ico">${p.ico}</div>
         <div>
@@ -317,6 +344,7 @@
             ${p.blocked ? '<span class="cw-tag blk">BLOCKED</span>' : ''}
           </div>
           <div class="nt">${PCG.escapeHtml(p.nt)}</div>
+          <div class="tags" style="margin-top: 6px;">${tdChip}${apprChip}${otherChips}</div>
           <div class="meta">Owner · ${PCG.escapeHtml(p.owner)} · Due ${PCG.fmtShort(p.due)}</div>
         </div>
         <div class="right">
@@ -324,7 +352,7 @@
           <span class="cw-appr ${p.appr}">${apprCopy[p.appr]}</span>
         </div>
       </div>
-    `).join('');
+    `;}).join('');
 
     // Clicking the stage pill advances the piece.
     document.querySelectorAll('.cw-stage-pill[data-id]').forEach(el => el.addEventListener('click', () => {

@@ -78,6 +78,7 @@
     { label:'▍ Project Management', primary:true, items:[
       { id:'pm-home',       label:'Dashboard (Work)',    href:'pm-home.html',                               icon:'⌂', groups:'*' },
       { id:'pif',           label:'＋ New · PIF',         href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
+      { id:'system-builder',      label:'System Builder · Design & Scope', href:'system-builder.html',                icon:'🧩', groups:'*' },
       { id:'show-center',         label:'Show Command Center',   href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
       { id:'production-schedule', label:'Production Schedule',   href:'production-schedule.html?project=LCE-2026',  icon:'🗂', groups:'*' },
       { id:'show-flow',           label:'Show Flow · Cue Grid',  href:'show-flow.html?project=LCE-2026',            icon:'🎬', groups:'*' },

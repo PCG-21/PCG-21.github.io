@@ -537,6 +537,15 @@
 
         <!-- SECTIONS (all rendered — tabs scroll-jump) -->
 
+        <!-- APPROVAL WAITS · consistent language across surfaces -->
+        <section class="scc-section" id="sec-waits" style="margin-bottom: var(--sp-3);">
+          <div id="approval-waits" style="display: none; padding: 10px 14px; border-radius: var(--r-md); background: linear-gradient(90deg, rgba(245,176,65,0.08), transparent 70%); border: 1px solid rgba(245,176,65,0.3); border-left: 3px solid var(--status-amber); gap: 10px; flex-wrap: wrap; align-items: center;">
+            <span class="await-badge">Waiting · clear before show</span>
+            <span id="approval-waits-body" style="font-size: 12.5px; color: var(--text-primary); flex: 1; min-width: 240px;"></span>
+            <div id="approval-waits-chips" style="display:flex; gap: 6px; flex-wrap: wrap;"></div>
+          </div>
+        </section>
+
         <!-- SHOW HEALTH — the single biggest "is this show OK?" signal. -->
         <section class="scc-section" id="sec-health">
           <div id="health"></div>
@@ -547,6 +556,42 @@
           <div class="card">
             <div class="card-header"><div class="title">Today on this show</div><span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">Daily work experience · replaces the spreadsheet</span></div>
             <div class="card-body"><div class="daily-strip" id="daily-strip"></div></div>
+          </div>
+        </section>
+
+        <!-- PM FINANCIAL SNAPSHOT — light · no margin / deep finance -->
+        <section class="scc-section" id="sec-finance">
+          <div class="card">
+            <div class="card-header">
+              <div class="title">💰 Financial Snapshot</div>
+              <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);">PM view · commercial posture · margin lives in Finance Dashboard</span>
+            </div>
+            <div class="card-body">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                <div style="padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-0); border: 1px solid var(--border); border-left: 3px solid var(--status-green);">
+                  <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary);">Quoted scope</div>
+                  <div style="font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">$249,687</div>
+                  <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Approved V3 quote · signed</div>
+                </div>
+                <div style="padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-0); border: 1px solid var(--border); border-left: 3px solid var(--pcg-bright-blue);">
+                  <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary);">Approved changes</div>
+                  <div style="font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">+$31,200</div>
+                  <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">CO #1 · #2 · #3 (Awards ready-room)</div>
+                </div>
+                <div style="padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-0); border: 1px solid var(--border); border-left: 3px solid var(--status-amber);">
+                  <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--status-amber);">Pending CO</div>
+                  <div style="font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">$0</div>
+                  <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">No open change orders</div>
+                </div>
+                <div style="padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-0); border: 1px solid var(--border); border-left: 3px solid var(--pcg-spotlight-purple);">
+                  <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-spotlight-purple);">Risk note</div>
+                  <div style="font-size: 13px; color: var(--text-primary); margin-top: 4px; line-height: 1.5;">Sponsor loop late delivery could push a field add — watch.</div>
+                </div>
+              </div>
+              <div style="margin-top: 10px; font-size: 11px; color: var(--text-tertiary); padding-top: 8px; border-top: 1px dashed var(--border);">
+                <span class="sys-nudge">⚡ Pulled from Quote + CO log</span> Margin / cost visibility gated to Finance Dashboard.
+              </div>
+            </div>
           </div>
         </section>
 
@@ -796,6 +841,15 @@
           ${td ? `<span class="mi"><span class="k">TD</span> ${PCG.escapeHtml(td.name)}</span>` : ''}
           ${creative ? `<span class="mi"><span class="k">Creative</span> ${PCG.escapeHtml(creative.name)}</span>` : ''}
           <span class="mi">${PCG.lifecyclePill(statusLabel)}</span>
+        </div>
+        <!-- Ownership lanes · who owns what across this show -->
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); align-self: center;">Ownership</span>
+          <span style="padding: 3px 10px; border-radius: var(--r-pill); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.04em; background: rgba(245,176,65,0.14); color: var(--status-amber); border: 1px solid rgba(245,176,65,0.35); font-weight: 700;">AE → Sales</span>
+          <span style="padding: 3px 10px; border-radius: var(--r-pill); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.04em; background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue); border: 1px solid rgba(1,153,253,0.35); font-weight: 700;">PM → Owner</span>
+          <span style="padding: 3px 10px; border-radius: var(--r-pill); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.04em; background: rgba(231,76,60,0.14); color: var(--status-red); border: 1px solid rgba(231,76,60,0.35); font-weight: 700;">TD → Execution</span>
+          <span style="padding: 3px 10px; border-radius: var(--r-pill); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.04em; background: rgba(149,100,216,0.14); color: var(--pcg-spotlight-purple); border: 1px solid rgba(149,100,216,0.35); font-weight: 700;">Creative → Design</span>
+          <span style="padding: 3px 10px; border-radius: var(--r-pill); font-family: var(--font-display); font-size: 10px; letter-spacing: 0.04em; background: rgba(61,220,132,0.14); color: var(--status-green); border: 1px solid rgba(61,220,132,0.35); font-weight: 700;">Warehouse → Logistics</span>
         </div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -2171,12 +2225,44 @@
       </a>`).join('');
   }
 
+  // Approval-waits strip · aggregate every pending thing across surfaces.
+  function renderApprovalWaits(){
+    const approvals = (proj.approvals || []).filter(a => a.status === 'pending');
+    const openDecisions = decisions.filter(d => d.state === 'open').length;
+    // Creative pend count · read from the same seed creative-workflow uses
+    const cwKey = `pcg_creative_${proj.code}`;
+    const cw = JSON.parse(sessionStorage.getItem(cwKey) || '[]');
+    const creativePend = (cw || []).filter(p => p.appr === 'pend' || p.appr === 'rev').length;
+
+    const lines = [];
+    const chips = [];
+    if(approvals.length){
+      lines.push(`<strong>${approvals.length}</strong> client approval${approvals.length===1?'':'s'} pending`);
+      chips.push('<span class="await-badge client">Waiting on client</span>');
+    }
+    if(openDecisions){
+      lines.push(`<strong>${openDecisions}</strong> decision${openDecisions===1?'':'s'} open`);
+      chips.push('<span class="await-badge td">Waiting on TD / PM</span>');
+    }
+    if(creativePend){
+      lines.push(`<strong>${creativePend}</strong> creative approval${creativePend===1?'':'s'} pending`);
+      chips.push('<span class="await-badge creative">Waiting on creative approval</span>');
+    }
+
+    const wrap = document.getElementById('approval-waits');
+    if(!lines.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+    document.getElementById('approval-waits-body').innerHTML = lines.join(' · ') + ' — clear these before the show opens.';
+    document.getElementById('approval-waits-chips').innerHTML = chips.join('');
+  }
+
   renderHealth();
   renderDaily();
   renderXShow();
   renderEchoes();
   renderDecisions();
   renderExecution();
+  renderApprovalWaits();
 
   // Highlight active tab on scroll (intersection observer)
   const sections = tabs.map(([id]) => document.getElementById(`sec-${id}`));

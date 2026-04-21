@@ -385,6 +385,12 @@
     <div id="cv-next"></div>
   </section>
 
+  <!-- SHOW FLOW · CLIENT VIEW · simplified high-level beats only -->
+  <section class="cv-section">
+    <h2>Show Flow <span class="count">Client view · high-level beats</span></h2>
+    <div id="cv-flow-client"></div>
+  </section>
+
   <!-- YOUR SHOW PACKAGE -->
   <section class="cv-section">
     <h2>Your show package<span class="count">What PCG is delivering</span></h2>
@@ -723,6 +729,40 @@
             <div style="font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.55); white-space: nowrap;">${PCG.escapeHtml(s.when)}</div>
           </div>`).join('')}
       </div>`;
+  })();
+
+  // ---------- SHOW FLOW · CLIENT VIEW ----------
+  // Simplified high-level beats only. No cue codes, no STBY/GO, no
+  // operator notes — this is the "what happens on show day" shape the
+  // client actually needs to see.
+  (function renderClientFlow(){
+    const beats = [
+      { t:'07:30 AM', w:'Doors open · walk-in music',          nt:'Greeters at doors · audience settling' },
+      { t:'08:00 AM', w:'Opening · General Session',            nt:'Client-branded opener + CEO opening remarks' },
+      { t:'10:00 AM', w:'Morning keynotes',                     nt:'Back-to-back speaker block with IMAG coverage' },
+      { t:'11:45 AM', w:'Break · sponsor loop',                 nt:'Lunch in pre-function · back at 12:45' },
+      { t:'02:00 PM', w:'Afternoon GS + breakouts',             nt:'Main stage block + breakout rooms active' },
+      { t:'05:30 PM', w:'Cocktail reception',                   nt:'Ambient reinforcement + DJ patch' },
+      { t:'07:30 PM', w:'Awards show (Day 4)',                  nt:'Awards package · follow-spots · winner reveals' },
+      { t:'08:20 PM', w:'Closing · walk-out',                   nt:'Outro video · walk-out music · egress' }
+    ];
+    document.getElementById('cv-flow-client').innerHTML = `
+      <div class="cv-flow" style="padding: 0;">
+        ${beats.map(b => `
+          <div class="cv-flow-row">
+            <div class="cv-flow-when">${PCG.escapeHtml(b.t)}</div>
+            <div class="cv-flow-dot"></div>
+            <div>
+              <div class="cv-flow-what">${PCG.escapeHtml(b.w)}</div>
+              <div class="cv-flow-meta">${PCG.escapeHtml(b.nt)}</div>
+            </div>
+            <div class="cv-flow-tag">BEAT</div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top: 10px; padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); font-size: 12px; color: rgba(255,255,255,0.6);">
+        The full cue-by-cue grid is owned internally by PCG's show-caller team. This client view shows the high-level beats only · times adjust as the show develops.
+      </div>
+    `;
   })();
 
   // ---------- YOUR SHOW PACKAGE (what PCG is delivering) ----------
