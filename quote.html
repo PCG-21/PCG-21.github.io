@@ -234,6 +234,212 @@
         <div class="qb-totals" id="qb-totals"></div>
       </div>
 
+      <!-- ==============================================================
+           🧩 SYSTEMS IN THIS QUOTE · first-class system instances.
+           Every director-defined system inserted via the guided flow
+           lands here as a live card. Reconfigure safely, view the
+           rule-attributed breakdown, see director authority.
+           ============================================================== -->
+      <div class="card" id="sys-instances-card" style="margin-top: var(--sp-4); display: none;">
+        <div class="card-header">
+          <div class="title">🧩 Systems in this quote</div>
+          <span class="muted" style="margin-left:auto; font-size:var(--fs-xs);" id="sys-instances-count">—</span>
+        </div>
+        <div class="card-body" id="sys-instances-body"></div>
+      </div>
+
+      <!-- Breakdown modal · rule-attributed gear + labor for an instance -->
+      <div class="modal-backdrop" id="sbk-bd" onclick="closeBreakdown()"></div>
+      <div class="modal-box" id="sbk-box" style="max-width:860px; width:calc(100vw - 48px); max-height: 92vh; overflow:auto;">
+        <button class="close" onclick="closeBreakdown()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+        <div id="sbk-body"></div>
+      </div>
+
+      <style>
+        /* ---------- System instance cards ---------- */
+        .sys-inst {
+          padding: 16px 18px; border-radius: var(--r-md);
+          background: var(--surface-1); border: 1px solid var(--border);
+          margin-bottom: var(--sp-3);
+          border-left: 3px solid var(--inst-color, var(--pcg-bright-blue));
+          position: relative;
+        }
+        .sys-inst .head {
+          display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center;
+          margin-bottom: 10px;
+        }
+        .sys-inst .head .ico {
+          width: 40px; height: 40px; border-radius: 10px;
+          background: var(--inst-bg); color: var(--inst-color);
+          display: grid; place-items: center; font-size: 20px;
+        }
+        .sys-inst .name { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-primary); }
+        .sys-inst .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 2px; line-height: 1.6; }
+        .sys-inst .meta .v { color: var(--inst-color); font-weight: 700; }
+        .sys-inst .meta .d { color: var(--text-secondary); }
+        .sys-inst .pin {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 2px 8px; border-radius: var(--r-pill);
+          background: rgba(61,220,132,0.16); color: var(--status-green);
+          border: 1px solid rgba(61,220,132,0.35);
+          font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em;
+          text-transform: uppercase; font-weight: 700; margin-left: 6px;
+        }
+        .sys-inst .actions { display: flex; gap: 6px; }
+        .sys-inst .actions button {
+          padding: 6px 11px; border-radius: var(--r-pill);
+          border: 1px solid var(--border); background: var(--surface-2);
+          color: var(--text-secondary); cursor: pointer;
+          font-family: var(--font-display); font-size: 11px; letter-spacing: 0.04em; font-weight: 600;
+        }
+        .sys-inst .actions button:hover { border-color: var(--pcg-bright-blue); color: var(--pcg-bright-blue); }
+        .sys-inst .actions button.primary { background: var(--pcg-bright-blue); color: #001a2a; border-color: var(--pcg-bright-blue); }
+
+        .sys-inst .answers {
+          display: flex; flex-wrap: wrap; gap: 6px;
+          padding: 8px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border);
+          margin-bottom: 10px;
+        }
+        .sys-inst .ans {
+          font-family: var(--font-mono); font-size: 10.5px;
+          padding: 2px 8px; border-radius: var(--r-pill);
+          background: var(--surface-2); border: 1px solid var(--border);
+          color: var(--text-secondary);
+        }
+        .sys-inst .ans b { color: var(--text-primary); font-weight: 600; }
+
+        .sys-inst .summary {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+        }
+        .sys-inst .sm {
+          padding: 8px 10px; border-radius: var(--r-sm);
+          background: var(--surface-0); border: 1px solid var(--border);
+        }
+        .sys-inst .sm .lbl {
+          font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em;
+          text-transform: uppercase; color: var(--text-tertiary);
+        }
+        .sys-inst .sm .v {
+          font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 1px;
+        }
+        .sys-inst .rule-note {
+          margin-top: 8px; font-size: 11px; color: var(--pcg-spotlight-purple); font-family: var(--font-mono);
+        }
+        .sys-inst[data-dept="video"]    { --inst-color: #0199fd; --inst-bg: rgba(1,153,253,0.14); }
+        .sys-inst[data-dept="audio"]    { --inst-color: #f5b041; --inst-bg: rgba(245,176,65,0.14); }
+        .sys-inst[data-dept="led"]      { --inst-color: #9564d8; --inst-bg: rgba(149,100,216,0.14); }
+        .sys-inst[data-dept="lighting"] { --inst-color: #9564d8; --inst-bg: rgba(149,100,216,0.14); }
+        .sys-inst[data-dept="general"]  { --inst-color: #3ddc84; --inst-bg: rgba(61,220,132,0.14); }
+
+        /* ---------- Guardrails · required-rule lock chip ---------- */
+        .gsi-rule.required { border-left-color: var(--status-red); background: linear-gradient(135deg, rgba(231,76,60,0.06), transparent 70%), var(--surface-0); }
+        .gsi-rule .lock-chip {
+          display: inline-flex; align-items: center; gap: 4px;
+          margin-left: 6px; font-family: var(--font-display); font-size: 9px;
+          letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+          padding: 1px 6px; border-radius: var(--r-pill);
+          background: rgba(231,76,60,0.14); color: var(--status-red);
+          border: 1px solid rgba(231,76,60,0.35);
+        }
+        .gsi-rule .lock-chip::before { content: "🔒"; margin-right: 2px; }
+        .gsi-break-warn {
+          margin-top: 12px; padding: 12px 14px;
+          border-radius: var(--r-sm);
+          background: linear-gradient(135deg, rgba(231,76,60,0.10), transparent 70%);
+          border: 1px solid rgba(231,76,60,0.4); border-left: 3px solid var(--status-red);
+        }
+        .gsi-break-warn h4 {
+          margin: 0 0 8px; font-family: var(--font-display); font-size: 11px;
+          letter-spacing: 0.12em; text-transform: uppercase; color: var(--status-red);
+        }
+        .gsi-break-warn ul { margin: 0; padding: 0; list-style: none; }
+        .gsi-break-warn li {
+          padding: 3px 0; font-size: 12.5px; color: var(--text-primary);
+          display: flex; gap: 8px;
+        }
+        .gsi-break-warn li::before { content: "🛑"; flex: none; }
+
+        /* ---------- Reconfigure delta panel ---------- */
+        .gsi-delta {
+          margin: 10px 0 16px; padding: 14px 16px;
+          border-radius: var(--r-sm);
+          background: linear-gradient(135deg, rgba(1,153,253,0.08), rgba(149,100,216,0.05) 70%), var(--surface-0);
+          border: 1px solid rgba(1,153,253,0.35); border-left: 3px solid var(--pcg-bright-blue);
+        }
+        .gsi-delta h4 {
+          margin: 0 0 8px; font-family: var(--font-display); font-size: 11px;
+          letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-bright-blue);
+        }
+        .gsi-delta .row {
+          display: grid; grid-template-columns: 60px 1fr; gap: 10px;
+          padding: 4px 0; font-size: 12.5px; color: var(--text-primary);
+          border-bottom: 1px dashed var(--border);
+        }
+        .gsi-delta .row:last-child { border-bottom: 0; }
+        .gsi-delta .tg {
+          font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+          text-transform: uppercase; font-weight: 700;
+        }
+        .gsi-delta .tg.add   { color: var(--status-green); }
+        .gsi-delta .tg.rem   { color: var(--status-red); }
+        .gsi-delta .tg.same  { color: var(--text-tertiary); }
+
+        /* ---------- Breakdown modal ---------- */
+        .sbk-head {
+          display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center;
+          padding-bottom: 14px; margin-bottom: 16px;
+          border-bottom: 1px solid var(--border);
+        }
+        .sbk-head .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; }
+        .sbk-head h3 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+        .sbk-head .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+        .sbk-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 720px) { .sbk-two { grid-template-columns: 1fr; } }
+
+        .sbk-list-card {
+          padding: 14px 16px; border-radius: var(--r-sm);
+          background: var(--surface-0); border: 1px solid var(--border);
+        }
+        .sbk-list-card h4 {
+          margin: 0 0 10px; font-family: var(--font-display); font-size: 11px;
+          letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary);
+          display: flex; align-items: center; gap: 8px;
+        }
+        .sbk-list-card h4 .cnt {
+          margin-left: auto; font-family: var(--font-mono); font-size: 10.5px;
+          padding: 1px 7px; border-radius: var(--r-pill);
+          background: var(--surface-2); border: 1px solid var(--border); color: var(--text-tertiary); letter-spacing: 0;
+        }
+        .sbk-row {
+          display: grid; grid-template-columns: 1fr auto; gap: 10px;
+          padding: 8px 0; border-bottom: 1px dashed var(--border);
+        }
+        .sbk-row:last-child { border-bottom: 0; }
+        .sbk-row .item {
+          font-size: 12.5px; color: var(--text-primary); font-weight: 500;
+        }
+        .sbk-row .attr {
+          font-size: 10.5px; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: 2px;
+        }
+        .sbk-row .origin {
+          font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em;
+          text-transform: uppercase; font-weight: 700;
+          padding: 2px 7px; border-radius: var(--r-pill); white-space: nowrap;
+        }
+        .sbk-row .origin.base { background: var(--surface-2); color: var(--text-tertiary); border: 1px solid var(--border); }
+        .sbk-row .origin.rule { background: rgba(149,100,216,0.16); color: var(--pcg-spotlight-purple); border: 1px solid rgba(149,100,216,0.35); }
+        .sbk-row .origin.req  { background: rgba(231,76,60,0.14); color: var(--status-red); border: 1px solid rgba(231,76,60,0.35); }
+
+        .sbk-foot {
+          margin-top: 14px; padding: 10px 14px;
+          border-radius: var(--r-sm);
+          background: rgba(149,100,216,0.06); border: 1px dashed rgba(149,100,216,0.3);
+          font-size: 11.5px; color: var(--text-secondary); line-height: 1.55;
+        }
+        .sbk-foot strong { color: var(--pcg-spotlight-purple); }
+      </style>
+
       <!-- Availability + approval sidebar -->
       <div class="split" style="margin-top:var(--sp-5);">
         <div>
@@ -1381,14 +1587,40 @@
   // GUIDED SYSTEM INSERT · AE quote-time flow
   // Uses director-authored SYSTEM_DEFS (from assets/system-defs.js).
   // Stepper → rules fire live → downstream output summary → Insert.
+  // In Reconfigure mode · prefill answers from a stored instance +
+  // show a delta panel comparing before-vs-after rule emits.
   // ==============================================================
-  const gsiState = { sysId: null, answers: {} };
+  const INST_KEY = `pcg_quote_systems_${qid}`;
+  const loadInstances = () => { try { return JSON.parse(sessionStorage.getItem(INST_KEY) || '[]') || []; } catch { return []; } };
+  const saveInstances = (arr) => sessionStorage.setItem(INST_KEY, JSON.stringify(arr || []));
 
-  window.openGsi = (sysId) => {
+  const gsiState = { sysId: null, answers: {}, mode: 'insert', instanceId: null, priorAnswers: null };
+
+  window.openGsi = (sysId, instanceId) => {
     const sys = PCG.getSystemDef(sysId); if(!sys) return;
     gsiState.sysId = sysId;
-    gsiState.answers = PCG.defaultAnswers(sys);
-    modal.close(); // close the outer picker
+    if(instanceId){
+      // Reconfigure mode · prefill from stored instance
+      const insts = loadInstances();
+      const inst = insts.find(i => i.id === instanceId);
+      if(inst){
+        gsiState.mode = 'reconfigure';
+        gsiState.instanceId = instanceId;
+        gsiState.priorAnswers = Object.assign({}, inst.answers);
+        gsiState.answers = Object.assign({}, inst.answers);
+      } else {
+        gsiState.mode = 'insert';
+        gsiState.instanceId = null;
+        gsiState.priorAnswers = null;
+        gsiState.answers = PCG.defaultAnswers(sys);
+      }
+    } else {
+      gsiState.mode = 'insert';
+      gsiState.instanceId = null;
+      gsiState.priorAnswers = null;
+      gsiState.answers = PCG.defaultAnswers(sys);
+    }
+    modal.close(); // close the outer picker if open
     document.getElementById('gsi-bd').classList.add('show');
     document.getElementById('gsi-box').classList.add('show');
     renderGsi();
@@ -1418,16 +1650,72 @@
         </div>
       </div>`).join('');
 
+    // Every `add` severity rule is REQUIRED · director enforces it
+    // at quote-time. We visibly lock them so the AE knows these
+    // cannot be omitted.
     const rulesHtml = (adds.length + warns.length)
-      ? adds.concat(warns).map(r => `
-          <div class="gsi-rule ${r.type || r.severity}">
+      ? adds.concat(warns).map(r => {
+          const isRequired = r.severity === 'add';
+          const kind = r.type === 'labor' ? 'labor' : r.type === 'warn' ? 'warn' : 'gear';
+          return `
+          <div class="gsi-rule ${kind} ${isRequired ? 'required' : ''}">
             <span class="rico">${r.type === 'labor' ? '👥' : r.type === 'warn' ? '⚠' : '⚙'}</span>
             <div>
-              <strong>${PCG.escapeHtml(r.item)}</strong><span class="auto-chip">${r.severity === 'warn' ? 'Warning' : 'Added automatically'}</span>
+              <strong>${PCG.escapeHtml(r.item)}</strong>
+              ${isRequired
+                ? '<span class="lock-chip">Required by system standard</span>'
+                : '<span class="auto-chip">Warning</span>'}
               <span class="why">↳ ${PCG.escapeHtml(r.why)}</span>
             </div>
-          </div>`).join('')
+          </div>`;
+        }).join('')
       : '<div style="font-size: 12px; color: var(--text-tertiary);">No conditional rules have fired yet — base package only.</div>';
+
+    // "Removing this will break:" warning · surfaces when >=2 critical
+    // rules are active (arena delay, broadcast RF, processor redundancy,
+    // 3+ camera shader). Demo-safe heuristic per system.
+    const breaksList = computeBreaks(sys, a);
+    const breakWarnHtml = breaksList.length >= 1 ? `
+      <div class="gsi-break-warn">
+        <h4>🛑 Removing this will break:</h4>
+        <ul>${breaksList.map(b => `<li>${PCG.escapeHtml(b)}</li>`).join('')}</ul>
+      </div>` : '';
+
+    // Reconfigure delta panel · compute before/after item diff
+    let deltaHtml = '';
+    if(gsiState.mode === 'reconfigure' && gsiState.priorAnswers){
+      const priorAdds = PCG.evaluateSystem(sys, gsiState.priorAnswers).adds;
+      const keyOf = (x) => `${x.type}::${x.item}`;
+      const priorMap = new Set(priorAdds.map(keyOf));
+      const nextMap  = new Set(adds.map(keyOf));
+      const added   = adds.filter(x => !priorMap.has(keyOf(x)));
+      const removed = priorAdds.filter(x => !nextMap.has(keyOf(x)));
+      const kept    = adds.filter(x => priorMap.has(keyOf(x)));
+      const rows = []
+        .concat(added.map(x => ({ tg:'add', t:'+', cls:'add', item:x })))
+        .concat(removed.map(x => ({ tg:'rem', t:'−', cls:'rem', item:x })));
+      if(rows.length){
+        deltaHtml = `
+          <div class="gsi-delta">
+            <h4>⚡ What will change · reconfigure delta</h4>
+            ${rows.map(r => `
+              <div class="row">
+                <span class="tg ${r.cls}">${r.tg === 'add' ? 'Added' : 'Removed'}</span>
+                <span>${r.item.type === 'labor' ? '👥' : r.item.type === 'warn' ? '⚠' : '⚙'} <strong>${PCG.escapeHtml(r.item.item)}</strong><br><span style="font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">${PCG.escapeHtml(r.item.why)}</span></span>
+              </div>`).join('')}
+            <div class="row" style="border-bottom: 0; padding-top: 8px;">
+              <span class="tg same">Unchanged</span>
+              <span style="color: var(--text-tertiary);">${kept.length} item${kept.length===1?'':'s'} preserved from prior configuration · quote lines held as-is</span>
+            </div>
+          </div>`;
+      } else {
+        deltaHtml = `
+          <div class="gsi-delta">
+            <h4>⚡ What will change · reconfigure delta</h4>
+            <div style="font-size: 12.5px; color: var(--text-tertiary);">Answers match the prior configuration · nothing to change.</div>
+          </div>`;
+      }
+    }
 
     const baseLaborN = sys.base.labor.length;
     const baseGearN  = sys.base.gear.length;
@@ -1451,9 +1739,12 @@
 
       <div class="gsi-steps">${stepsHtml}</div>
 
+      ${deltaHtml}
+
       <div class="gsi-rules">
-        <h4>⚙ Rules fired · automatic inclusions</h4>
+        <h4>⚙ Rules fired · automatic inclusions · <span style="font-family: var(--font-mono); letter-spacing: 0; text-transform: none; font-size: 11px; color: var(--text-tertiary);">director-enforced</span></h4>
         ${rulesHtml}
+        ${breakWarnHtml}
       </div>
 
       <div class="gsi-output">
@@ -1470,8 +1761,8 @@
 
       <div class="gsi-actions">
         <button class="btn ghost" onclick="closeGsi()">Cancel</button>
-        <button class="btn primary" id="gsi-commit">✓ Insert system into quote</button>
-        <span class="note">Director rules enforce required gear + labor · nothing critical gets forgotten.</span>
+        <button class="btn primary" id="gsi-commit">${gsiState.mode === 'reconfigure' ? '✓ Apply changes · update instance' : '✓ Insert system into quote'}</button>
+        <span class="note">${gsiState.mode === 'reconfigure' ? 'Reconfigure safely · existing quote lines update in place.' : 'Director rules enforce required gear + labor · nothing critical gets forgotten.'}</span>
       </div>
     `;
 
@@ -1491,21 +1782,218 @@
         sessionStorage.setItem(key, JSON.stringify(prev));
       } catch(e){ /* no-op */ }
 
-      // Surface a confirmation (keeps parity with the existing flat insertSystem feedback)
-      const summary = `✓ ${sys.name} inserted into quote\n\n`
-        + `$${o.quote.toLocaleString()} added (pinned to v${sys.version})\n`
+      // Persist the instance · INSERT creates a new one · RECONFIGURE
+      // updates in place. The card list reads from this store on render.
+      const insts = loadInstances();
+      const finalAdds = adds.slice();
+      const outputs = o;
+      if(gsiState.mode === 'reconfigure' && gsiState.instanceId){
+        const idx = insts.findIndex(i => i.id === gsiState.instanceId);
+        if(idx >= 0){
+          insts[idx] = Object.assign({}, insts[idx], {
+            answers: Object.assign({}, a),
+            adds: finalAdds,
+            outputs,
+            updatedAt: new Date().toISOString(),
+            reconfigured: (insts[idx].reconfigured || 0) + 1
+          });
+        }
+      } else {
+        // New instance · label numbered within this sysDef scope
+        const seq = insts.filter(i => i.sysId === sys.id).length + 1;
+        insts.push({
+          id: 'si_' + Math.random().toString(36).slice(2, 9),
+          sysId: sys.id,
+          version: sys.version,
+          label: `Instance #${seq}`,
+          answers: Object.assign({}, a),
+          adds: finalAdds,
+          outputs,
+          dept: sys.dept,
+          createdAt: new Date().toISOString(),
+          reconfigured: 0
+        });
+      }
+      saveInstances(insts);
+      renderSystemInstances();
+
+      // Surface a confirmation
+      const verb = gsiState.mode === 'reconfigure' ? 'reconfigured in this quote' : 'inserted into quote';
+      const summary = `✓ ${sys.name} ${verb}\n\n`
+        + `$${outputs.quote.toLocaleString()} ${gsiState.mode === 'reconfigure' ? 'adjusted' : 'added'} (pinned to v${sys.version})\n`
         + `${baseLaborN + addLaborN} labor positions · ${baseGearN + addGearN} gear items\n`
-        + `${adds.length} rule-driven lines added automatically\n\n`
+        + `${finalAdds.length} rule-driven lines${gsiState.mode === 'reconfigure' ? ' recomputed' : ' added automatically'}\n\n`
         + `Propagated:\n`
-        + `· +${o.schedule} Production Schedule rows\n`
-        + `· ${o.flow ? '+' + o.flow + ' Show Flow cues' : 'Composite — sub-systems drive cues'}\n`
-        + `· ${o.warehouse} warehouse items\n`
+        + `· ${gsiState.mode === 'reconfigure' ? 'Updated' : '+' + outputs.schedule} Production Schedule rows\n`
+        + `· ${outputs.flow ? (gsiState.mode === 'reconfigure' ? 'Updated ' : '+') + outputs.flow + ' Show Flow cues' : 'Composite — sub-systems drive cues'}\n`
+        + `· ${outputs.warehouse} warehouse items\n`
         + `· TD Package + Advance regenerated\n`
         + `· Client Portal "What changed" updated`;
       alert(summary);
       closeGsi();
     });
   }
+
+  // =================================================================
+  // "REMOVING THIS WILL BREAK:" · per-system critical dependency map.
+  // Demo-safe · derived from the current answers so the warnings read
+  // true as the AE toggles options.
+  // =================================================================
+  function computeBreaks(sys, a){
+    const list = [];
+    if(sys.id === 'imag'){
+      if((parseInt(a.cams)||0) >= 3) list.push('IMAG signal integrity · shader keeps iris + matrix consistent');
+      if(a.rec === 'rec' || a.rec === 'both') list.push('Recording chain · no Ki Pro means no ISO capture');
+      if(a.rec === 'live' || a.rec === 'both') list.push('Stream redundancy · no backup internet path = outage risk');
+      if(a.room === 'arena') list.push('Delay coverage · back-of-house audience loses IMAG');
+      if(a.room === 'arena') list.push('Processor redundancy · single-point failure on the main E2');
+    }
+    if(sys.id === 'led-wall'){
+      if(a.size === 'large') list.push('Processor redundancy · 30\'+ walls cannot run on one processor');
+      if(a.support === 'flown') list.push('Rigging load · fly frame needs a rig call or wall cannot go up');
+      if(a.app === 'scenic') list.push('Floor protection · scenic LED walks damage floor panels');
+      if(a.pitch === '5.9' || (a.app === 'scenic' && a.size === 'large')) list.push('Weatherproofing · outdoor tiles fail without covers');
+    }
+    if(sys.id === 'line-array'){
+      if(a.room === 'arena' || a.delay === 'yes') list.push('Delay coverage · back-of-room audience loses intelligibility');
+      if(a.wireless === 'broadcast') list.push('RF coordination · 16+ channels without spectrum scan = dropouts');
+      if(a.mon === 'wedge' || a.mon === 'both') list.push('Monitor mixing · a monitor engineer is non-negotiable with wedges');
+    }
+    if(sys.id === 'breakout' && (parseInt(a.count)||1) >= 5){
+      list.push('Crew safety · no floating lead means a solo tech during a break');
+    }
+    if(sys.id === 'gs-package' && a.awards === 'yes'){
+      list.push('Awards lighting · follow-spots are required for winner isolation');
+    }
+    return list;
+  }
+
+  // =================================================================
+  // SYSTEMS IN THIS QUOTE · first-class instance cards.
+  // Re-renders on every insert / reconfigure.
+  // =================================================================
+  function renderSystemInstances(){
+    const card = document.getElementById('sys-instances-card');
+    const body = document.getElementById('sys-instances-body');
+    const count = document.getElementById('sys-instances-count');
+    if(!card || !body) return;
+    const insts = loadInstances();
+    if(!insts.length){ card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    count.textContent = `${insts.length} system${insts.length === 1 ? '' : 's'} · director-enforced`;
+    body.innerHTML = insts.map(inst => {
+      const sys = PCG.getSystemDef(inst.sysId);
+      if(!sys) return '';
+      const baseLabor = sys.base.labor.length;
+      const baseGear = sys.base.gear.length;
+      const ruleLabor = (inst.adds || []).filter(x => x.type === 'labor').length;
+      const ruleGear  = (inst.adds || []).filter(x => x.type === 'gear').length;
+      const answerChips = Object.entries(inst.answers || {}).map(([k, v]) => {
+        const step = sys.steps.find(s => s.id === k);
+        const opt  = step && step.opts.find(o => o.v === v);
+        const lbl  = opt ? opt.lbl : v;
+        return `<span class="ans">${PCG.escapeHtml(step ? step.q.replace(/\?$/, '') : k)}: <b>${PCG.escapeHtml(lbl)}</b></span>`;
+      }).join('');
+      const recon = inst.reconfigured ? `<span class="muted" style="font-size: 10.5px; margin-left: 6px;">· reconfigured ${inst.reconfigured}×</span>` : '';
+      return `
+        <div class="sys-inst" data-dept="${sys.dept}">
+          <div class="head">
+            <div class="ico">${sys.ico}</div>
+            <div>
+              <div class="name">${PCG.escapeHtml(sys.name)} <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); font-weight: 400; margin-left: 4px;">${PCG.escapeHtml(inst.label)}</span><span class="pin">v${sys.version} pinned</span></div>
+              <div class="meta">Authored by <span class="d">${PCG.escapeHtml(sys.director)}</span> · ${PCG.escapeHtml(sys.directorTitle)} · ${PCG.escapeHtml(sys.deptLabel)}${recon}</div>
+            </div>
+            <div class="actions">
+              <button onclick="openGsi('${inst.sysId}','${inst.id}')" class="primary">🔄 Reconfigure</button>
+              <button onclick="openBreakdown('${inst.id}')">🔍 View breakdown</button>
+            </div>
+          </div>
+          <div class="answers">${answerChips}</div>
+          <div class="summary">
+            <div class="sm"><div class="lbl">Quote impact</div><div class="v">$${(inst.outputs && inst.outputs.quote || 0).toLocaleString()}</div></div>
+            <div class="sm"><div class="lbl">Labor positions</div><div class="v">${baseLabor + ruleLabor}</div></div>
+            <div class="sm"><div class="lbl">Gear items</div><div class="v">${baseGear + ruleGear}</div></div>
+            <div class="sm"><div class="lbl">Rules fired</div><div class="v">${(inst.adds || []).length}</div></div>
+          </div>
+          <div class="rule-note">⚡ Generated by director rules · ${ruleLabor} labor + ${ruleGear} gear added automatically · cannot be removed while this configuration stands</div>
+        </div>`;
+    }).join('');
+  }
+
+  // =================================================================
+  // BREAKDOWN MODAL · rule-attributed gear + labor for one instance.
+  // Shows base items and rule-added items separately · marks required.
+  // =================================================================
+  window.openBreakdown = (instanceId) => {
+    const insts = loadInstances();
+    const inst = insts.find(i => i.id === instanceId);
+    if(!inst) return;
+    const sys = PCG.getSystemDef(inst.sysId); if(!sys) return;
+    const pal = (PCG.DEPT_PALETTE||{})[sys.dept] || { color:'#0199fd', bg:'rgba(1,153,253,0.14)' };
+    const adds = inst.adds || [];
+    const gearAdds  = adds.filter(a => a.type === 'gear');
+    const laborAdds = adds.filter(a => a.type === 'labor');
+    const breaks = computeBreaks(sys, inst.answers || {});
+
+    const ruleLabel = (x) => x.ruleLabel || x.ruleId || 'Rule';
+    const gearRows = []
+      .concat(sys.base.gear.map(g => ({ item:g.item, origin:'base', attr:'Base · always included' })))
+      .concat(gearAdds.map(g => ({ item:g.item, origin:g.severity === 'warn' ? 'warn' : 'rule', attr:`Rule · ${ruleLabel(g)}`, why: g.why })));
+    const laborRows = []
+      .concat(sys.base.labor.map(l => ({ item:l.item, origin:'base', attr:'Base · always included' })))
+      .concat(laborAdds.map(l => ({ item:l.item, origin:'req', attr:`Rule · ${ruleLabel(l)}`, why: l.why })));
+
+    const rowHtml = (r) => `
+      <div class="sbk-row">
+        <div>
+          <div class="item">${PCG.escapeHtml(r.item)}</div>
+          <div class="attr">${PCG.escapeHtml(r.attr)}${r.why ? ' · ' + PCG.escapeHtml(r.why) : ''}</div>
+        </div>
+        <span class="origin ${r.origin === 'base' ? 'base' : r.origin === 'req' ? 'req' : 'rule'}">${r.origin === 'base' ? 'Base' : r.origin === 'req' ? '🔒 Required' : 'Rule · ' + (r.origin === 'warn' ? 'Warn' : 'Add')}</span>
+      </div>`;
+
+    const body = `
+      <div class="sbk-head" style="--inst-color: ${pal.color}; --inst-bg: ${pal.bg};">
+        <div class="ico" style="background: ${pal.bg}; color: ${pal.color};">${sys.ico}</div>
+        <div>
+          <h3>${PCG.escapeHtml(sys.name)} · ${PCG.escapeHtml(inst.label)}</h3>
+          <div class="meta">Authored by <b>${PCG.escapeHtml(sys.director)}</b> · ${PCG.escapeHtml(sys.directorTitle)} · pinned to <b style="color: ${pal.color};">v${sys.version}</b></div>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary);">${adds.length} rule-added · ${gearRows.length + laborRows.length} total items</div>
+      </div>
+
+      <div class="sbk-two">
+        <div class="sbk-list-card">
+          <h4>⚙ Gear <span class="cnt">${gearRows.length}</span></h4>
+          ${gearRows.map(rowHtml).join('')}
+        </div>
+        <div class="sbk-list-card">
+          <h4>👥 Labor <span class="cnt">${laborRows.length}</span></h4>
+          ${laborRows.map(rowHtml).join('')}
+        </div>
+      </div>
+
+      ${breaks.length ? `
+        <div class="gsi-break-warn" style="margin-top: 14px;">
+          <h4>🛑 Director rules · these must stay in scope</h4>
+          <ul>${breaks.map(b => `<li>${PCG.escapeHtml(b)}</li>`).join('')}</ul>
+        </div>` : ''}
+
+      <div class="sbk-foot">
+        <strong>How to read this:</strong> Items marked <em>Base</em> are always included in the system by the director. Items marked <em>🔒 Required</em> were added automatically because your answers triggered a director-defined rule — they cannot be removed without changing the configuration. To remove a required item, open <strong>Reconfigure</strong> and change the answer that triggered it.
+      </div>
+    `;
+    document.getElementById('sbk-body').innerHTML = body;
+    document.getElementById('sbk-bd').classList.add('show');
+    document.getElementById('sbk-box').classList.add('show');
+  };
+  window.closeBreakdown = () => {
+    document.getElementById('sbk-bd').classList.remove('show');
+    document.getElementById('sbk-box').classList.remove('show');
+  };
+
+  // Render on page load so any prior-session instances are visible.
+  renderSystemInstances();
 
   window.addLaborPos = (positionId) => {
     const pos = (PCG.crewPositions||[]).find(p=>p.id===positionId);

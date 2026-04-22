@@ -320,6 +320,36 @@
 
   const SYSTEMS = PCG.SYSTEM_DEFS;
 
+  // Per-system "prevents common failures" seed · reads believable
+  // and grounds each director's standard in a real risk it eliminates.
+  function preventList(id){
+    return {
+      'imag': [
+        'Missing shader on 3+ cam shows → inconsistent iris / matrix',
+        'Recording without Ki Pro → no ISO capture on award shows',
+        'Arena without delay IMAG → back-of-room audience can\'t see'
+      ],
+      'led-wall': [
+        '30\'+ walls on a single processor → single point of failure',
+        'Flown wall with no rig call → wall cannot go up',
+        'Outdoor pitch without weatherproofing → tiles fail'
+      ],
+      'line-array': [
+        'Arena without delay hangs → back-of-room intelligibility',
+        '16+ wireless channels without RF coordinator → dropouts',
+        'Wedge monitors without monitor engineer → muddy mix'
+      ],
+      'gs-package': [
+        'Awards night without follow-spots → winners under-lit',
+        'Multi-day shows without crew rotation → burnout'
+      ],
+      'breakout': [
+        '5+ rooms without a floating lead → solo tech during a break',
+        'Session-library capture without record ops → lost content'
+      ]
+    }[id] || [];
+  }
+
   function renderLibrary(selectedId){
     document.getElementById('sd-library').innerHTML = SYSTEMS.map(s => `
       <div class="def-card ${s.id === selectedId ? 'selected' : ''}" data-dept="${s.dept}" data-id="${s.id}">
@@ -334,7 +364,12 @@
             </div>
           </div>
         </div>
+        <div style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill); background: rgba(149,100,216,0.12); color: var(--pcg-spotlight-purple); border: 1px solid rgba(149,100,216,0.35); font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; align-self: flex-start;">🧭 Director Standard</div>
         <div class="summary">${PCG.escapeHtml(s.summary)}</div>
+        <div style="font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); line-height: 1.6;">
+          <strong style="color: var(--text-secondary);">Prevents common failures:</strong><br>
+          ${(preventList(s.id) || []).map(p => `· ${PCG.escapeHtml(p)}`).join('<br>')}
+        </div>
         <div class="stats">
           <div><div class="lbl">Steps</div><div class="v">${s.steps.length}</div></div>
           <div><div class="lbl">Rules</div><div class="v">${s.rules.length}</div></div>
@@ -397,6 +432,22 @@
 
       <div class="sd-director-note">
         <strong>${PCG.escapeHtml(sys.directorTitle)} says:</strong> ${sys.directorNote}
+      </div>
+
+      <!-- Enforcement banner · reinforces that this is not a suggestion layer -->
+      <div style="padding: 12px 16px; border-radius: var(--r-sm); background: linear-gradient(135deg, rgba(231,76,60,0.08), transparent 70%), var(--surface-0); border: 1px solid rgba(231,76,60,0.3); border-left: 3px solid var(--status-red); margin-bottom: 14px; display: grid; grid-template-columns: 40px 1fr; gap: 14px; align-items: start;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(231,76,60,0.14); color: var(--status-red); display: grid; place-items: center; font-size: 18px;">🔒</div>
+        <div>
+          <div style="font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--status-red); font-weight: 700; margin-bottom: 4px;">This standard is enforced at quote-time</div>
+          <div style="font-size: 12.5px; color: var(--text-primary); line-height: 1.55;">
+            AEs <strong>cannot bypass required rules</strong>. Every <em>add-severity</em> rule below fires automatically when its condition matches — the emitted gear and labor become quote lines marked <em>🔒 Required by system standard</em> and cannot be removed without changing the answer that triggered them.
+          </div>
+          ${(preventList(sys.id) || []).length ? `
+            <div style="margin-top: 8px; font-size: 11.5px; color: var(--text-secondary); font-family: var(--font-mono); line-height: 1.7;">
+              <strong style="color: var(--status-red);">Prevents these failures in production:</strong><br>
+              ${preventList(sys.id).map(p => `· ${PCG.escapeHtml(p)}`).join('<br>')}
+            </div>` : ''}
+        </div>
       </div>
 
       <div class="sd-panel">
