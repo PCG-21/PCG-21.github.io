@@ -7,134 +7,318 @@
 <link rel="stylesheet" href="assets/tokens.css" />
 <link rel="stylesheet" href="assets/app.css" />
 <style>
+  /* =================================================================
+     SYSTEM BUILDER
+     Two zones:
+       A. Definitions Library · director-defined standards
+       B. Guided Builder · AE / PM walks through the questions and the
+          system applies rules, auto-includes gear + labor, and shows
+          the downstream work it will generate.
+     ================================================================= */
+
   .sb-hero {
-    background: linear-gradient(135deg, rgba(1,153,253,0.10), rgba(149,100,216,0.10)), var(--surface-1);
+    background: linear-gradient(135deg, rgba(1,153,253,0.12), rgba(149,100,216,0.10)), var(--surface-1);
     border: 1px solid var(--border-accent); border-radius: var(--r-md);
-    padding: 28px 32px; margin-bottom: var(--sp-4);
+    padding: 24px 28px; margin-bottom: var(--sp-4);
     position: relative; overflow: hidden;
   }
   .sb-hero::before {
     content:""; position:absolute; top:0; left:0; right:0; height:3px;
     background: linear-gradient(90deg, var(--pcg-confident-blue), var(--pcg-bright-blue), var(--pcg-spotlight-purple));
   }
-  .sb-hero h1 { margin: 4px 0 2px; font-family: var(--font-display); font-size: 30px; }
-  .sb-hero .sub { color: var(--text-secondary); font-size: var(--fs-md); max-width: 780px; line-height: 1.6; margin-top: 6px; }
+  .sb-hero .eyebrow { letter-spacing: 0.14em; }
+  .sb-hero h1 { margin: 4px 0 4px; font-family: var(--font-display); font-size: 28px; }
+  .sb-hero .sub { color: var(--text-secondary); font-size: var(--fs-md); max-width: 840px; line-height: 1.6; }
 
-  .sb-preview {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: var(--r-pill);
-    background: rgba(149,100,216,0.14); color: var(--pcg-spotlight-purple);
-    border: 1px dashed rgba(149,100,216,0.4);
-    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em;
-    text-transform: uppercase; font-weight: 700;
-    margin-top: 12px;
+  /* Audience split · Directors left · AE/PMs right */
+  .sb-audience {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 16px;
   }
+  @media (max-width: 780px) { .sb-audience { grid-template-columns: 1fr; } }
+  .sb-audience .aud {
+    padding: 12px 14px; border-radius: var(--r-sm);
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  }
+  .sb-audience .aud h4 {
+    margin: 0 0 4px; font-family: var(--font-display); font-size: 11.5px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .sb-audience .aud.directors h4 { color: var(--pcg-spotlight-purple); }
+  .sb-audience .aud.aepm h4      { color: var(--pcg-bright-blue); }
+  .sb-audience .aud p { margin: 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
 
-  /* Flow diagram · what System Builder generates downstream */
-  .sb-flow {
-    display: grid; grid-template-columns: 200px 1fr; gap: var(--sp-4);
-    background: var(--surface-1); border: 1px solid var(--border);
-    border-radius: var(--r-md); padding: 20px 24px;
-    margin-bottom: var(--sp-4);
+  /* Section headings */
+  .sb-zone-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-top: var(--sp-5); margin-bottom: var(--sp-3);
+    flex-wrap: wrap;
   }
-  .sb-flow-src {
-    display: flex; flex-direction: column; gap: 6px;
-    padding: 16px 18px; border-radius: var(--r-md);
-    background: linear-gradient(135deg, rgba(1,153,253,0.14), rgba(149,100,216,0.1));
-    border: 1px solid var(--pcg-bright-blue);
+  .sb-zone-head h2 {
+    font-family: var(--font-display); font-size: 13px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-primary); margin: 0;
   }
-  .sb-flow-src .ico { font-size: 28px; }
-  .sb-flow-src .lbl {
-    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--pcg-bright-blue);
-  }
-  .sb-flow-src .ttl { font-family: var(--font-display); font-weight: 700; font-size: 17px; color: #fff; }
-  .sb-flow-src .nt { font-size: 11.5px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px; }
-
-  .sb-flow-dst {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px;
-    align-content: center;
-  }
-  .sb-flow-dst a {
-    padding: 14px 16px; border-radius: var(--r-sm);
-    background: var(--surface-0); border: 1px solid var(--border);
-    color: var(--text-primary); text-decoration: none;
-    display: flex; flex-direction: column; gap: 2px;
-    transition: border-color var(--t-fast), transform var(--t-fast);
-  }
-  .sb-flow-dst a:hover { border-color: var(--pcg-bright-blue); transform: translateY(-1px); }
-  .sb-flow-dst .ico { font-size: 18px; line-height: 1; }
-  .sb-flow-dst .nm { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-top: 4px; }
-  .sb-flow-dst .sub { font-size: 12.5px; font-weight: 500; color: var(--text-primary); }
-
-  /* Example system · three stacks */
-  .sb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); }
-  .sb-stack {
-    background: var(--surface-1); border: 1px solid var(--border);
-    border-radius: var(--r-md); overflow: hidden;
-  }
-  .sb-stack-head {
-    padding: 14px 18px; display: flex; gap: 12px; align-items: baseline;
-    border-bottom: 1px solid var(--border);
-  }
-  .sb-stack-head h3 { margin: 0; font-family: var(--font-display); font-size: 14px; }
-  .sb-stack-head .chip {
-    margin-left: auto;
-    font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary);
-    background: var(--surface-2); border: 1px solid var(--border);
+  .sb-zone-head .zn {
+    font-family: var(--font-mono); font-size: 10.5px;
     padding: 2px 8px; border-radius: var(--r-pill);
+    background: var(--surface-2); color: var(--text-tertiary); border: 1px solid var(--border);
   }
-  .sb-stack.audio    .sb-stack-head { background: linear-gradient(90deg, rgba(245,176,65,0.14), transparent 60%); border-bottom-color: rgba(245,176,65,0.3); }
-  .sb-stack.video    .sb-stack-head { background: linear-gradient(90deg, rgba(1,153,253,0.14),  transparent 60%); border-bottom-color: rgba(1,153,253,0.3); }
-  .sb-stack.lighting .sb-stack-head { background: linear-gradient(90deg, rgba(149,100,216,0.14),transparent 60%); border-bottom-color: rgba(149,100,216,0.3); }
-  .sb-stack.audio    .sb-stack-head h3 { color: var(--status-amber); }
-  .sb-stack.video    .sb-stack-head h3 { color: var(--pcg-bright-blue); }
-  .sb-stack.lighting .sb-stack-head h3 { color: var(--pcg-spotlight-purple); }
+  .sb-zone-head .sub {
+    margin-left: auto; font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono);
+  }
 
-  .sb-row {
-    display: grid; grid-template-columns: 40px 1fr auto; gap: 10px;
-    padding: 10px 18px; align-items: center;
-    border-bottom: 1px solid var(--border); font-size: var(--fs-sm);
+  /* ========== ZONE A · Definitions Library ========== */
+  .sb-library {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
   }
-  .sb-row:last-child { border-bottom: 0; }
-  .sb-row .qty {
-    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
-    color: var(--pcg-bright-blue); text-align: center;
-    background: rgba(1,153,253,0.1); border: 1px solid rgba(1,153,253,0.25);
-    border-radius: var(--r-sm); padding: 2px 6px;
-  }
-  .sb-row .nm { color: var(--text-primary); font-weight: 500; }
-  .sb-row .nm .sub { display: block; font-size: 11px; color: var(--text-tertiary); margin-top: 2px; font-family: var(--font-mono); }
-  .sb-row .src {
-    font-size: 10.5px; font-family: var(--font-display); letter-spacing: 0.08em;
-    text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700;
-  }
-  .sb-row .src.own { background: rgba(61,220,132,0.15); color: var(--status-green); }
-  .sb-row .src.sub { background: rgba(245,176,65,0.15); color: var(--status-amber); }
-
-  .sb-rollup {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;
-    margin-top: var(--sp-4);
-  }
-  .sb-rollup .rc {
-    padding: 14px 16px; border-radius: var(--r-md);
+  .sys-card {
+    padding: 18px 20px; border-radius: var(--r-md);
     background: var(--surface-1); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 10px;
+    position: relative; overflow: hidden;
+    cursor: pointer; transition: border-color var(--t-fast), transform var(--t-fast);
   }
-  .sb-rollup .rc .lbl {
-    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+  .sys-card:hover { border-color: var(--pcg-bright-blue); transform: translateY(-1px); }
+  .sys-card.selected {
+    border-color: var(--pcg-bright-blue);
+    box-shadow: 0 0 0 2px rgba(1,153,253,0.2), 0 8px 28px rgba(1,153,253,0.15);
+    background: linear-gradient(135deg, rgba(1,153,253,0.08), transparent 70%), var(--surface-1);
+  }
+  .sys-card::before {
+    content:""; position:absolute; top:0; left:0; bottom:0; width:3px;
+    background: var(--dept-color, var(--pcg-bright-blue));
+  }
+  .sys-card .head { display: flex; gap: 10px; align-items: flex-start; }
+  .sys-card .ico {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--dept-bg, rgba(1,153,253,0.12));
+    color: var(--dept-color, var(--pcg-bright-blue));
+    display: grid; place-items: center; font-size: 22px; flex: none;
+  }
+  .sys-card .name {
+    font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-primary);
+  }
+  .sys-card .meta {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);
+    margin-top: 3px; line-height: 1.6;
+  }
+  .sys-card .meta .v { color: var(--dept-color, var(--pcg-bright-blue)); font-weight: 700; }
+  .sys-card .meta .d { color: var(--text-secondary); }
+  .sys-card .summary { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
+
+  /* Required / labor / outputs chip row */
+  .sys-facts {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    padding: 10px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border);
+  }
+  .sys-facts .fact .lbl {
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--text-tertiary);
   }
-  .sb-rollup .rc .v {
-    font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 2px;
+  .sys-facts .fact .v {
+    font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary);
+    margin-top: 1px;
   }
-  .sb-rollup .rc .nt { font-size: 11.5px; color: var(--text-secondary); margin-top: 4px; }
 
-  .sb-note {
-    margin-top: var(--sp-4);
-    padding: 14px 18px; border-radius: var(--r-md);
-    background: linear-gradient(135deg, rgba(149,100,216,0.06), transparent 70%), var(--surface-1);
-    border: 1px solid var(--border); border-left: 3px solid var(--pcg-spotlight-purple);
-    font-size: 13px; color: var(--text-primary); line-height: 1.6;
+  .sys-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sys-foot .build {
+    padding: 7px 14px; border-radius: var(--r-pill);
+    background: var(--pcg-bright-blue); color: #001a2a;
+    font-family: var(--font-display); font-size: 11.5px; letter-spacing: 0.04em;
+    font-weight: 700; text-decoration: none;
+    border: 0; cursor: pointer;
+  }
+  .sys-foot .build:hover { filter: brightness(1.08); }
+  .sys-foot .recs {
+    margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary);
+  }
+  .sys-card .badge-standard {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+    padding: 2px 8px; border-radius: var(--r-pill);
+    background: rgba(61,220,132,0.16); color: var(--status-green); border: 1px solid rgba(61,220,132,0.35);
+  }
+
+  /* Dept palettes */
+  .sys-card[data-dept="video"]    { --dept-color: var(--pcg-bright-blue);      --dept-bg: rgba(1,153,253,0.14); }
+  .sys-card[data-dept="audio"]    { --dept-color: var(--status-amber);          --dept-bg: rgba(245,176,65,0.14); }
+  .sys-card[data-dept="led"]      { --dept-color: var(--pcg-spotlight-purple); --dept-bg: rgba(149,100,216,0.14); }
+  .sys-card[data-dept="lighting"] { --dept-color: var(--pcg-spotlight-purple); --dept-bg: rgba(149,100,216,0.14); }
+  .sys-card[data-dept="general"]  { --dept-color: var(--status-green);          --dept-bg: rgba(61,220,132,0.14); }
+
+  /* ========== ZONE B · Guided Builder ========== */
+  .sb-builder {
+    background: linear-gradient(180deg, rgba(1,153,253,0.04) 0%, transparent 100%), var(--surface-1);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 20px 24px;
+    display: none;
+  }
+  .sb-builder.open { display: block; }
+
+  .sbb-head {
+    display: flex; gap: 12px; align-items: center;
+    padding-bottom: 16px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sbb-head .ico {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: var(--dept-bg, rgba(1,153,253,0.12));
+    color: var(--dept-color, var(--pcg-bright-blue));
+    display: grid; place-items: center; font-size: 22px; flex: none;
+  }
+  .sbb-head h3 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+  .sbb-head .pathway {
+    margin-left: auto;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);
+  }
+  .sbb-head .pathway b { color: var(--pcg-bright-blue); }
+
+  /* Director note · this is the AE guidance framing */
+  .sbb-dir-note {
+    padding: 12px 14px; margin-bottom: 16px;
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, rgba(149,100,216,0.08), transparent 70%);
+    border: 1px dashed rgba(149,100,216,0.4); border-left: 3px solid var(--pcg-spotlight-purple);
+    font-size: 12.5px; color: var(--text-secondary); line-height: 1.55;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .sbb-dir-note::before {
+    content: "🧭"; font-size: 16px; flex: none;
+  }
+  .sbb-dir-note strong { color: var(--pcg-spotlight-purple); }
+
+  .sbb-steps {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;
+  }
+  .sbb-step { display: flex; flex-direction: column; gap: 8px; }
+  .sbb-step .qn {
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .sbb-step .num {
+    display: inline-grid; place-items: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface-3); color: var(--text-tertiary);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  }
+  .sbb-step.answered .num { background: var(--pcg-bright-blue); color: #001a2a; }
+  .sbb-step .q {
+    font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+  .sbb-opts { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
+  .sbb-opt {
+    padding: 8px 12px; border-radius: var(--r-sm);
+    background: var(--surface-2); border: 1px solid var(--border);
+    cursor: pointer; font-size: 12.5px; color: var(--text-secondary);
+    display: flex; align-items: center; gap: 8px;
+    transition: border-color var(--t-fast), background var(--t-fast);
+  }
+  .sbb-opt:hover { border-color: var(--pcg-bright-blue); }
+  .sbb-opt.on {
+    border-color: var(--pcg-bright-blue); color: var(--text-primary);
+    background: linear-gradient(90deg, rgba(1,153,253,0.14), transparent 80%);
+    font-weight: 500;
+  }
+  .sbb-opt .tag {
+    margin-left: auto; font-family: var(--font-display); font-size: 9.5px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 1px 7px; border-radius: var(--r-pill); font-weight: 700;
+  }
+  .sbb-opt .tag.rec { background: rgba(61,220,132,0.16); color: var(--status-green); }
+  .sbb-opt .tag.std { background: rgba(1,153,253,0.14);  color: var(--pcg-bright-blue); }
+  .sbb-opt .tag.cx  { background: rgba(245,176,65,0.16); color: var(--status-amber); }
+
+  /* Rules + automatic inclusions panel */
+  .sbb-rules {
+    margin-top: 20px; padding: 14px 16px;
+    border-radius: var(--r-sm);
+    background: linear-gradient(135deg, rgba(245,176,65,0.05), transparent 70%), var(--surface-0);
+    border: 1px solid var(--border); border-left: 3px solid var(--status-amber);
+  }
+  .sbb-rules h4 {
+    margin: 0 0 10px; font-family: var(--font-display); font-size: 12px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--status-amber);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sbb-rule {
+    display: grid; grid-template-columns: 22px 1fr; gap: 8px;
+    padding: 5px 0; font-size: 12.5px; color: var(--text-primary); line-height: 1.55;
+    border-bottom: 1px dashed var(--border);
+  }
+  .sbb-rule:last-child { border-bottom: 0; }
+  .sbb-rule .rico {
+    font-family: var(--font-mono); font-weight: 700; font-size: 12px;
+    color: var(--status-amber); line-height: 1.6;
+  }
+  .sbb-rule.labor .rico { color: var(--pcg-bright-blue); }
+  .sbb-rule.gear  .rico { color: var(--status-green); }
+  .sbb-rule .why {
+    display: block; font-size: 11px; color: var(--text-tertiary); margin-top: 1px; font-family: var(--font-mono);
+  }
+  .sbb-rule .auto-chip {
+    margin-left: 6px; font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 700;
+    padding: 1px 6px; border-radius: var(--r-pill);
+    background: rgba(149,100,216,0.16); color: var(--pcg-spotlight-purple);
+  }
+  .sbb-rules .empty { font-size: 12px; color: var(--text-tertiary); padding: 4px 0; }
+
+  /* Output summary · the big downstream wow */
+  .sbb-output {
+    margin-top: 18px; padding: 18px 20px;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(1,153,253,0.14), rgba(149,100,216,0.10) 70%), var(--surface-0);
+    border: 1px solid var(--pcg-bright-blue);
+  }
+  .sbb-output h4 {
+    margin: 0 0 10px; font-family: var(--font-display); font-size: 12px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-bright-blue);
+  }
+  .sbb-out-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px; margin-bottom: 12px;
+  }
+  .sbb-out-stats .st {
+    padding: 10px 12px; border-radius: var(--r-sm);
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  }
+  .sbb-out-stats .st .lbl {
+    font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .sbb-out-stats .st .v {
+    font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.1;
+    margin-top: 3px;
+  }
+  .sbb-out-stats .st .nt {
+    font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-family: var(--font-mono);
+  }
+  .sbb-out-links {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .sbb-out-links a {
+    padding: 5px 10px; border-radius: var(--r-pill);
+    background: rgba(1,153,253,0.14); color: var(--pcg-bright-blue);
+    border: 1px solid rgba(1,153,253,0.35);
+    font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.04em;
+    font-weight: 600; text-decoration: none;
+  }
+  .sbb-out-links a:hover { background: var(--pcg-bright-blue); color: #001a2a; }
+
+  .sbb-apply-row {
+    margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border);
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .sbb-apply-row .note {
+    font-size: 11.5px; color: var(--text-tertiary); font-family: var(--font-mono);
+  }
+
+  /* Placeholder message when no system selected */
+  .sbb-empty {
+    padding: 30px; text-align: center; font-size: 13px; color: var(--text-tertiary);
+    background: var(--surface-2); border: 1px dashed var(--border-accent);
+    border-radius: var(--r-md);
   }
 </style>
 </head>
@@ -144,100 +328,42 @@
   <main class="main">
     <div class="container">
 
+      <!-- HERO · reframed product positioning -->
       <div class="sb-hero">
-        <div class="eyebrow">System Builder</div>
-        <h1>Design &amp; Scope · where the show gets built</h1>
+        <div class="eyebrow">System Builder · Director-defined standards + guided AE build</div>
+        <h1>The upstream engine that prevents scope gaps.</h1>
         <div class="sub">
-          The System Builder is the <strong>upstream source of truth</strong>. Every operational surface downstream is generated from the systems you define here — the quote, production schedule, show flow, TD package, labor call, and warehouse pull all flow from one design.
+          Department directors define how PCG builds a system — <strong>required gear, required labor, dependencies, and the rules the company always follows</strong>. When an AE or PM configures a show, STAGE walks them through the right questions, auto-includes what's required, and generates the downstream work. Nothing critical gets left out.
         </div>
-        <span class="sb-preview">◎ Placeholder · full builder ships with the product</span>
-      </div>
 
-      <!-- What the System Builder generates downstream -->
-      <div class="sb-flow">
-        <div class="sb-flow-src">
-          <span class="ico">🧩</span>
-          <span class="lbl">Source of truth</span>
-          <span class="ttl">System Definition</span>
-          <span class="nt">Audio / Video / Lighting / Scenic / Rigging / Power as reusable systems with components, quantities, and labor.</span>
-        </div>
-        <div class="sb-flow-dst">
-          <a href="quote.html?id=q.LCE-2026.v3">
-            <span class="ico">§</span><span class="nm">Generates</span><span class="sub">Quote lines</span>
-          </a>
-          <a href="production-schedule.html?project=LCE-2026">
-            <span class="ico">🗂</span><span class="nm">Generates</span><span class="sub">Production Schedule</span>
-          </a>
-          <a href="show-flow.html?project=LCE-2026">
-            <span class="ico">🎬</span><span class="nm">Generates</span><span class="sub">Show Flow cues</span>
-          </a>
-          <a href="td-package.html?project=LCE-2026">
-            <span class="ico">📦</span><span class="nm">Generates</span><span class="sub">TD Show Package</span>
-          </a>
-          <a href="scheduling.html">
-            <span class="ico">👥</span><span class="nm">Generates</span><span class="sub">Labor call</span>
-          </a>
-          <a href="pull-sheet.html?id=ps.sae.breakout">
-            <span class="ico">📋</span><span class="nm">Generates</span><span class="sub">Warehouse pull</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Example system · corporate general-session -->
-      <div class="eyebrow" style="margin-bottom: 6px;">Example system · Corporate General-Session · Marquee</div>
-      <div class="muted" style="font-size: var(--fs-sm); margin-bottom: var(--sp-3);">A reusable bundle. Drop this onto a quote and every surface downstream populates automatically.</div>
-
-      <div class="sb-grid">
-        <div class="sb-stack audio">
-          <div class="sb-stack-head">
-            <h3>🎚 Audio</h3>
-            <span class="chip">4 dead-hang · 200A spur</span>
+        <div class="sb-audience">
+          <div class="aud directors">
+            <h4>🧭 Directors define the standard</h4>
+            <p>Video, Audio, Lighting, LED directors own the system definitions. They version them, refine them, and push rules like <em>"3+ cameras requires a shader"</em> into the AE workflow automatically.</p>
           </div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">Yamaha CL5 digital console<span class="sub">FOH · 72 mono / 12 stereo</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">4</span><span class="nm">d&amp;b J-Series flying frame<span class="sub">Line array · dead-hang motor</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">24</span><span class="nm">d&amp;b J8 line array cabinet<span class="sub">6 per array · flown</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">12</span><span class="nm">d&amp;b JSub subwoofer<span class="sub">Ground-stacked pairs</span></span><span class="src sub">10 own · 2 sub</span></div>
-          <div class="sb-row"><span class="qty">16</span><span class="nm">Shure Axient Digital channel<span class="sub">AD4Q quad receivers · 2× ADX1M</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">Stage rack + IO package<span class="sub">Dante + redundant SD</span></span><span class="src own">OWNED</span></div>
-        </div>
-
-        <div class="sb-stack video">
-          <div class="sb-stack-head">
-            <h3>🎥 Video</h3>
-            <span class="chip">4K screen mgmt · IMAG</span>
+          <div class="aud aepm">
+            <h4>🎯 AE / PM get guided</h4>
+            <p>Pick a system, answer a handful of questions, and STAGE applies the director's rules — auto-including gear + labor. You never have to remember what a GS IMAG package needs.</p>
           </div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">Barco E2 4K screen management<span class="sub">Preset-based scene build</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">4</span><span class="nm">HD camera package<span class="sub">2× Fujinon long lens + 2× ENG</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">LED header wall<span class="sub">12' × 4' · 2.6mm pitch · fly frame</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">2</span><span class="nm">IMAG side wall<span class="sub">8' × 6' · flown stage-left / right</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">Playback master<span class="sub">QLab primary + ProPresenter backup</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">Multiview / ISO record<span class="sub">8-input · redundant SSD</span></span><span class="src own">OWNED</span></div>
-        </div>
-
-        <div class="sb-stack lighting">
-          <div class="sb-stack-head">
-            <h3>💡 Lighting</h3>
-            <span class="chip">ETC Ion XE · 100A spur</span>
-          </div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">ETC Ion XE console<span class="sub">FOH · primary cue programmer</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">20</span><span class="nm">Mac Aura PXL moving fixture<span class="sub">Truss-mounted · show wash</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">12</span><span class="nm">Source Four LED Series 3<span class="sub">Speaker specials · podium wash</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">2</span><span class="nm">Robert Juliat follow-spot<span class="sub">House L/R · Awards Day 4</span></span><span class="src own">OWNED</span></div>
-          <div class="sb-row"><span class="qty">1</span><span class="nm">Console backup + nomad<span class="sub">Secondary · show-save cue sync</span></span><span class="src own">OWNED</span></div>
         </div>
       </div>
 
-      <!-- Rollup: what the System auto-populates downstream -->
-      <div class="sb-rollup">
-        <div class="rc"><div class="lbl">⚡ Quote impact</div><div class="v">$142,200</div><div class="nt">Line items auto-totaled · margin gate applies</div></div>
-        <div class="rc"><div class="lbl">⚡ Schedule impact</div><div class="v">+8 rows</div><div class="nt">Load-in / tech / strike slots across phases</div></div>
-        <div class="rc"><div class="lbl">⚡ Labor call</div><div class="v">14 positions</div><div class="nt">A1 · V1 · LD · riggers · ENG crew · ops</div></div>
-        <div class="rc"><div class="lbl">⚡ Warehouse pull</div><div class="v">54 items</div><div class="nt">Across audio / video / lighting / cabling</div></div>
+      <!-- ZONE A · DEFINITIONS LIBRARY -->
+      <div class="sb-zone-head">
+        <h2>Zone A · System Definitions Library</h2>
+        <span class="zn">Director-owned · versioned</span>
+        <span class="sub">5 seeded systems · more defined by each department over time</span>
       </div>
+      <div class="sb-library" id="sb-library"></div>
 
-      <div class="sb-note">
-        <strong style="color: var(--pcg-spotlight-purple);">How this fits the PM-first story:</strong>  The PIF defines what the show <em>is</em>. The System Builder defines what the show is <em>made of</em>. Everything a PM, TD, or crew uses from then on — Production Schedule, Show Flow, TD Package, Advance, Client Portal — is a view of the same underlying system definition. Edit the system, and every downstream surface moves.
+      <!-- ZONE B · GUIDED BUILDER -->
+      <div class="sb-zone-head">
+        <h2>Zone B · Guided Builder</h2>
+        <span class="zn">AE / PM workflow</span>
+        <span class="sub">Pick a system above · answer the questions · ship the system</span>
       </div>
+      <div class="sbb-empty" id="sbb-empty">👉 Select a system from the library above to start a guided build. Every question applies the director's rules live.</div>
+      <div class="sb-builder" id="sb-builder"></div>
 
     </div>
   </main>
@@ -251,6 +377,554 @@
 <script src="assets/app.js"></script>
 <script>
   PCG.mountShell({active:'system-builder', pageTitle:'System Builder'});
+
+  // =================================================================
+  // SEEDED SYSTEM DEFINITIONS
+  // Each system is owned by a department director. Versioning implies
+  // the director refines + re-publishes it over time; AEs always run
+  // against the current version. Rules fire against the user's answers.
+  // =================================================================
+
+  const SYSTEMS = [
+    {
+      id: 'imag',
+      dept: 'video',
+      ico: '🎥',
+      name: 'IMAG System',
+      director: 'C. Taylor',
+      directorTitle: 'Video Director',
+      deptLabel: 'Video',
+      version: '3.2',
+      updated: '18 days ago',
+      reuseCount: 22,
+      standard: true,
+      summary: 'Standardized in-room camera + screen reinforcement package.',
+      note: 'Covers camera count, recording posture, room scale, and graphics support. Applies company rules for shader requirements, redundancy, and streaming.',
+      baseGear: [
+        'Barco E2 · screen management',
+        'Multiview + ISO record rack',
+        'IMAG side LED pair'
+      ],
+      baseLabor: ['V1 · lead operator', 'Utility'],
+      directorNote: 'If you aren\'t sure, pick 3 cameras · GS · recording · moderate graphics. That\'s what <strong>80% of our corporate general sessions use</strong> and it will pass a full TD review.',
+      steps: [
+        { k:'cams', q:'How many cameras?', opts:[
+          { v:'2',  lbl:'2 cameras · front + wide',   tag:'Small room' },
+          { v:'3',  lbl:'3 cameras · add hand-held',   tag:'Standard', def:true, recommended:true },
+          { v:'4',  lbl:'4+ cameras · complex',        tag:'Complex' }
+        ]},
+        { k:'rec', q:'Recording / streaming?', opts:[
+          { v:'none', lbl:'None' },
+          { v:'rec',  lbl:'Recording only',       tag:'Standard', def:true, recommended:true },
+          { v:'live', lbl:'Live stream' },
+          { v:'both', lbl:'Recording + live' }
+        ]},
+        { k:'room', q:'Room scale?', opts:[
+          { v:'small', lbl:'Small ballroom · <500'},
+          { v:'gs',    lbl:'General session · 500–1,500', tag:'Standard', def:true, recommended:true },
+          { v:'arena', lbl:'Arena · 1,500+',                tag:'Complex' }
+        ]},
+        { k:'gfx',  q:'Graphics / playback posture?', opts:[
+          { v:'basic', lbl:'Basic · ProPresenter only' },
+          { v:'mod',   lbl:'Moderate · QLab + lower-thirds', tag:'Standard', def:true, recommended:true },
+          { v:'high',  lbl:'High-touch · custom Barco build' }
+        ]}
+      ],
+      rules: (s) => {
+        const out = [];
+        const cams = parseInt(s.cams) || 3;
+        out.push({ type:'labor', item:`Camera operators × ${cams}`, why:`${cams} cameras selected · one op per camera is company standard` });
+        if(cams >= 3) out.push({ type:'labor', item:'Shader / engineer', why:'Rule · 3+ cameras always requires a dedicated shader (Video Director policy)' });
+        if(s.rec === 'rec' || s.rec === 'both'){
+          out.push({ type:'gear',  item:'AJA Ki Pro · ISO record rack', why:'Recording selected · Ki Pro is company standard' });
+          out.push({ type:'labor', item:'DIT / record operator',         why:'Recording · dedicated record op required' });
+        }
+        if(s.rec === 'live' || s.rec === 'both'){
+          out.push({ type:'gear',  item:'Streaming encoder + redundant internet', why:'Live stream selected · redundancy required by standard' });
+          out.push({ type:'labor', item:'Streaming / network engineer',            why:'Live stream · dedicated engineer required' });
+        }
+        if(s.room === 'arena'){
+          out.push({ type:'gear',  item:'Delay IMAG hangs · 2× pair',  why:'Arena → delay coverage required for sight lines' });
+          out.push({ type:'gear',  item:'Redundant Barco E2 backup',   why:'Arena → processor redundancy mandatory' });
+          out.push({ type:'labor', item:'IMAG delay operator',         why:'Arena delay hangs require a dedicated operator' });
+        }
+        if(s.gfx === 'high'){
+          out.push({ type:'gear',  item:'High-touch Barco E2 build · preset library', why:'High-touch graphics posture selected' });
+          out.push({ type:'labor', item:'Switcher operator · dedicated',               why:'High-touch → separated from V1 per standard' });
+          out.push({ type:'labor', item:'Graphics / PowerPoint operator',              why:'High-touch → dedicated graphics op' });
+        }
+        return out;
+      },
+      baseOutputs: { schedule: 6, flow: 12, warehouse: 18 },
+      quote: (s) => 78_000 + (s.room === 'arena' ? 42_000 : 0) + (s.gfx === 'high' ? 28_000 : 0) + (s.rec === 'live' ? 18_000 : s.rec === 'both' ? 22_000 : s.rec === 'rec' ? 6_000 : 0)
+    },
+
+    {
+      id: 'led-wall',
+      dept: 'led',
+      ico: '🟪',
+      name: 'LED Wall System',
+      director: 'T. Rivera',
+      directorTitle: 'Video / LED Director',
+      deptLabel: 'Video · LED',
+      version: '2.1',
+      updated: '23 days ago',
+      reuseCount: 14,
+      standard: true,
+      summary: 'Standardized LED wall package — header, backdrop, IMAG sides, or scenic.',
+      note: 'Applies rules for pixel pitch, processor redundancy, tour-grade cabling, and outdoor weatherproofing.',
+      baseGear: [
+        'LED processor · Brompton Tessera',
+        'Cable + data package',
+        'Spare tiles (5% of face)'
+      ],
+      baseLabor: ['LED tech', 'Video engineer'],
+      directorNote: 'Anything 30\' or wider triggers processor redundancy + a second LED tech — don\'t try to skip it. If outdoor, you must spec weatherproofing. The system will stop you if you don\'t.',
+      steps: [
+        { k:'size', q:'Wall size?', opts:[
+          { v:'small',  lbl:'Small header · 10–16\'', tag:'Standard', def:true, recommended:true },
+          { v:'medium', lbl:'Medium · 16–30\'' },
+          { v:'large',  lbl:'Large · 30\'+',           tag:'Complex' }
+        ]},
+        { k:'pitch', q:'Pixel pitch?', opts:[
+          { v:'2.6', lbl:'2.6mm · close viewing', tag:'Standard', def:true, recommended:true },
+          { v:'3.9', lbl:'3.9mm · medium room' },
+          { v:'5.9', lbl:'5.9mm · outdoor / long throw' }
+        ]},
+        { k:'app',  q:'Application?', opts:[
+          { v:'header',   lbl:'Header only',        tag:'Standard', def:true },
+          { v:'backdrop', lbl:'Full backdrop'},
+          { v:'imag',     lbl:'IMAG side pair' },
+          { v:'scenic',   lbl:'Scenic wrap · floor + walls' }
+        ]},
+        { k:'redun', q:'Redundancy posture?', opts:[
+          { v:'standard', lbl:'Standard · single processor', tag:'Standard', def:true },
+          { v:'tour',     lbl:'Tour-grade · doubled w/ spares' }
+        ]}
+      ],
+      rules: (s) => {
+        const out = [];
+        if(s.size === 'large'){
+          out.push({ type:'gear',  item:'Secondary processor · hot backup', why:'Rule · 30\'+ walls require processor redundancy' });
+          out.push({ type:'labor', item:'LED tech · second', why:'30\'+ → two-person LED crew required' });
+        }
+        if(s.pitch === '5.9' || (s.app === 'scenic' && s.size === 'large')){
+          out.push({ type:'gear', item:'Weatherproof covers + tent shell', why:'Outdoor / scenic-wrap environments require protection by standard' });
+        }
+        if(s.app === 'backdrop' || s.app === 'scenic'){
+          out.push({ type:'gear',  item:'Additional fly frame + rigging',  why:'Backdrop / scenic → heavier rigging spec' });
+          out.push({ type:'labor', item:'Install crew × 2',                 why:'Backdrop / scenic → extended install window' });
+        }
+        if(s.app === 'scenic'){
+          out.push({ type:'gear', item:'Floor LED + vinyl protection',      why:'Scenic wrap includes floor LED · requires protection' });
+        }
+        if(s.redun === 'tour'){
+          out.push({ type:'gear',  item:'Doubled cable + spare tiles 10%',  why:'Tour-grade redundancy standard' });
+          out.push({ type:'labor', item:'System tech',                      why:'Tour-grade → dedicated system tech required' });
+        }
+        return out;
+      },
+      baseOutputs: { schedule: 5, flow: 4, warehouse: 28 },
+      quote: (s) => 64_000 + (s.size === 'large' ? 38_000 : s.size === 'medium' ? 14_000 : 0) + (s.app === 'scenic' ? 34_000 : s.app === 'backdrop' ? 18_000 : 0) + (s.redun === 'tour' ? 16_000 : 0)
+    },
+
+    {
+      id: 'line-array',
+      dept: 'audio',
+      ico: '🎚',
+      name: 'Line Array System',
+      director: 'P. Shah',
+      directorTitle: 'Audio Director',
+      deptLabel: 'Audio',
+      version: '4.0',
+      updated: '11 days ago',
+      reuseCount: 31,
+      standard: true,
+      summary: 'Standardized flown line array reinforcement — FOH + sub + wireless package.',
+      note: 'Applies rules for room scale, arena rigging, broadcast RF coordination, and monitor engineering.',
+      baseGear: [
+        'Yamaha CL5 FOH',
+        'Stage rack + IO',
+        'd&b J-Series line array'
+      ],
+      baseLabor: ['A1 · FOH', 'A2 · stage'],
+      directorNote: 'Arena requires delay hangs — no exceptions. 16+ wireless channels requires an RF coordinator doing a spectrum scan day-of. If you pick broadcast, you also need a system tech on-site.',
+      steps: [
+        { k:'room', q:'Room scale?', opts:[
+          { v:'small',  lbl:'Small · <500'                 },
+          { v:'medium', lbl:'Medium · 500–1,500', tag:'Standard', def:true, recommended:true },
+          { v:'arena',  lbl:'Arena · 1,500+',               tag:'Complex' }
+        ]},
+        { k:'config', q:'Configuration?', opts:[
+          { v:'flown-main',  lbl:'Flown main + flown sub', tag:'Standard', def:true, recommended:true },
+          { v:'flown-ground',lbl:'Flown L/R + ground sub' },
+          { v:'ground',      lbl:'Ground-stack only · small rooms' }
+        ]},
+        { k:'wireless', q:'Wireless package?', opts:[
+          { v:'basic',     lbl:'Basic · 4ch handheld' },
+          { v:'standard',  lbl:'Standard · 8ch mixed',    tag:'Standard', def:true, recommended:true },
+          { v:'broadcast', lbl:'Broadcast · 16+ ch',       tag:'Complex' }
+        ]},
+        { k:'mon', q:'Monitors?', opts:[
+          { v:'iem',   lbl:'IEMs only',                  tag:'Standard', def:true },
+          { v:'wedge', lbl:'Wedges · front of stage' },
+          { v:'both',  lbl:'IEMs + wedges' }
+        ]}
+      ],
+      rules: (s) => {
+        const out = [];
+        if(s.room === 'arena'){
+          out.push({ type:'gear',  item:'Delay line array hangs · 2× pair',  why:'Rule · arena requires delay coverage (no exceptions)' });
+          out.push({ type:'gear',  item:'Additional rigging + amp racks',    why:'Arena scale → additional amp + rigging' });
+          out.push({ type:'labor', item:'System tech',                        why:'Arena → dedicated system tech required' });
+          out.push({ type:'labor', item:'Rigging call × 2',                   why:'Arena delay hangs → additional rig crew' });
+        }
+        if(s.wireless === 'broadcast'){
+          out.push({ type:'gear',  item:'Shure Axient Digital · 16+ ch rack', why:'Broadcast tier → full Axient package' });
+          out.push({ type:'labor', item:'RF coordinator · spectrum scan',      why:'Rule · 16+ wireless channels require RF coordination day-of' });
+          out.push({ type:'labor', item:'System tech',                          why:'Broadcast tier · system tech required' });
+        } else if(s.wireless === 'standard'){
+          out.push({ type:'gear', item:'Shure QLX-D · 8ch', why:'Standard wireless tier' });
+        }
+        if(s.mon === 'wedge' || s.mon === 'both'){
+          out.push({ type:'gear',  item:'Monitor mix + wedge package',       why:'Wedge monitors selected' });
+          out.push({ type:'labor', item:'Monitor engineer',                   why:'Wedge mixing → dedicated monitor engineer' });
+        }
+        if(s.mon === 'iem' || s.mon === 'both'){
+          out.push({ type:'gear', item:'IEM rack · Sennheiser 2000-series',   why:'IEM monitors selected' });
+        }
+        return out;
+      },
+      baseOutputs: { schedule: 4, flow: 3, warehouse: 22 },
+      quote: (s) => 56_000 + (s.room === 'arena' ? 44_000 : s.room === 'medium' ? 10_000 : 0) + (s.wireless === 'broadcast' ? 22_000 : s.wireless === 'standard' ? 6_000 : 0) + (s.mon === 'both' ? 14_000 : s.mon === 'wedge' ? 8_000 : 4_000)
+    },
+
+    {
+      id: 'gs-package',
+      dept: 'general',
+      ico: '🎤',
+      name: 'General Session Package',
+      director: 'C. Taylor + P. Shah',
+      directorTitle: 'Video + Audio Directors',
+      deptLabel: 'General Session',
+      version: '1.4',
+      updated: '6 days ago',
+      reuseCount: 9,
+      standard: true,
+      summary: 'Pre-bundled standard GS · IMAG + Line Array + LED Header + Lighting.',
+      note: 'Composite system — pulls standard IMAG (v3.2), Line Array (v4.0), and a 16\' LED header. Use this for any typical corporate GS; the guided flow below skips to the finishing choices.',
+      baseGear: [
+        'IMAG System v3.2 · embedded',
+        'Line Array System v4.0 · embedded',
+        'LED header wall · 16\''
+      ],
+      baseLabor: ['Show caller', 'Producer · on-site'],
+      directorNote: 'This is the "most corporate GS" preset. If you choose it, you\'re picking the 3-camera + recording + GS-room + 16\' LED + 8ch wireless bundle. <strong>Tweaks live on each sub-system.</strong>',
+      steps: [
+        { k:'days', q:'Show length?', opts:[
+          { v:'1day', lbl:'Single day' },
+          { v:'2day', lbl:'2 days',        tag:'Standard', def:true, recommended:true },
+          { v:'multi',lbl:'3+ days · multi-day' }
+        ]},
+        { k:'awards', q:'Awards segment?', opts:[
+          { v:'no',  lbl:'No', tag:'Standard', def:true },
+          { v:'yes', lbl:'Yes · dedicated Awards evening' }
+        ]},
+        { k:'breakouts', q:'Breakout rooms?', opts:[
+          { v:'0', lbl:'None', tag:'Standard', def:true },
+          { v:'2', lbl:'2 rooms' },
+          { v:'5', lbl:'5 rooms · full conference' }
+        ]}
+      ],
+      rules: (s) => {
+        const out = [];
+        if(s.awards === 'yes'){
+          out.push({ type:'gear',  item:'Awards lighting package · follow-spots × 2', why:'Awards segment selected' });
+          out.push({ type:'labor', item:'Follow-spot ops × 2',                         why:'Awards → follow-spot coverage' });
+        }
+        if(s.breakouts === '2' || s.breakouts === '5'){
+          const n = s.breakouts === '5' ? 5 : 2;
+          out.push({ type:'gear',  item:`Breakout AV kit × ${n}`, why:'Breakout rooms selected · each gets the Breakout AV system' });
+          out.push({ type:'labor', item:`Breakout tech × ${n}`,   why:'One tech per breakout room (company standard)' });
+        }
+        if(s.days === 'multi'){
+          out.push({ type:'labor', item:'Extra show day crew', why:'3+ day shows require an additional crew rotation' });
+        }
+        return out;
+      },
+      baseOutputs: { schedule: 14, flow: 28, warehouse: 54 },
+      quote: (s) => 245_000 + (s.awards === 'yes' ? 38_000 : 0) + (s.breakouts === '5' ? 65_000 : s.breakouts === '2' ? 28_000 : 0) + (s.days === 'multi' ? 48_000 : s.days === '2day' ? 18_000 : 0)
+    },
+
+    {
+      id: 'breakout',
+      dept: 'general',
+      ico: '🪑',
+      name: 'Breakout Room AV Package',
+      director: 'C. Taylor',
+      directorTitle: 'Video Director',
+      deptLabel: 'Breakout / General',
+      version: '1.1',
+      updated: '2 days ago',
+      reuseCount: 47,
+      standard: true,
+      summary: 'Repeatable per-room kit — projector or LED, lectern audio, wireless, basic capture.',
+      note: 'Most-reused system in the library. Run once per breakout room; the system scales crew and gear with the count.',
+      baseGear: [
+        'Projector + screen OR 110" LED panel',
+        'Small-format mixer + 2ch wireless',
+        'Podium mic + speaker wedge'
+      ],
+      baseLabor: ['Breakout tech · 1 per room'],
+      directorNote: 'If you have more than 3 breakouts, assign a floating Lead Breakout Tech so nobody\'s solo when something breaks.',
+      steps: [
+        { k:'display', q:'Display type?', opts:[
+          { v:'proj', lbl:'Projector + screen',       tag:'Standard', def:true, recommended:true },
+          { v:'led',  lbl:'110" LED panel'}
+        ]},
+        { k:'capture', q:'Capture posture?', opts:[
+          { v:'none', lbl:'No recording',            tag:'Standard', def:true },
+          { v:'rec',  lbl:'Audio record only'},
+          { v:'full', lbl:'Full AV record · session library'}
+        ]},
+        { k:'count', q:'How many rooms?', opts:[
+          { v:'1', lbl:'1'},
+          { v:'3', lbl:'3', tag:'Standard', def:true },
+          { v:'5', lbl:'5+ · adds floating lead'}
+        ]}
+      ],
+      rules: (s) => {
+        const out = [];
+        const n = parseInt(s.count) || 1;
+        if(n > 1){
+          out.push({ type:'gear',  item:`Per-room kit × ${n}`, why:'Kit + labor scale with room count' });
+          out.push({ type:'labor', item:`Breakout tech × ${n}`, why:'Each room gets one tech by standard' });
+        }
+        if(n >= 5){
+          out.push({ type:'labor', item:'Lead Breakout Tech · floating', why:'Rule · 5+ rooms triggers a floating lead so no tech is solo on a break' });
+        }
+        if(s.capture === 'rec'){
+          out.push({ type:'gear', item:'Audio recorder per room', why:'Audio-only recording selected' });
+        }
+        if(s.capture === 'full'){
+          out.push({ type:'gear',  item:'Full AV record rig per room',    why:'Session-library recording selected' });
+          out.push({ type:'labor', item:'Record op · 1 per 3 rooms',      why:'Session-library capture → dedicated record ops' });
+        }
+        return out;
+      },
+      baseOutputs: { schedule: 2, flow: 0, warehouse: 12 },
+      quote: (s) => {
+        const n = parseInt(s.count) || 1;
+        return 4_800 * n + (s.display === 'led' ? 2_400 * n : 0) + (s.capture === 'full' ? 3_200 * n : s.capture === 'rec' ? 600 * n : 0);
+      }
+    }
+  ];
+
+  // =================================================================
+  // RENDER · Zone A · Definitions Library
+  // =================================================================
+  const deptPalette = {
+    video:    { color: 'var(--pcg-bright-blue)',      bg: 'rgba(1,153,253,0.14)' },
+    audio:    { color: 'var(--status-amber)',         bg: 'rgba(245,176,65,0.14)' },
+    led:      { color: 'var(--pcg-spotlight-purple)', bg: 'rgba(149,100,216,0.14)' },
+    lighting: { color: 'var(--pcg-spotlight-purple)', bg: 'rgba(149,100,216,0.14)' },
+    general:  { color: 'var(--status-green)',         bg: 'rgba(61,220,132,0.14)' }
+  };
+
+  function renderLibrary(){
+    const selectedId = state.selected;
+    document.getElementById('sb-library').innerHTML = SYSTEMS.map(sys => {
+      return `
+        <div class="sys-card ${sys.id === selectedId ? 'selected' : ''}" data-dept="${sys.dept}" data-id="${sys.id}">
+          ${sys.standard ? '<span class="badge-standard">Director Standard</span>' : ''}
+          <div class="head">
+            <div class="ico">${sys.ico}</div>
+            <div style="flex:1; min-width: 0;">
+              <div class="name">${PCG.escapeHtml(sys.name)}</div>
+              <div class="meta">
+                Defined by <span class="d">${PCG.escapeHtml(sys.director)}</span> · ${PCG.escapeHtml(sys.directorTitle)}<br>
+                ${PCG.escapeHtml(sys.deptLabel)} · <span class="v">v${sys.version}</span> · updated ${PCG.escapeHtml(sys.updated)}
+              </div>
+            </div>
+          </div>
+          <div class="summary">${PCG.escapeHtml(sys.summary)} <span class="muted" style="font-size: 11.5px;">${PCG.escapeHtml(sys.note)}</span></div>
+          <div class="sys-facts">
+            <div class="fact"><div class="lbl">Required gear</div><div class="v">${sys.baseGear.length}+</div></div>
+            <div class="fact"><div class="lbl">Base labor</div><div class="v">${sys.baseLabor.length}+</div></div>
+            <div class="fact"><div class="lbl">Rules fire</div><div class="v">on build</div></div>
+          </div>
+          <div class="sys-foot">
+            <button class="build" data-build="${sys.id}">Build this system · guided →</button>
+            <span class="recs">Reused ${sys.reuseCount}× on prior shows</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.querySelectorAll('#sb-library .sys-card').forEach(el => {
+      el.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-build]');
+        const id = btn ? btn.dataset.build : el.dataset.id;
+        selectSystem(id);
+      });
+    });
+  }
+
+  // =================================================================
+  // STATE + Guided Builder render
+  // =================================================================
+  const state = {
+    selected: null,       // system id
+    answers: {}           // per-system answers · keyed by system id
+  };
+  function ans(id){ return state.answers[id] || {}; }
+  function setAns(id, k, v){ state.answers[id] = { ...(state.answers[id]||{}), [k]:v }; }
+
+  // Default pre-fill on first select · director-recommended answers
+  function seedDefaults(sys){
+    const current = ans(sys.id);
+    sys.steps.forEach(step => {
+      if(current[step.k] != null) return;
+      const def = step.opts.find(o => o.def);
+      if(def) current[step.k] = def.v;
+    });
+    state.answers[sys.id] = current;
+  }
+
+  function selectSystem(id){
+    state.selected = id;
+    const sys = SYSTEMS.find(s => s.id === id); if(!sys) return;
+    seedDefaults(sys);
+    renderLibrary();
+    renderBuilder(sys);
+    document.getElementById('sbb-empty').style.display = 'none';
+    document.getElementById('sb-builder').classList.add('open');
+    document.getElementById('sb-builder').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function renderBuilder(sys){
+    const a = ans(sys.id);
+    const pal = deptPalette[sys.dept] || deptPalette.video;
+    const stepsHtml = sys.steps.map((step, i) => `
+      <div class="sbb-step ${a[step.k] ? 'answered' : ''}">
+        <div class="qn"><span class="num">${i + 1}</span><span class="q">${PCG.escapeHtml(step.q)}</span></div>
+        <div class="sbb-opts">
+          ${step.opts.map(o => `
+            <div class="sbb-opt ${a[step.k] === o.v ? 'on' : ''}" data-s="${step.k}" data-v="${o.v}">
+              <span>${o.recommended ? '★ ' : ''}${PCG.escapeHtml(o.lbl)}</span>
+              ${o.tag ? `<span class="tag ${o.tag === 'Standard' ? 'std' : o.tag === 'Complex' ? 'cx' : 'rec'}">${PCG.escapeHtml(o.tag)}</span>` : (o.recommended ? '<span class="tag rec">Recommended</span>' : '')}
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+
+    const rules = sys.rules(a) || [];
+    const rulesHtml = rules.length
+      ? rules.map(r => `
+          <div class="sbb-rule ${r.type}">
+            <span class="rico">${r.type === 'labor' ? '👥' : '⚙'}</span>
+            <div>
+              <strong>${PCG.escapeHtml(r.item)}</strong><span class="auto-chip">Added automatically</span>
+              <span class="why">↳ ${PCG.escapeHtml(r.why)}</span>
+            </div>
+          </div>`).join('')
+      : '<div class="empty">No rules have fired yet — the base package applies.</div>';
+
+    // Outputs
+    const baseLaborN = sys.baseLabor.length;
+    const baseGearN = sys.baseGear.length;
+    const addLaborN = rules.filter(r => r.type === 'labor').length;
+    const addGearN  = rules.filter(r => r.type === 'gear').length;
+    const o = sys.baseOutputs;
+    const schedule  = o.schedule  + (addGearN > 2 ? 2 : 0) + (addLaborN > 2 ? 2 : 0);
+    const laborN    = baseLaborN + addLaborN;
+    const warehouse = o.warehouse + addGearN * 3;
+    const flowCues  = o.flow      + (a.rec === 'live' || a.rec === 'both' ? 3 : 0) + (sys.id === 'gs-package' && a.awards === 'yes' ? 8 : 0);
+    const quoteUsd  = sys.quote(a);
+
+    document.getElementById('sb-builder').innerHTML = `
+      <div class="sbb-head" style="--dept-color: ${pal.color}; --dept-bg: ${pal.bg};">
+        <div class="ico">${sys.ico}</div>
+        <div>
+          <h3>${PCG.escapeHtml(sys.name)} · guided build</h3>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">
+            Running against <strong style="color: ${pal.color};">v${sys.version}</strong> · ${PCG.escapeHtml(sys.directorTitle)} · ${PCG.escapeHtml(sys.director)}
+          </div>
+        </div>
+        <div class="pathway">PIF → <b>System Builder</b> → Quote → Schedule → Show Flow → TD</div>
+      </div>
+
+      <div class="sbb-dir-note">
+        <div><strong>${PCG.escapeHtml(sys.directorTitle)} says:</strong> ${sys.directorNote}</div>
+      </div>
+
+      <div class="sbb-steps" id="sbb-steps">${stepsHtml}</div>
+
+      <div class="sbb-rules">
+        <h4>⚙ Rules fired · automatic inclusions</h4>
+        ${rulesHtml}
+      </div>
+
+      <div class="sbb-output">
+        <h4>⚡ This system will generate</h4>
+        <div class="sbb-out-stats">
+          <div class="st"><div class="lbl">Quote impact</div><div class="v">$${quoteUsd.toLocaleString()}</div><div class="nt">Line items auto-added to quote</div></div>
+          <div class="st"><div class="lbl">Schedule rows</div><div class="v">+${schedule}</div><div class="nt">Load-in · tech · strike slots</div></div>
+          <div class="st"><div class="lbl">Labor positions</div><div class="v">${laborN}</div><div class="nt">${baseLaborN} base + ${addLaborN} from rules</div></div>
+          <div class="st"><div class="lbl">Show Flow cues</div><div class="v">${flowCues ? '+' + flowCues : '—'}</div><div class="nt">${flowCues ? 'Starter cues seeded' : 'No cues (composite · see sub-systems)'}</div></div>
+          <div class="st"><div class="lbl">Warehouse items</div><div class="v">${warehouse}</div><div class="nt">${baseGearN} base + ${addGearN} rule-added</div></div>
+          <div class="st"><div class="lbl">TD Package</div><div class="v">Updated</div><div class="nt">Packet regenerates on apply</div></div>
+        </div>
+        <div class="sbb-out-links">
+          <a href="quote.html?id=q.LCE-2026.v3">⚡ Quote</a>
+          <a href="production-schedule.html?project=LCE-2026">⚡ Production Schedule</a>
+          <a href="show-flow.html?project=LCE-2026">⚡ Show Flow</a>
+          <a href="td-package.html?project=LCE-2026">⚡ TD Package</a>
+          <a href="advance.html?project=LCE-2026">⚡ Advance</a>
+          <a href="creative-workflow.html?project=LCE-2026">⚡ Creative Workflow</a>
+          <a href="pull-sheet.html?id=ps.sae.breakout">⚡ Warehouse pull</a>
+        </div>
+        <div class="sbb-apply-row">
+          <button class="btn primary" id="sbb-apply">✓ Apply system · generate downstream work</button>
+          <span class="note">Applying runs every rule once more and posts this system to the show's scope.</span>
+        </div>
+      </div>`;
+
+    // Wire option clicks · re-render to pick up rule changes
+    document.querySelectorAll('.sbb-opt').forEach(el => el.addEventListener('click', () => {
+      setAns(sys.id, el.dataset.s, el.dataset.v);
+      renderBuilder(sys);
+    }));
+
+    document.getElementById('sbb-apply').addEventListener('click', () => {
+      // Persist per-show (demo-safe); the reuse count in the library bumps too.
+      const key = `pcg_sb_${sys.id}`;
+      const prev = JSON.parse(sessionStorage.getItem(key) || 'null') || { applied: 0 };
+      prev.applied = (prev.applied || 0) + 1;
+      prev.last = { at: new Date().toISOString(), answers: a };
+      sessionStorage.setItem(key, JSON.stringify(prev));
+      applyToast(sys, { schedule, laborN, flowCues, warehouse, quoteUsd });
+    });
+  }
+
+  function applyToast(sys, stats){
+    let el = document.getElementById('sb-toast');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'sb-toast';
+      el.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); min-width:340px; max-width:580px; padding:16px 20px; border-radius:12px; background: linear-gradient(135deg, rgba(61,220,132,0.2), rgba(1,153,253,0.14) 70%), var(--surface-1); border:1px solid var(--status-green); box-shadow: 0 10px 30px rgba(61,220,132,0.25); z-index:80; opacity:0; transition: opacity 0.2s;';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `
+      <div style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--status-green); margin-bottom: 6px;">✓ ${PCG.escapeHtml(sys.name)} applied</div>
+      <div style="font-size: 13px; color: var(--text-primary); line-height: 1.6;">
+        <strong>$${stats.quoteUsd.toLocaleString()}</strong> added to Quote · <strong>+${stats.schedule}</strong> schedule rows · <strong>${stats.laborN}</strong> labor positions · <strong>${stats.warehouse}</strong> warehouse items${stats.flowCues ? ' · <strong>+' + stats.flowCues + '</strong> Show Flow cues' : ''}.<br>
+        TD Package regenerated · Advance refreshed · Client Portal "What changed" updated.
+      </div>`;
+    el.style.opacity = '1';
+    clearTimeout(applyToast._t);
+    applyToast._t = setTimeout(() => el.style.opacity = '0', 4200);
+  }
+
+  renderLibrary();
 </script>
 </body>
 </html>
