@@ -363,6 +363,106 @@
   .lc-step.future .lc-lbl { color: var(--text-tertiary); }
   .lc-step.future { opacity: 0.6; }
 
+  /* Venue Memory + Closeout / Learning Loop cards · side-by-side */
+  .memory-grid {
+    display: grid; grid-template-columns: 1fr; gap: 12px;
+  }
+  @media (min-width: 900px) { .memory-grid { grid-template-columns: 1fr 1fr; } }
+  .memory-card {
+    padding: 18px 22px; border-radius: var(--r-md);
+    background: var(--surface-1); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 12px;
+    position: relative; overflow: hidden;
+  }
+  .memory-card.venue {
+    background: linear-gradient(135deg, rgba(149,100,216,0.08), transparent 70%), var(--surface-1);
+    border-left: 3px solid var(--pcg-spotlight-purple);
+  }
+  .memory-card.closeout {
+    background: linear-gradient(135deg, rgba(61,220,132,0.06), transparent 70%), var(--surface-1);
+    border-left: 3px solid var(--status-green);
+  }
+  .memory-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .memory-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: var(--r-pill);
+    background: var(--pcg-spotlight-purple); color: #fff;
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .memory-count {
+    margin-left: auto;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary);
+  }
+  .memory-card h3 {
+    margin: 0; font-family: var(--font-display); font-size: 16px; color: var(--text-primary); line-height: 1.3;
+  }
+  .memory-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    padding: 10px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border);
+  }
+  .memory-stats div {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  }
+  .memory-stats .v {
+    font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1;
+  }
+  .memory-stats .l {
+    font-size: 10px; font-family: var(--font-display); letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .memory-body {
+    font-size: 12.5px; color: var(--text-secondary); line-height: 1.55;
+  }
+  .memory-foot {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding-top: 6px;
+  }
+  .memory-link {
+    color: var(--pcg-bright-blue); text-decoration: none;
+    font-family: var(--font-display); font-size: 11.5px; letter-spacing: 0.04em; font-weight: 600;
+  }
+  .memory-link:hover { text-decoration: underline; }
+  .memory-reuse {
+    margin-left: auto; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);
+  }
+
+  /* "Same show · different views" · product thesis strip */
+  .views-strip {
+    margin-bottom: var(--sp-4);
+    padding: 14px 16px; border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(1,153,253,0.10), rgba(149,100,216,0.08) 70%), var(--surface-1);
+    border: 1px solid rgba(1,153,253,0.3);
+    border-left: 3px solid var(--pcg-bright-blue);
+  }
+  .views-strip .vs-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 10px; }
+  .views-strip .vs-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: var(--r-pill);
+    background: var(--pcg-bright-blue); color: #001a2a;
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .views-strip .vs-sub { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+  .views-strip .vs-chips {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;
+  }
+  .views-strip .vs-chip {
+    display: grid; grid-template-columns: 28px 1fr; gap: 10px;
+    align-items: center;
+    padding: 10px 12px; border-radius: var(--r-sm);
+    background: var(--surface-0); border: 1px solid var(--border);
+    color: var(--text-primary); text-decoration: none;
+    transition: border-color var(--t-fast), transform var(--t-fast);
+  }
+  .views-strip .vs-chip:hover { border-color: var(--pcg-bright-blue); transform: translateY(-1px); }
+  .views-strip .vs-chip .ico { font-size: 20px; line-height: 1; }
+  .views-strip .vs-chip .role {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .views-strip .vs-chip .page { font-size: 12.5px; font-weight: 600; margin-top: 1px; color: var(--text-primary); }
+
   /* -------- Venue requirements v2 (actionable) -------- */
   .req-row {
     display: grid; grid-template-columns: 32px 1fr 160px 120px 30px; gap: 12px;
@@ -531,6 +631,18 @@
 
         <!-- LIFECYCLE / PHASE — "where are we right now?" at a glance. -->
         <div class="lc-strip" id="lifecycle"></div>
+
+        <!-- "SAME SHOW · DIFFERENT VIEWS" — product thesis made visible.
+             One show in STAGE · the right view for the right person
+             generated from the same data. Each chip deep-links to
+             the role-specific surface the system already produces. -->
+        <div class="views-strip" id="views-strip">
+          <div class="vs-head">
+            <span class="vs-tag">⚡ Same show · different views</span>
+            <span class="vs-sub">One dataset · the right view for the right person · auto-generated from STAGE.</span>
+          </div>
+          <div class="vs-chips" id="vs-chips"></div>
+        </div>
 
         <!-- TABS -->
         <div class="scc-tabs" id="scc-tabs"></div>
@@ -771,6 +883,56 @@
           </div>
         </section>
 
+        <!-- VENUE MEMORY + CLOSEOUT / LEARNING LOOP · side-by-side.
+             Closes the "system remembers what the company knows" loop.
+             Venue Memory · reusable · carries across shows.
+             Closeout · every show feeds the next one. -->
+        <section class="scc-section" id="sec-memory">
+          <div class="memory-grid">
+            <div class="memory-card venue">
+              <div class="memory-head">
+                <span class="memory-tag">🏛 Venue memory</span>
+                <span class="memory-count">3 prior PCG shows</span>
+              </div>
+              <h3>Caesars Forum · Las Vegas</h3>
+              <div class="memory-stats">
+                <div><span class="v">12</span><span class="l">venue notes</span></div>
+                <div><span class="v">6</span><span class="l">watch-outs</span></div>
+                <div><span class="v">24</span><span class="l">condition photos</span></div>
+                <div><span class="v">4</span><span class="l">prior plots</span></div>
+              </div>
+              <div class="memory-body">
+                Every site visit, pre-load photo, and field note from shows at this venue carries forward. The next PM starts with <strong>accumulated institutional knowledge</strong>, not a blank walk-through.
+              </div>
+              <div class="memory-foot">
+                <a href="site-visit.html?project=LCE-2026" class="memory-link">Start visit · reuse memory →</a>
+                <span class="memory-reuse">Last reused · 18 days ago (SAE-WCX-2026)</span>
+              </div>
+            </div>
+
+            <div class="memory-card closeout">
+              <div class="memory-head">
+                <span class="memory-tag" style="background: var(--status-green); color: #000;">✓ Closeout &amp; learning loop</span>
+                <span class="memory-count">Every show feeds the next</span>
+              </div>
+              <h3>After the show · what carries forward</h3>
+              <div class="memory-stats">
+                <div><span class="v">—</span><span class="l">Debrief pending</span></div>
+                <div><span class="v">—</span><span class="l">Lessons · open</span></div>
+                <div><span class="v">—</span><span class="l">Client notes</span></div>
+                <div><span class="v">—</span><span class="l">Invoice closeout</span></div>
+              </div>
+              <div class="memory-body">
+                After strike, STAGE runs a structured debrief. <strong>Lessons saved</strong> attach to venue, client, and show-type memory — so next time we build <em>this</em> show, we don't start from zero.
+              </div>
+              <div class="memory-foot">
+                <a href="closeout.html?project=GLBX-GSK26" class="memory-link">See closeout example →</a>
+                <span class="memory-reuse">Runs automatically · post-strike</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="scc-section" id="sec-activity">
           <div class="card">
             <div class="card-header"><div class="title">⎈ Activity Feed</div></div>
@@ -892,6 +1054,28 @@
           ${dateLine}
         </div>`;
     }).join('');
+  })();
+
+  // -------- VIEWS STRIP · one show, many role-specific views --------
+  (function renderViewsStrip(){
+    const views = [
+      { ico:'⌂', role:'AE · Sales',  page:'Quote Builder',       href: `quote.html?id=q.LCE-2026.v3` },
+      { ico:'🗂', role:'PM',         page:'Production Schedule', href: `production-schedule.html?project=${encodeURIComponent(proj.code)}` },
+      { ico:'📦', role:'TD',         page:'TD Show Package',     href: `td-package.html?project=${encodeURIComponent(proj.code)}` },
+      { ico:'🎬', role:'Show Caller',page:'Show Flow · Cue Grid',href: `show-flow.html?project=${encodeURIComponent(proj.code)}` },
+      { ico:'🎨', role:'Creative',   page:'Creative Workflow',   href: `creative-workflow.html?project=${encodeURIComponent(proj.code)}` },
+      { ico:'📱', role:'Field Crew', page:'Field Capture',       href: `field-capture.html?project=${encodeURIComponent(proj.code)}` },
+      { ico:'⚡', role:'Venue',      page:'Advance (print)',     href: `advance.html?project=${encodeURIComponent(proj.code)}` },
+      { ico:'🔗', role:'Client',     page:'Client Portal',       href: `client-portal.html?project=${encodeURIComponent(proj.code)}` }
+    ];
+    document.getElementById('vs-chips').innerHTML = views.map(v => `
+      <a class="vs-chip" href="${v.href}">
+        <span class="ico">${v.ico}</span>
+        <div>
+          <div class="role">${PCG.escapeHtml(v.role)}</div>
+          <div class="page">${PCG.escapeHtml(v.page)}</div>
+        </div>
+      </a>`).join('');
   })();
 
   // -------- TABS --------

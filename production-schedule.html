@@ -285,6 +285,7 @@
 
       <div style="display:flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--sp-4); align-items: center;">
         <span class="muted" style="font-size: var(--fs-xs); margin-right:auto;">Build timeline · phase by phase · department-owned</span>
+        <button class="btn sm ghost" id="save-tmpl" title="Capture this schedule as a reusable template for future shows">💾 Save as template</button>
         <a class="btn sm ghost" id="open-sf" href="#">→ Show Flow / ROS</a>
         <a class="btn sm ghost" id="open-td" href="#">→ TD Show Package</a>
         <a class="btn sm" id="open-ctr" href="#">↺ Back to Show Command Center</a>
@@ -308,6 +309,9 @@
         <div>
           <div class="lbl">Built from template</div>
           <div class="val">🎯 Corporate Awards · Multi-Day · GSA template v3</div>
+          <div style="margin-top: 4px; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">
+            Reused <strong style="color: var(--pcg-spotlight-purple);">7 times</strong> · saved <strong style="color: var(--pcg-spotlight-purple);">~3.5 days</strong> across last 4 shows · last refined 18d ago after SAE-WCX-2026
+          </div>
         </div>
         <div class="chips" id="tmpl-chips">
           <span class="chip on" data-t="awards">Awards Show</span>
@@ -631,6 +635,26 @@
   document.querySelectorAll('#tmpl-chips .chip').forEach(c => c.addEventListener('click', () => {
     c.classList.toggle('on');
   }));
+
+  // Save-as-template · reinforces repeatability · fires the same
+  // propagation toast so the user sees a system-wide reaction.
+  document.getElementById('save-tmpl').addEventListener('click', () => {
+    scheduleToast('Corporate Awards · Multi-Day (updated from ' + (proj.code || 'this show') + ')');
+    // Second toast to confirm the save semantic
+    setTimeout(() => {
+      const t = document.getElementById('ps-toast');
+      if(!t) return;
+      t.innerHTML = `
+        <div class="ey">💾 Saved to template library</div>
+        <div class="ln" style="color:#fff; font-weight: 600;">Corporate Awards · Multi-Day · v4</div>
+        <div class="ln">Available to all future shows via PIF starter</div>
+        <div class="ln">Venue memory (Caesars Forum) auto-linked</div>
+        <div class="ln">Crew + rate card references carried forward</div>
+      `;
+      t.classList.add('on');
+      setTimeout(() => t.classList.remove('on'), 3200);
+    }, 3500);
+  });
 </script>
 </body>
 </html>

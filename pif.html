@@ -87,6 +87,17 @@
         </div>
       </div>
 
+      <!-- Start-from-template row — repeatability made explicit.
+           Every new show can start from a blank PIF or inherit from a
+           prior production PCG has already run at the same venue, for
+           the same client, or in the same show-type family. -->
+      <div class="card card-pad" style="margin-bottom: var(--sp-4); background: linear-gradient(135deg, rgba(149,100,216,0.08), transparent 70%), var(--surface-1); border-left: 3px solid var(--pcg-spotlight-purple);">
+        <div class="eyebrow" style="margin-bottom: 4px; color: var(--pcg-spotlight-purple);">OPTIONAL · START FROM TEMPLATE</div>
+        <h3 style="margin: 0 0 4px; font-family: var(--font-display); font-size: 18px;">Reuse what PCG already knows</h3>
+        <div class="muted" style="font-size: var(--fs-sm); margin-bottom: var(--sp-3);">Every show we run becomes a template. Start from a prior PCG show and inherit scope, crew, rate card, workback, venue intel, and creative treatment — then tweak what's different.</div>
+        <div id="pifTemplates" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;"></div>
+      </div>
+
       <!-- Project Type Picker (always visible for new PIF) -->
       <div id="typePickerWrap" class="card card-pad" style="margin-bottom: var(--sp-4);">
         <div class="eyebrow" style="margin-bottom: 4px;">STEP 1 · PROJECT TYPE</div>
@@ -657,6 +668,49 @@
 
   renderForm();
   renderSidebar();
+
+  // ==============================================================
+  // TEMPLATE STARTERS · reuse what PCG already knows.
+  // Four realistic starters · each carries what it inherits so the
+  // user sees repeatability without a fake wizard.
+  // ==============================================================
+  (function renderPifTemplates(){
+    const templates = [
+      { ico:'🎯', lbl:'Blank PIF',               sub:'Start clean · no inheritance',
+        tags:['Fresh scope','Default workback','No prior crew'] },
+      { ico:'🔁', lbl:'LCE 2025 · Conference',   sub:'Same client · same venue · last year',
+        tags:['Scope · 98%','Crew · 94%','Rate card · locked','Venue intel','Workback template'] },
+      { ico:'📐', lbl:'Similar · Corp Awards',   sub:'Most-run show-type · Marquee set · GSA+Awards',
+        tags:['System Builder preset','Rate card','Labor call','Creative opener frame'] },
+      { ico:'🏛', lbl:'Caesars Forum · reuse',   sub:'Venue memory · 3 prior shows on file',
+        tags:['Dock rules','Rigging plot','Power one-line','Pre-load condition']}
+    ];
+    const el = document.getElementById('pifTemplates');
+    if(!el) return;
+    el.innerHTML = templates.map((t, i) => `
+      <div class="pif-template-card" data-i="${i}" style="padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); cursor: pointer; transition: border-color var(--t-fast), transform var(--t-fast);">
+        <div style="display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px;">
+          <span style="font-size: 20px; line-height: 1;">${t.ico}</span>
+          <span style="font-weight: 600; font-size: var(--fs-md); color: var(--text-primary);">${PCG.escapeHtml(t.lbl)}</span>
+        </div>
+        <div style="font-size: 11.5px; color: var(--text-tertiary); margin-bottom: 8px; font-family: var(--font-mono);">${PCG.escapeHtml(t.sub)}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${t.tags.map(tag => `<span style="padding: 2px 8px; border-radius: var(--r-pill); background: rgba(149,100,216,0.12); color: var(--pcg-spotlight-purple); font-size: 10px; font-family: var(--font-display); letter-spacing: 0.04em;">${PCG.escapeHtml(tag)}</span>`).join('')}
+        </div>
+      </div>`).join('');
+    el.querySelectorAll('.pif-template-card').forEach(card => {
+      card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--pcg-spotlight-purple)'; card.style.transform = 'translateY(-1px)'; });
+      card.addEventListener('mouseleave', () => { card.style.borderColor = 'var(--border)'; card.style.transform = 'none'; });
+      card.addEventListener('click', () => {
+        el.querySelectorAll('.pif-template-card').forEach(c => { c.style.background = 'var(--surface-1)'; c.style.boxShadow = 'none'; });
+        card.style.background = 'linear-gradient(135deg, rgba(149,100,216,0.16), rgba(1,153,253,0.06))';
+        card.style.boxShadow = '0 0 0 2px rgba(149,100,216,0.35)';
+        // Demo-safe feedback — no actual field prefill needed
+        const note = document.getElementById('submitNote');
+        if(note) note.textContent = `✓ Inheriting from: ${templates[+card.dataset.i].lbl}`;
+      });
+    });
+  })();
 </script>
 </body>
 </html>
