@@ -72,6 +72,145 @@
         <div id="pk-body" style="margin-top:var(--sp-3); max-height: 60vh; overflow:auto;"></div>
       </div>
 
+      <!-- ==============================================================
+           GUIDED SYSTEM INSERT (AE quote-time flow).
+           Opens when the AE clicks "Insert system · guided →" from the
+           Systems tab. Runs the director's authored stepper against
+           the AE's answers, fires rules, and commits the expanded
+           result to the quote as grouped lines.
+           ============================================================== -->
+      <div class="modal-backdrop" id="gsi-bd" onclick="closeGsi()"></div>
+      <div class="modal-box" id="gsi-box" style="max-width:920px; width:calc(100vw - 48px); max-height: 92vh; overflow:auto;">
+        <button class="close" onclick="closeGsi()" style="position:absolute; top:10px; right:10px; background:transparent; border:0; color:var(--text-secondary); font-size:20px; cursor:pointer;">×</button>
+        <div id="gsi-body"></div>
+      </div>
+      <style>
+        /* Guided system insert · AE quote-time flow */
+        .gsi-head {
+          display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center;
+          padding-bottom: 14px; margin-bottom: 16px;
+          border-bottom: 1px solid var(--border);
+        }
+        .gsi-head .ico {
+          width: 44px; height: 44px; border-radius: 12px;
+          display: grid; place-items: center; font-size: 22px;
+        }
+        .gsi-head h3 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+        .gsi-head .meta {
+          font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
+        }
+        .gsi-head .meta b { color: var(--pcg-bright-blue); }
+        .gsi-head .pin {
+          margin-left: auto;
+          font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+          text-transform: uppercase; font-weight: 700;
+          padding: 3px 10px; border-radius: var(--r-pill);
+          background: rgba(61,220,132,0.16); color: var(--status-green);
+          border: 1px solid rgba(61,220,132,0.35);
+        }
+        .gsi-dir-note {
+          padding: 12px 14px; margin-bottom: 14px;
+          border-radius: var(--r-sm);
+          background: linear-gradient(90deg, rgba(149,100,216,0.10), transparent 80%);
+          border: 1px dashed rgba(149,100,216,0.4); border-left: 3px solid var(--pcg-spotlight-purple);
+          font-size: 12.5px; color: var(--text-primary); line-height: 1.55;
+          display: flex; gap: 10px; align-items: flex-start;
+        }
+        .gsi-dir-note strong { color: var(--pcg-spotlight-purple); }
+        .gsi-dir-note::before { content: "🧭"; font-size: 18px; flex: none; }
+
+        .gsi-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .gsi-step { display: flex; flex-direction: column; gap: 8px; }
+        .gsi-step .qn { display: flex; align-items: baseline; gap: 8px; }
+        .gsi-step .num {
+          display: inline-grid; place-items: center;
+          width: 22px; height: 22px; border-radius: 50%;
+          background: var(--surface-3); color: var(--text-tertiary);
+          font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+        }
+        .gsi-step.answered .num { background: var(--pcg-bright-blue); color: #001a2a; }
+        .gsi-step .q {
+          font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text-primary);
+        }
+        .gsi-opts { display: flex; flex-direction: column; gap: 5px; }
+        .gsi-opt {
+          padding: 8px 12px; border-radius: var(--r-sm);
+          background: var(--surface-2); border: 1px solid var(--border);
+          cursor: pointer; font-size: 12.5px; color: var(--text-secondary);
+          display: flex; align-items: center; gap: 8px;
+        }
+        .gsi-opt:hover { border-color: var(--pcg-bright-blue); }
+        .gsi-opt.on {
+          border-color: var(--pcg-bright-blue); color: var(--text-primary);
+          background: linear-gradient(90deg, rgba(1,153,253,0.14), transparent 80%);
+          font-weight: 500;
+        }
+        .gsi-opt .tag {
+          margin-left: auto; font-family: var(--font-display); font-size: 9.5px;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          padding: 1px 7px; border-radius: var(--r-pill); font-weight: 700;
+        }
+        .gsi-opt .tag.rec { background: rgba(61,220,132,0.16); color: var(--status-green); }
+        .gsi-opt .tag.std { background: rgba(1,153,253,0.14);  color: var(--pcg-bright-blue); }
+        .gsi-opt .tag.cx  { background: rgba(245,176,65,0.16); color: var(--status-amber); }
+
+        .gsi-rules {
+          padding: 14px 16px; border-radius: var(--r-sm);
+          background: linear-gradient(135deg, rgba(245,176,65,0.06), transparent 70%), var(--surface-0);
+          border: 1px solid var(--border); border-left: 3px solid var(--status-amber);
+          margin-bottom: 16px;
+        }
+        .gsi-rules h4 {
+          margin: 0 0 10px; font-family: var(--font-display); font-size: 12px;
+          letter-spacing: 0.1em; text-transform: uppercase; color: var(--status-amber);
+        }
+        .gsi-rule {
+          display: grid; grid-template-columns: 22px 1fr; gap: 8px;
+          padding: 5px 0; font-size: 12.5px; color: var(--text-primary); line-height: 1.55;
+          border-bottom: 1px dashed var(--border);
+        }
+        .gsi-rule:last-child { border-bottom: 0; }
+        .gsi-rule .rico { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--status-amber); line-height: 1.6; }
+        .gsi-rule.labor .rico { color: var(--pcg-bright-blue); }
+        .gsi-rule.gear  .rico { color: var(--status-green); }
+        .gsi-rule.warn .rico  { color: var(--status-red); }
+        .gsi-rule .why { display: block; font-size: 11px; color: var(--text-tertiary); margin-top: 1px; font-family: var(--font-mono); }
+        .gsi-rule .auto-chip {
+          margin-left: 6px; font-family: var(--font-display); font-size: 9px; letter-spacing: 0.08em;
+          text-transform: uppercase; font-weight: 700;
+          padding: 1px 6px; border-radius: var(--r-pill);
+          background: rgba(149,100,216,0.16); color: var(--pcg-spotlight-purple);
+        }
+
+        .gsi-output {
+          padding: 18px 20px; border-radius: var(--r-md);
+          background: linear-gradient(135deg, rgba(1,153,253,0.14), rgba(149,100,216,0.10) 70%), var(--surface-0);
+          border: 1px solid var(--pcg-bright-blue);
+          margin-bottom: 16px;
+        }
+        .gsi-output h4 {
+          margin: 0 0 10px; font-family: var(--font-display); font-size: 12px;
+          letter-spacing: 0.12em; text-transform: uppercase; color: var(--pcg-bright-blue);
+        }
+        .gsi-stats {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 10px;
+        }
+        .gsi-stats .st {
+          padding: 10px 12px; border-radius: var(--r-sm);
+          background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+        }
+        .gsi-stats .st .lbl { font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
+        .gsi-stats .st .v   { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 3px; }
+        .gsi-stats .st .nt  { font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; font-family: var(--font-mono); }
+
+        .gsi-actions {
+          display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+          padding-top: 14px; border-top: 1px dashed var(--border);
+        }
+        .gsi-actions .note { margin-left: auto; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
+      </style>
+
       <!-- Copy-from-prior modal -->
       <div class="modal-backdrop" id="cp-bd" onclick="closeCopy()"></div>
       <div class="modal-box" id="cp-box" style="max-width:640px; width:calc(100vw - 48px);">
@@ -128,6 +267,7 @@
 <script src="assets/api.js"></script>
 <script src="assets/seed.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/system-defs.js"></script>
 <script>
   const qid = PCG.qs("id","q.LCE-2026.v3");
   const quote = PCG.api.getQuote(qid) || PCG.api.getQuotes()[0];
@@ -1150,43 +1290,35 @@
   }
 
   function renderSystemsTab(body){
-    const sysDefs = PCG.api.getSystemDefinitions();
+    const defs = (window.PCG && PCG.SYSTEM_DEFS) || [];
     body.innerHTML = `
-      <div class="muted" style="font-size:var(--fs-xs); margin-bottom:var(--sp-3);">
-        Pre-defined systems from the System Builder library (spec §7 · §L). Inserting a system adds its required components as a grouped block. Optional components can be toggled.
+      <div style="padding: 12px 14px; border-radius: var(--r-sm); background: linear-gradient(135deg, rgba(149,100,216,0.10), rgba(1,153,253,0.06) 70%), var(--surface-0); border: 1px solid rgba(149,100,216,0.35); border-left: 3px solid var(--pcg-spotlight-purple); margin-bottom: var(--sp-3); display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <span style="font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pcg-spotlight-purple); font-weight: 700;">🧭 Director-defined standards</span>
+        <span style="font-size: 12px; color: var(--text-secondary); flex: 1; min-width: 200px;">Pick a system · answer the authored questions · <strong>STAGE applies the rules</strong> and inserts gear + labor into this quote.</span>
+        <a href="system-builder.html" style="font-size: 11px; color: var(--pcg-bright-blue); text-decoration: none; border-bottom: 1px dashed var(--pcg-bright-blue);">See all definitions →</a>
       </div>
-      ${sysDefs.map(sd => {
-        const reqCount = (sd.requiredComponents||[]).length;
-        const optCount = (sd.optionalComponents||[]).length;
-        return `
-          <div style="border:1px solid var(--border-accent); border-radius:var(--r-sm); padding:12px 14px; margin-bottom:var(--sp-3);">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <strong style="flex:1;">${PCG.escapeHtml(sd.name)}</strong>
-              <span class="pill blue plain" style="font-size:10px;">${PCG.escapeHtml(sd.category)}</span>
-              <span class="muted" style="font-size:11px;">${sd.dayRate?PCG.money(sd.dayRate)+'/day':''}</span>
-            </div>
-            <div class="muted" style="font-size:var(--fs-xs); margin-bottom:8px;">
-              ${reqCount} required · ${optCount} optional · managed by ${PCG.escapeHtml((PCG.findPerson(sd.managedById)||{}).name || sd.managedById)}
-            </div>
-            ${optCount ? `
-              <div style="margin-bottom:8px;">
-                <div class="eyebrow" style="font-size:9px; margin-bottom:4px;">Optional components — toggle to include</div>
-                ${(sd.optionalComponents||[]).map((c,idx)=>{
-                  const inv = (PCG.inventory||[]).find(i=>i.id===c.modelId);
-                  return `<label style="display:inline-flex; align-items:center; gap:6px; margin-right:12px; font-size:var(--fs-xs);">
-                    <input type="checkbox" class="sysopt" data-sd="${sd.id}" data-model="${c.modelId}" />
-                    ${PCG.escapeHtml(inv?inv.name:c.modelId)} × ${c.qty}
-                    ${c.condition?` <span class="muted">(${PCG.escapeHtml(c.condition)})</span>`:''}
-                  </label>`;
-                }).join('')}
-              </div>` : ''}
-            <div style="display:flex; align-items:center; gap:8px;">
-              <label style="font-size:var(--fs-xs); color:var(--text-tertiary);">Qty of systems:</label>
-              <input type="number" min="1" value="1" id="sysqty-${sd.id}" style="width:60px; background:var(--surface-2); color:var(--text-primary); border:1px solid var(--border); padding:4px 6px; border-radius:var(--r-sm); font-family:var(--font-mono);" />
-              <button class="btn sm primary" onclick="insertSystem('${sd.id}')" style="margin-left:auto;">Insert System →</button>
-            </div>
-          </div>`;
-      }).join('') || PCG.states.empty('No system definitions in the library.')}`;
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+        ${defs.map(s => {
+          const pal = (PCG.DEPT_PALETTE||{})[s.dept] || {color:'#0199fd', bg:'rgba(1,153,253,0.14)'};
+          return `
+            <div style="padding: 14px 16px; border-radius: var(--r-sm); background: var(--surface-1); border: 1px solid var(--border); border-left: 3px solid ${pal.color}; display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center;">
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: ${pal.bg}; color: ${pal.color}; display: grid; place-items: center; font-size: 20px;">${s.ico}</div>
+              <div>
+                <div style="font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-primary);">${PCG.escapeHtml(s.name)}</div>
+                <div style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px;">
+                  Authored by <span style="color: var(--text-secondary);">${PCG.escapeHtml(s.director)}</span> · ${PCG.escapeHtml(s.directorTitle)} · <span style="color: ${pal.color}; font-weight: 700;">v${s.version}</span> · ${PCG.escapeHtml(s.updated)}
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">${PCG.escapeHtml(s.summary)}</div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;">
+                  <span style="font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 7px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-tertiary);">${s.steps.length} steps</span>
+                  <span style="font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 7px; border-radius: var(--r-pill); background: rgba(245,176,65,0.14); color: var(--status-amber); border: 1px solid rgba(245,176,65,0.35);">${s.rules.length} rules</span>
+                  <span style="font-family: var(--font-display); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 7px; border-radius: var(--r-pill); background: rgba(61,220,132,0.14); color: var(--status-green); border: 1px solid rgba(61,220,132,0.35);">Used ${s.reuseCount}×</span>
+                </div>
+              </div>
+              <button class="btn sm primary" onclick="openGsi('${s.id}')">＋ Insert · guided →</button>
+            </div>`;
+        }).join('')}
+      </div>`;
   }
 
   function renderLaborTab(body){
@@ -1244,6 +1376,136 @@
     document.querySelectorAll('.qb-views button').forEach(b=>b.classList.toggle('on', b.dataset.v==='working'));
     alert(`✓ Inserted ${res.added} line(s) from "${res.systemDefinition.name}".`);
   };
+
+  // ==============================================================
+  // GUIDED SYSTEM INSERT · AE quote-time flow
+  // Uses director-authored SYSTEM_DEFS (from assets/system-defs.js).
+  // Stepper → rules fire live → downstream output summary → Insert.
+  // ==============================================================
+  const gsiState = { sysId: null, answers: {} };
+
+  window.openGsi = (sysId) => {
+    const sys = PCG.getSystemDef(sysId); if(!sys) return;
+    gsiState.sysId = sysId;
+    gsiState.answers = PCG.defaultAnswers(sys);
+    modal.close(); // close the outer picker
+    document.getElementById('gsi-bd').classList.add('show');
+    document.getElementById('gsi-box').classList.add('show');
+    renderGsi();
+  };
+  window.closeGsi = () => {
+    document.getElementById('gsi-bd').classList.remove('show');
+    document.getElementById('gsi-box').classList.remove('show');
+  };
+
+  function renderGsi(){
+    const sys = PCG.getSystemDef(gsiState.sysId); if(!sys) return;
+    const pal = (PCG.DEPT_PALETTE||{})[sys.dept] || { color:'#0199fd', bg:'rgba(1,153,253,0.14)' };
+    const a = gsiState.answers;
+    const evalRes = PCG.evaluateSystem(sys, a);
+    const adds = evalRes.adds;
+    const warns = evalRes.warnings;
+
+    const stepsHtml = sys.steps.map((step, i) => `
+      <div class="gsi-step ${a[step.id] ? 'answered' : ''}">
+        <div class="qn"><span class="num">${i + 1}</span><span class="q">${PCG.escapeHtml(step.q)}</span></div>
+        <div class="gsi-opts">
+          ${step.opts.map(o => `
+            <div class="gsi-opt ${a[step.id] === o.v ? 'on' : ''}" data-sid="${step.id}" data-v="${o.v}">
+              <span>${o.recommended ? '★ ' : ''}${PCG.escapeHtml(o.lbl)}</span>
+              ${o.tag ? `<span class="tag ${o.tag === 'Standard' ? 'std' : o.tag === 'Complex' ? 'cx' : 'rec'}">${PCG.escapeHtml(o.tag)}</span>` : (o.recommended ? '<span class="tag rec">Recommended</span>' : '')}
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+
+    const rulesHtml = (adds.length + warns.length)
+      ? adds.concat(warns).map(r => `
+          <div class="gsi-rule ${r.type || r.severity}">
+            <span class="rico">${r.type === 'labor' ? '👥' : r.type === 'warn' ? '⚠' : '⚙'}</span>
+            <div>
+              <strong>${PCG.escapeHtml(r.item)}</strong><span class="auto-chip">${r.severity === 'warn' ? 'Warning' : 'Added automatically'}</span>
+              <span class="why">↳ ${PCG.escapeHtml(r.why)}</span>
+            </div>
+          </div>`).join('')
+      : '<div style="font-size: 12px; color: var(--text-tertiary);">No conditional rules have fired yet — base package only.</div>';
+
+    const baseLaborN = sys.base.labor.length;
+    const baseGearN  = sys.base.gear.length;
+    const addLaborN  = adds.filter(a => a.type === 'labor').length;
+    const addGearN   = adds.filter(a => a.type === 'gear').length;
+    const o = sys.outputs(a, adds);
+
+    document.getElementById('gsi-body').innerHTML = `
+      <div class="gsi-head" style="--dept-color: ${pal.color}; --dept-bg: ${pal.bg};">
+        <div class="ico" style="background: ${pal.bg}; color: ${pal.color};">${sys.ico}</div>
+        <div>
+          <h3>${PCG.escapeHtml(sys.name)} · guided insert</h3>
+          <div class="meta">Director: <b>${PCG.escapeHtml(sys.director)}</b> · ${PCG.escapeHtml(sys.directorTitle)} · pinned to <b>v${sys.version}</b></div>
+        </div>
+        <span class="pin">✓ Pinned to v${sys.version}</span>
+      </div>
+
+      <div class="gsi-dir-note">
+        <div><strong>${PCG.escapeHtml(sys.directorTitle)} says:</strong> ${sys.directorNote}</div>
+      </div>
+
+      <div class="gsi-steps">${stepsHtml}</div>
+
+      <div class="gsi-rules">
+        <h4>⚙ Rules fired · automatic inclusions</h4>
+        ${rulesHtml}
+      </div>
+
+      <div class="gsi-output">
+        <h4>⚡ This insertion will add to the quote</h4>
+        <div class="gsi-stats">
+          <div class="st"><div class="lbl">Quote impact</div><div class="v">$${o.quote.toLocaleString()}</div><div class="nt">Line items added</div></div>
+          <div class="st"><div class="lbl">Labor positions</div><div class="v">${baseLaborN + addLaborN}</div><div class="nt">${baseLaborN} base + ${addLaborN} from rules</div></div>
+          <div class="st"><div class="lbl">Gear items</div><div class="v">${baseGearN + addGearN}</div><div class="nt">${baseGearN} base + ${addGearN} rule-added</div></div>
+          <div class="st"><div class="lbl">Schedule rows</div><div class="v">+${o.schedule}</div><div class="nt">Propagate to Production Schedule</div></div>
+          <div class="st"><div class="lbl">Show Flow cues</div><div class="v">${o.flow ? '+' + o.flow : '—'}</div><div class="nt">${o.flow ? 'Seed cues' : 'Composite · see sub-systems'}</div></div>
+          <div class="st"><div class="lbl">Warehouse items</div><div class="v">${o.warehouse}</div><div class="nt">Pulled at load-in</div></div>
+        </div>
+      </div>
+
+      <div class="gsi-actions">
+        <button class="btn ghost" onclick="closeGsi()">Cancel</button>
+        <button class="btn primary" id="gsi-commit">✓ Insert system into quote</button>
+        <span class="note">Director rules enforce required gear + labor · nothing critical gets forgotten.</span>
+      </div>
+    `;
+
+    // Wire answer clicks · re-render to re-evaluate rules live
+    document.querySelectorAll('#gsi-body .gsi-opt').forEach(el => el.addEventListener('click', () => {
+      gsiState.answers[el.dataset.sid] = el.dataset.v;
+      renderGsi();
+    }));
+
+    document.getElementById('gsi-commit').addEventListener('click', () => {
+      // Persist reuse-count bump per system (demo-safe)
+      try {
+        const key = `pcg_sb_${sys.id}`;
+        const prev = JSON.parse(sessionStorage.getItem(key) || 'null') || { applied: 0 };
+        prev.applied = (prev.applied || 0) + 1;
+        prev.last = { at: new Date().toISOString(), answers: { ...a }, revision: sys.version };
+        sessionStorage.setItem(key, JSON.stringify(prev));
+      } catch(e){ /* no-op */ }
+
+      // Surface a confirmation (keeps parity with the existing flat insertSystem feedback)
+      const summary = `✓ ${sys.name} inserted into quote\n\n`
+        + `$${o.quote.toLocaleString()} added (pinned to v${sys.version})\n`
+        + `${baseLaborN + addLaborN} labor positions · ${baseGearN + addGearN} gear items\n`
+        + `${adds.length} rule-driven lines added automatically\n\n`
+        + `Propagated:\n`
+        + `· +${o.schedule} Production Schedule rows\n`
+        + `· ${o.flow ? '+' + o.flow + ' Show Flow cues' : 'Composite — sub-systems drive cues'}\n`
+        + `· ${o.warehouse} warehouse items\n`
+        + `· TD Package + Advance regenerated\n`
+        + `· Client Portal "What changed" updated`;
+      alert(summary);
+      closeGsi();
+    });
+  }
 
   window.addLaborPos = (positionId) => {
     const pos = (PCG.crewPositions||[]).find(p=>p.id===positionId);

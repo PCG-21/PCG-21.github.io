@@ -78,7 +78,7 @@
     { label:'▍ Project Management', primary:true, items:[
       { id:'pm-home',       label:'Dashboard (Work)',    href:'pm-home.html',                               icon:'⌂', groups:'*' },
       { id:'pif',           label:'＋ New · PIF',         href:'pif.html',                                   icon:'◧', groups:[PCG.GROUPS.AE, PCG.GROUPS.AE_NO_CONFIRM, PCG.GROUPS.DIRECTORS, PCG.GROUPS.LEADERSHIP, PCG.GROUPS.ADMIN, PCG.GROUPS.TSMS] },
-      { id:'system-builder',      label:'System Builder · Design & Scope', href:'system-builder.html',                icon:'🧩', groups:'*' },
+      { id:'system-builder',      label:'System Definitions · Director library', href:'system-builder.html',                icon:'🧩', groups:'*' },
       { id:'show-center',         label:'Show Command Center',   href:'show-center.html?project=LCE-2026',          icon:'◈', groups:'*' },
       { id:'production-schedule', label:'Production Schedule',   href:'production-schedule.html?project=LCE-2026',  icon:'🗂', groups:'*' },
       { id:'show-flow',           label:'Show Flow · Cue Grid',  href:'show-flow.html?project=LCE-2026',            icon:'🎬', groups:'*' },
@@ -341,8 +341,8 @@
           return drafts.length > 0 || ['system-builder.html','show-center.html','production-schedule.html','show-flow.html','td-package.html','advance.html','site-visit.html','field-capture.html','creative-workflow.html','client-portal.html','client-portal-config.html'].includes(PAGE);
         }
       },
-      { k:'system',   lbl:'System Builder',       ico:'🧩', href:'system-builder.html',
-        tip:'Upstream design + scope. Everything downstream — quote, schedule, cues, labor, pull — generates from here.',
+      { k:'system',   lbl:'System Definitions',   ico:'🧩', href:'system-builder.html',
+        tip:'Directors author the standard — required gear, labor, rules. AEs insert these from the Quote Builder and rules fire automatically.',
         match: p => p === 'system-builder.html',
         done: () => ['show-center.html','production-schedule.html','show-flow.html','td-package.html','advance.html','client-portal.html','client-portal-config.html'].includes(PAGE)
       },
